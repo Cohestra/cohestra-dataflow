@@ -1,17 +1,18 @@
 # AI agents and mixed data pipelines: planning stack
 
-Status: draft architecture for review. Reconstructed and revalidated against
+Status: architecture direction approved by the user on 2026-09-14; detailed HLD/LLD
+added to the existing planning stack. Reconstructed and revalidated against
 main `857f36f51d9d58c05b32a4d2941448b1eeebbcbd` on 2026-09-09 UTC.
 This stack contains documentation only. Existing application code and production
-model defaults are unchanged. Implementation begins only after plan review.
+model defaults are unchanged. HLD/LLD contracts guide the separate implementation PRs.
 
 ## Read and review in order
 
 | Stack PR | Branch / base | Review focus |
 | --- | --- | --- |
 | 1 — Product gaps and sandbox gates | codex/plan-product-gaps / main | PRODUCT_GAPS.md, SANDBOX_AND_CI.md, MODEL_EVALUATION.md |
-| 2 — Backend architecture | codex/plan-agent-backend / codex/plan-product-gaps | BACKEND_ARCHITECTURE.md; B1–B6 future implementation sequence |
-| 3 — Frontend architecture | codex/plan-agent-frontend / codex/plan-agent-backend | FRONTEND_ARCHITECTURE.md; F1–F6 future implementation sequence |
+| 2 — Backend architecture | codex/plan-agent-backend / codex/plan-product-gaps | BACKEND_ARCHITECTURE.md, ARCHITECTURE_HLD.md, BACKEND_LLD.md; B1–B6 implementation sequence |
+| 3 — Frontend architecture | codex/plan-agent-frontend / codex/plan-agent-backend | FRONTEND_ARCHITECTURE.md, FRONTEND_LLD.md; F1–F6 implementation sequence |
 
 Published draft PRs: [#38](https://github.com/Cohestra/cohestra-dataflow/pull/38),
 [#39](https://github.com/Cohestra/cohestra-dataflow/pull/39), and
@@ -42,8 +43,9 @@ B4/F4 is the first full functional flow. B5/F5 recovery and operations evidence
 is required for release; mandatory safety tests ship with B3/B4 themselves.
 S01–S18 in the sandbox plan define cross-stack acceptance.
 
-Review must settle supported manifest sinks, cancellation semantics, permissions,
-OSS feature availability, tool/approval/budget behavior and retention. Resolve
+The approved direction uses native Temporal, owner-managed definitions, human
+mutation approvals, bounded run-scoped execution and existing OSS operational
+surfaces. HLD/LLD documents make these contracts and their failure paths concrete. Resolve
 license wording with maintainers; this stack does not change license terms.
 
 ## Validation scope

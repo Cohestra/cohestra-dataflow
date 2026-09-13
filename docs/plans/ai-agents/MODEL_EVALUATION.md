@@ -1,7 +1,7 @@
 # Ollama model assessment and evaluation record
 
 Status: investigation; no production model promotion or default change.
-Research date: 2026-09-09 UTC (continuing into 2026-09-10 IST).
+Research date: 2026-09-09 UTC; Notion and primary candidate registry rechecked 2026-09-14.
 Application baseline: `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`.
 
 ## Latest recorded Dataflow accuracy
@@ -164,7 +164,11 @@ checks; a documentation-only diff is not grounds to waive those failures.
 
 ## Challenger status and decision
 
-The official Granite4.2 8B pull is underway. A paired result will be appended
-once download and the same 31-case run complete. Neither the existing baseline
-nor an untested challenger is promoted. New model capability claims cannot
-resolve G11 or substitute for the missing native agent tool-use acceptance suite.
+Granite4.2 8B is installed. The interrupted native pull was recovered over IPv4;
+the complete official weight SHA-256 was verified before normal Ollama registration.
+The first run reached Granite successfully, but Docker became unavailable during
+the first case and the remaining 27 model-dependent requests lost the fixture DB.
+That report is preserved as an invalid infrastructure-interrupted attempt, not
+a Granite accuracy result. A fresh full run is pending isolated DB recovery.
+Neither model is promoted. New model capability claims cannot resolve G11 or
+substitute for the missing native agent tool-use acceptance suite.
