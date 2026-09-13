@@ -1,6 +1,6 @@
 # Durable agents: backend architecture and implementation plan
 
-Status: proposed; architecture only. Reviewed against `main` commit `857f36f51d9d58c05b32a4d2941448b1eeebbcbd` on 2026-09-09. Agent execution, MCP, approvals, and model budgets described below are proposed additions. Implementation starts after review of the three planning PRs.
+Status: architecture direction approved in the user conversation on 2026-09-14; architecture only. Reviewed against `main` commit `857f36f51d9d58c05b32a4d2941448b1eeebbcbd` on 2026-09-09. Agent execution, MCP, approvals, and model budgets described below are proposed additions. The [HLD](ARCHITECTURE_HLD.md) and [backend LLD](BACKEND_LLD.md) guide the separate implementation PRs.
 
 ## Outcome and boundary
 
@@ -147,4 +147,4 @@ PR CI uses a deterministic scripted model, read tool, idempotent write tool, amb
 
 Minimum matrix: correct typed output; invalid schema; missing/forbidden tools; timeout; token/step/deadline exhaustion; concurrent/duplicate usage settlement; approve/reject/expire/stale/double-submit; missed delivery; restart before/after remote acceptance; cancellation during approval/tool call; permission revocation; cross-tenant identifier/reference attempts; redaction/retention; and data-only regression. Live Ollama evaluation is a separate accuracy/latency/tool-use gate with digest, settings, sample count, hardware, and raw result provenance.
 
-Review accepts or changes workflow-only scope, owner-managed definitions and human pipeline-admin decisions, mandatory mutation approvals, the bounded loop, unknown-outcome policy, retention, and cost semantics. Implementation follows that decision. This planning PR changes no runtime behavior or default model.
+Review accepts or changes workflow-only scope, owner-managed definitions and human pipeline-admin decisions, mandatory mutation approvals, the bounded loop, unknown-outcome policy, retention, and cost semantics. The user approved this architecture direction on 2026-09-14; detailed contracts are in the companion HLD/LLD. This planning PR changes no runtime behavior or default model.

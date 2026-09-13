@@ -1,6 +1,6 @@
 # Product gaps before AI agent implementation
 
-Status: proposed for review; no runtime changes. Baseline:
+Status: architecture direction approved by the user on 2026-09-14; no runtime changes. Baseline:
 `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`, reviewed 2026-09-09 UTC.
 This reconstructs the earlier scope from current source; the original package
 was not recoverable. Its reported count of 13 gaps is not a target to fill.
@@ -68,7 +68,13 @@ For G04, the current prompt lists field names/required markers but omits allowed
 values/types, while config JSON schema remains generic. Retained model output
 shows rejected enum/type guesses. Plan explicit field constraints before using
 larger weights or fine-tuning as the presumed fix. Prompt/schema changes and
-model changes must be evaluated independently on the corrected corpus.
+model changes must be evaluated independently on the corrected corpus. The first
+Granite inference also exposed a concrete readiness failure: it returned three
+disconnected nodes with no edges, and the API labelled the draft ready with zero
+repairs. The unchanged scorer rejected it. Add positive/negative connected-flow
+fixtures for source-transform-sink intent; validate intended connectivity before
+ready while retaining explicitly supported independent branches. This one response
+is evidence of a contract failure, not a complete Granite accuracy result.
 
 ## Corrected assumptions
 
@@ -102,10 +108,10 @@ The first executing agent slice needs G01–G03, G06 and G09. Non-executing agen
 management planning can proceed while model promotion is unresolved. Automatic
 acceptance/execution of generated drafts is out of scope.
 
-## Review decisions
+## Approved direction and detailed design
 
-Approve priorities/acceptance, choose G02's sink policy, agree pause/cancel
-semantics and OSS boundary. B4/F4 demonstrate the complete functional flow; release completion requires
+The user approved the architecture direction on 2026-09-14. B1 rejects unsupported
+manifest-only sinks until a write contract exists; native Temporal execution,
+durable control and OSS operational essentials are specified in the HLD/LLD. B4/F4 demonstrate the complete functional flow; release completion requires
 B5/F5 recovery and operations evidence. Mandatory B3/B4 safety checks cannot
-be deferred to B5. Review backend and frontend designs separately before
-implementation. Refer to SANDBOX_AND_CI.md for the 18 acceptance scenarios.
+be deferred to B5. Use the backend and frontend LLD contracts for their separate implementation PRs. Refer to SANDBOX_AND_CI.md for the 18 acceptance scenarios.
