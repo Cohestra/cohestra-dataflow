@@ -18,7 +18,7 @@ test('canvas save, AI Apply/Undo and Mermaid edits preserve execution metadata',
         config: { url: 'https://fixture.example/orders' }, timeoutSec: 17,
         retry: { maximumAttempts: 2 }, ingestion: { mode: 'incremental', pageSize: 25 },
         outputAssets: [asset] },
-      { id: 'sink', type: 'sink', activityType: 'postgres.upsert', label: 'Write orders',
+      { id: 'sink', type: 'sink', activityType: 'sink.postgres', label: 'Write orders',
         config: { connectionId: 'fixture-db', table: 'orders' }, timeoutSec: 23,
         retry: { maximumAttempts: 1 }, inputAssets: [asset] },
     ],
@@ -91,6 +91,10 @@ test('canvas save, AI Apply/Undo and Mermaid edits preserve execution metadata',
   await page.getByRole('button', { name: 'Refine', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Apply', exact: true })).toBeVisible();
   preserved(refinements[0].definition);
+  await page.getByLabel('Pipeline name').fill('Newer draft');
+  await expect(page.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
+  await expect(page.getByText('This proposal is based on an older draft. Retry to regenerate before applying.')).toBeVisible();
+  await page.getByLabel('Pipeline name').fill('Renamed metadata pipeline');
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
   const applied = await save();
   expect(applied.name).toBe('Renamed metadata pipeline');
