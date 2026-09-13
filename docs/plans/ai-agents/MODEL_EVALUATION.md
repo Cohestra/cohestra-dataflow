@@ -172,16 +172,84 @@ change or security remediation was made, and differing job outcomes do not
 establish that the historical findings are fixed. The [dated CI checkpoint](evals/ci-checkpoint-20260914.json)
 records exact heads and job links; earlier counts above describe September9.
 
-## Challenger status and decision
+## Completed Granite comparison and decision
 
-Granite4.2 8B is installed. The interrupted native pull was recovered over IPv4;
-the complete official weight SHA-256 was verified before normal Ollama registration.
-The first run reached Granite successfully, but Docker became unavailable during
-the first case and the remaining 27 model-dependent requests lost the fixture DB.
-That report is preserved as an invalid infrastructure-interrupted attempt, not
-a Granite accuracy result. The fresh full run uses an isolated native PostgreSQL17.10
-fixture cluster on loopback15432; no default cluster or login service is enabled.
-The source, binary, corpus and request settings remain unchanged. Database
-deployment and host state differ from Qwen, so latency is diagnostic.
-Neither model is promoted. New model capability claims cannot resolve G11 or
-substitute for the missing native agent tool-use acceptance suite.
+Granite4.2 8B completed the fresh 31-case run on September14 IST with **9/31
+passes (29.03%)**, matching Qwen3:8b's raw count. This is a single current-stack
+checkpoint, not a promotion-quality ranking: the corpus has contradictory cases
+and an additional connectivity blind spot described below.
+
+| Category / diagnostic | Qwen3:8b | Granite4.2:8b |
+| --- | --- | --- |
+| All cases | 9/31 | 9/31 |
+| Generation | 2/8 | 0/8 |
+| Refinement | 0/5 | 0/5 |
+| Ambiguity | 2/4 | 4/4 |
+| Branching | 0/3 | 0/3 |
+| Engines/triggers | 0/6 | 0/6 |
+| Adversarial | 5/5 | 5/5 |
+| HTTP422 failures | 12 | 9 |
+| Ready / needs-input / rejected responses | 11 / 4 / 4 | 2 / 17 / 3 |
+| Actual model calls | 50 | 49 |
+| Generated tokens | 17,165 | 23,137 |
+| API mean / p95, diagnostic only | 34.70s / 62.52s | 44.56s / 85.72s |
+
+Granite exchanged two generation passes for two clarification passes: seven
+cases passed both models, twenty failed both, and each model alone passed two.
+All Granite passes were ambiguity/adversarial cases; three were deterministic
+API guards without inference. It did not improve executable pipeline generation
+in this run. **Do not switch the default model or promote either candidate.**
+
+Source, handler binary, corpus, first request apart from model, actual serving
+model/digest, sampling/thinking settings and context4096 were verified. Granite
+registry digest is f586c02fdecdf151b656207c339aa003997345774a41768bac1fd6d2fb85913b;
+its official full weight SHA-256 is
+16a9369d0805f80b7377d25d87f937a90c05dc04ad79173a52001e42c9aab311. All 49 model calls
+returned HTTP200; nine final API failures came from planner validation, with zero
+fixture-infrastructure failures in the completed retry. All model stop reasons
+were stop, with no explicit context/truncation error; server truncation logs were
+not captured. Token counts alone do not establish truncation.
+
+The failed native model download was recovered over IPv4, verified, then
+registered through Ollama normally. The first evaluation attempt lost Docker
+after one inference: 27 later model-dependent cases failed DB connections and only
+three deterministic guards passed. Its raw 3/31 is preserved as an invalid
+infrastructure-interrupted attempt, never included as Granite accuracy.
+
+The completed retry used a temporary native PostgreSQL 17.10 cluster on
+loopback 15432 (12 synthetic fixtures, 32 MiB shared buffers, 10 connections). Qwen used
+a Docker PostgreSQL 16 fixture. Application inputs stayed fixed, but database
+deployment, run date and host workloads differ. Native-run swap rose from
+10,983.62 to 15,096.06 MiB; the loaded model occupied 5.88 GB on GPU. These observations
+do not attribute swap to Granite or establish controlled latency/stability. The
+harness bypasses auth and workflow execution, and this suite does not test agent
+tool calls or execute the generated pipelines.
+
+A separate offline proof retained the first actual response, whose missing edges
+serialized as null and failed the scorer. Changing only that copied field to an
+empty array made the same disconnected source/filter/sink graph pass. The actual
+report is unchanged. Corrected v2 cases need explicit expected path assertions
+alongside consistent fixture bindings and golden positive answers; fixing null
+serialization alone would hide the semantic failure. Preserve legitimate
+independent branches rather than banning every disconnected graph globally.
+
+[Granite report](evals/granite42-8b-report.json),
+[diagnostics](evals/granite42-8b-diagnostics.json),
+[paired cases](evals/granite42-8b-comparison.json),
+[provenance](evals/granite42-8b-provenance.json),
+[native DB provenance](evals/granite42-native-db-provenance.json),
+[runtime model metadata](evals/granite42-runtime-metadata.json),
+[invalid-attempt diagnostics](evals/granite42-invalid-attempt-diagnostics.json),
+and [connectivity scorer proof](evals/empty-edge-scorer-proof.json).
+The post-run model-details endpoint reports tools/thinking/completion while the
+tag-list endpoint reports completion only for the same digest. These are metadata
+observations, not evidence that agent tool calling passed a test.
+Raw synthetic traces and runnable comparison/proof scripts remain in the durable
+local experiment folder.
+
+Next model work should correct and preflight v2, evaluate explicit planner
+config/path constraints with fixed weights, then compare candidates with repeated
+runs on intended hardware. Qwen3.5:9b remains an untested secondary candidate;
+latest availability alone is not evidence it is better for Dataflow. Native agent
+tool-use acceptance remains separate from planner accuracy. LangGraph is not
+needed to fix either the corpus or the native runtime design.
