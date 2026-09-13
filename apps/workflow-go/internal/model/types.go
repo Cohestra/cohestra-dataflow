@@ -66,7 +66,7 @@ type Node struct {
 	Label         string                 `json:"label,omitempty"`
 	Config        map[string]interface{} `json:"config"`
 	Ingestion     *IngestionConfig       `json:"ingestion,omitempty"`
-	TimeoutSec    int                    `json:"timeoutSec,omitempty"`
+	TimeoutSec    *int                   `json:"timeoutSec,omitempty"`
 	Retry         *RetryConfig           `json:"retry,omitempty"`
 	MergeStrategy string                 `json:"mergeStrategy,omitempty"`
 	JoinKey       string                 `json:"joinKey,omitempty"`
@@ -95,7 +95,7 @@ type IngestionConfig struct {
 }
 
 type RetryConfig struct {
-	MaximumAttempts int `json:"maximumAttempts,omitempty"`
+	MaximumAttempts *int `json:"maximumAttempts,omitempty"`
 }
 
 type Edge struct {

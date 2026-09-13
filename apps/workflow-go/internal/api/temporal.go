@@ -68,6 +68,9 @@ func (s *Server) releaseQuota(ctx context.Context, tenantID string) {
 }
 
 func (s *Server) fireExecution(ctx context.Context, def model.PipelineDefinition, pipelineRowID, triggerType string, environment model.Environment, payloadRef *model.DataRef, encryptedDEK, retryOf, partitionID string) (string, error) {
+	if err := model.ValidateNodePolicies(def); err != nil {
+		return "", err
+	}
 	if err := s.consumeQuota(ctx, def.TenantID); err != nil {
 		return "", err
 	}
@@ -112,6 +115,9 @@ func (s *Server) fireExecution(ctx context.Context, def model.PipelineDefinition
 }
 
 func (s *Server) syncSchedule(ctx context.Context, def model.PipelineDefinition, pipelineRowID string, environment model.Environment) error {
+	if err := model.ValidateNodePolicies(def); err != nil {
+		return err
+	}
 	if def.Trigger.Type != "cron" {
 		return nil
 	}

@@ -7,6 +7,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Honor per-node workflow activity timeouts and retry attempts, including source pages; reject invalid settings before execution admission and omit unsupported manifest-only sinks from registration/catalog.
+
 ### Added
 - AI pipeline builder — natural-language-to-Mermaid via local Ollama or cloud
 - React Flow canvas with live Mermaid sync
