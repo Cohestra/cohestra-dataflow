@@ -1,6 +1,7 @@
 # Agent and mixed-pipeline frontend plan
 
-Status: draft for review; this document authorizes no implementation or production rollout.
+Status: architecture direction approved in the user conversation on 2026-09-14.
+The [frontend LLD](FRONTEND_LLD.md) guides the separate implementation PRs.
 Baseline: repository main at `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`, inspected 2026-09-09.
 Companion: [backend architecture](BACKEND_ARCHITECTURE.md). Backend milestone IDs B1–B6 below refer to that plan.
 
@@ -133,9 +134,9 @@ Live Ollama evaluation is a separate recorded gate for the deployment profile. U
 
 Each implementation PR records exact commands, pass/fail counts and relevant screenshots/traces, redacting fixture credentials/payloads. This planning document does not report future acceptance tests as already run.
 
-## Decisions for review
+## Approved direction and implementation defaults
 
-- Approve extending the existing app/canvas and the B1–B6/F1–F6 sequence.
-- Confirm owner management, inherited pipeline author/run permissions and owner/pipeline-admin approval authority; no custom role designer is implied.
-- Confirm native agent execution, approval history and the first example in the intended OSS edition before adding entitlement gates.
-- Lock model evaluation criteria, bounded batch size and retention defaults with backend. Exact deployment defaults follow measured Ollama investigation.
+- Extend the existing app/canvas using the approved B1–B6/F1–F6 sequence.
+- Use owner management, inherited pipeline author/run permissions and owner/pipeline-admin approval authority.
+- Provide native agent execution, approval history and the first example in the intended OSS edition.
+- Align bounded batch size, retention and model criteria with the backend LLD. Deployment model promotion requires separate measured planner and agent evidence.
