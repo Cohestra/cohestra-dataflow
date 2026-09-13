@@ -1,0 +1,71 @@
+{
+  "capturedAt": "2026-09-13T21:00:15.659555+00:00",
+  "endpoint": "POST /api/show (metadata only; no inference)",
+  "model": "granite4.2:8b",
+  "modelRegistryDigestAtCapture": "f586c02fdecdf151b656207c339aa003997345774a41768bac1fd6d2fb85913b",
+  "postRunTagsCapabilities": [
+    "completion"
+  ],
+  "capabilities": [
+    "tools",
+    "thinking",
+    "completion"
+  ],
+  "details": {
+    "parent_model": "/Users/runner/.ollama/models/blobs/sha256-16a9369d0805f80b7377d25d87f937a90c05dc04ad79173a52001e42c9aab311",
+    "format": "gguf",
+    "family": "granite",
+    "families": [
+      "granite"
+    ],
+    "parameter_size": "8.8B",
+    "quantization_level": "Q4_K_M"
+  },
+  "parameters": "temperature                    1\ntop_p                          0.95",
+  "templateSha256": "f0ba43f79b3cabca5e5a7584c77aec92f49feae45cdf7779c87d9fc54cd90258",
+  "templateLengthCharacters": 9013,
+  "modelInfo": {
+    "general.architecture": "granite",
+    "general.base_model.0.name": "Granite 4.1 8b Base",
+    "general.base_model.0.organization": "Ibm Granite",
+    "general.base_model.0.repo_url": "https://huggingface.co/ibm-granite/granite-4.1-8b-base",
+    "general.base_model.count": 1,
+    "general.basename": "granite-4.2",
+    "general.file_type": 15,
+    "general.languages": null,
+    "general.license": "apache-2.0",
+    "general.parameter_count": 8791592960,
+    "general.quantization_version": 2,
+    "general.sampling.temp": 1,
+    "general.sampling.top_p": 0.95,
+    "general.size_label": "8B",
+    "general.tags": null,
+    "general.type": "model",
+    "granite.attention.head_count": 32,
+    "granite.attention.head_count_kv": 8,
+    "granite.attention.layer_norm_rms_epsilon": 1e-05,
+    "granite.attention.scale": 0.0078125,
+    "granite.block_count": 40,
+    "granite.context_length": 131072,
+    "granite.embedding_length": 4096,
+    "granite.embedding_scale": 1,
+    "granite.feed_forward_length": 12800,
+    "granite.logit_scale": 1,
+    "granite.residual_scale": 1,
+    "granite.rope.dimension_count": 128,
+    "granite.rope.freq_base": 10000000,
+    "granite.vocab_size": 100352,
+    "tokenizer.ggml.add_space_prefix": false,
+    "tokenizer.ggml.bos_token_id": 100283,
+    "tokenizer.ggml.eos_token_id": 100257,
+    "tokenizer.ggml.merges": null,
+    "tokenizer.ggml.model": "gpt2",
+    "tokenizer.ggml.padding_token_id": 100257,
+    "tokenizer.ggml.pre": "granite-docling",
+    "tokenizer.ggml.token_type": null,
+    "tokenizer.ggml.tokens": null,
+    "tokenizer.ggml.unknown_token_id": 100269
+  },
+  "modifiedAt": "2026-09-14T01:54:55.731080129+05:30",
+  "interpretation": "Reported runtime capabilities are metadata, not measured agent/tool-calling accuracy."
+}

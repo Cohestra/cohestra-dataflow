@@ -1,0 +1,18 @@
+{
+  "capturedAt": "2026-09-13T20:36:05.943971+00:00",
+  "deployment": "isolated native temporary PostgreSQL cluster",
+  "serverVersion": "17.10 (Homebrew)",
+  "sharedBuffers": "32MB",
+  "maxConnections": 10,
+  "host": "127.0.0.1",
+  "port": 15432,
+  "fixtureCount": 12,
+  "dataDirectory": "/private/tmp/cohestra-eval-native-pg-20260914/data",
+  "verifiedBy": "read-only psql query of current_setting and connector_instances count, plus postmaster.opts/pid",
+  "baselineDeployment": "isolated Docker postgres:16-alpine container",
+  "limitations": [
+    "Database deployment and PostgreSQL major version changed after Docker became unavailable.",
+    "Model, handler binary, source hashes, coded catalog, synthetic connector IDs and scorer remain fixed and must be checked independently.",
+    "Different run date, lower initial swap, and native database recovery prevent controlled latency/stability claims."
+  ]
+}
