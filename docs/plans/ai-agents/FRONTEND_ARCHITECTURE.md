@@ -3,7 +3,7 @@
 Status: architecture direction approved in the user conversation on 2026-09-14.
 The [frontend LLD](FRONTEND_LLD.md) guides the separate implementation PRs.
 Baseline: repository main at `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`, inspected 2026-09-09.
-Companion: [backend architecture](BACKEND_ARCHITECTURE.md). Backend milestone IDs B1–B6 below refer to that plan.
+Companion: [backend architecture](BACKEND_ARCHITECTURE.md). Backend milestone IDs B1–B5 below refer to that plan.
 
 ## Outcome and boundary
 
@@ -11,7 +11,7 @@ A user can define a versioned agent, insert it into an existing data pipeline, s
 
 Keep the existing React application, React Flow canvas, connector credentials, pipeline lifecycle, run routes, and lineage surfaces. Add a small set of agent views and extend existing views. The current “Build with AI” assistant drafts pipeline definitions; the new agent node executes inside a pipeline. The UI must name these two jobs clearly.
 
-This is a full product delivery plan in increments, not a proposal for a second application. Standalone conversational chat, a plugin marketplace, an additional graph editor, and arbitrary user-written agent code are outside the initial delivery. A LangGraph adapter remains a later explicit increment.
+This is a full product delivery plan in increments, not a proposal for a second application. Standalone conversational chat, a plugin marketplace, an additional graph editor, and arbitrary user-written agent code are outside the initial delivery. LangGraph integration and its UI support are [deferred options](README.md#deferred-options), pending a concrete reuse case; they have no scheduled implementation milestone. Cross-run memory remains outside core scope.
 
 ## What the current repository provides
 
@@ -110,10 +110,9 @@ Each PR is separate from its backend counterpart and targets a runnable user inc
 | **F2: Agent definitions and permitted selection** | B2 | List/editor, immutable version save, approved profiles, tool references, limits/memory and effective capabilities. Validate required fields/errors; save/reload exact definitions. Members cannot invoke owner-only definition/policy actions by URL or altered requests. |
 | **F3: Mixed canvas and model-only inspection** | B3 | Agent node, bounded batch mappings, workflow-engine validation, version pinning and model steps in runs. Execute data → agent → sink in Integration, inspect result/usage and reload without creating a new run. |
 | **F4: HTTP/MCP tools and durable approval** | B4 | Registration/selection, queue/detail, exact-call decisions, conflict/expiry/submission states and stop reasons. Complete source → agent → approved tool → sink. Reject, expiry, concurrent decisions, lost responses and cancellation cause no duplicate side effect. First complete user milestone. |
-| **F5: Recovery, operations and lineage** | B5 | Accurate reconnect/stale state, unknown-outcome reconciliation, Monitoring usage/wait filters, Activity, lineage and retention states. Restart retains pending approvals; run/step/audit/lineage agree; redaction/expiry persists on reload/export. |
-| **F6: LangGraph and OSS example** | B6 | Expose supported adapter capabilities through the same editor/mappings/approvals/inspector. Run the documented OSS example end to end, make unsupported options explicit, and keep the native path working. |
+| **F5: Recovery, operations and lineage** | B5 | Accurate reconnect/stale state, unknown-outcome reconciliation, Monitoring usage/wait filters, Activity, lineage and retention states. Restart retains pending approvals; run/step/audit/lineage agree; redaction/expiry persists on reload/export. Complete the documented native OSS example end to end. |
 
-Default order is F1 → F2 → F3 → F4 → F5 → F6. A split must retain its integrated acceptance gate. B5 recovery tests may develop alongside F4, but release completion explicitly requires B5/F5 recovery and operations evidence. Mandatory B3/B4 safety checks cannot be deferred to B5.
+Default order is F1 → F2 → F3 → F4 → F5. A split must retain its integrated acceptance gate. B5 recovery tests may develop alongside F4, but release completion explicitly requires B5/F5 recovery and operations evidence. Mandatory B3/B4 safety checks cannot be deferred to B5. Core acceptance covers S01–S16 and S18; S17 belongs to the deferred LangGraph option and is not a core release requirement.
 
 ## Sandbox, accessibility and acceptance evidence
 
@@ -136,7 +135,7 @@ Each implementation PR records exact commands, pass/fail counts and relevant scr
 
 ## Approved direction and implementation defaults
 
-- Extend the existing app/canvas using the approved B1–B6/F1–F6 sequence.
+- Extend the existing app/canvas using the approved B1–B5/F1–F5 sequence.
 - Use owner management, inherited pipeline author/run permissions and owner/pipeline-admin approval authority.
 - Provide native agent execution, approval history and the first example in the intended OSS edition.
 - Align bounded batch size, retention and model criteria with the backend LLD. Deployment model promotion requires separate measured planner and agent evidence.
