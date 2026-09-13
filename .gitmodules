@@ -1,3 +1,6 @@
 [submodule "cohestra"]
 	path = cohestra
 	url = https://github.com/Cohestra/cohestra-control-plane.git
+[submodule "website"]
+	path = website
+	url = https://github.com/Cohestra/website.git
