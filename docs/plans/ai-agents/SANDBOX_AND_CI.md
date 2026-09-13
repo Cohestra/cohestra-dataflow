@@ -51,8 +51,15 @@ not claims of existing coverage. B/F milestones live in the separate architectur
 | S14 | Cross-tenant access/approval/credentials | API, RLS and worker boundaries reject mismatch; no secret leakage. | PR / BE |
 | S15 | Agent and data nodes together | Typed refs feed downstream; coherent parent/child failure and cancellation. | PR / BE+FE |
 | S16 | Audit/monitoring/lineage | Correlate execution, agent, tool and approval IDs with authorized/redacted records. | PR / BE+FE |
-| S17 | OSS adapter lifecycle | Pinned adapter obeys resume/cancel, allowlist, budgets and failure contract. | Nightly then PR fixture / BE |
 | S18 | Keyboard/mobile/role journey | Accessible create/review/approve/inspect; denied UI actions also fail direct API calls. | PR browser / BE+FE |
+
+### Deferred acceptance
+
+S17 (OSS adapter lifecycle) is excluded from the native release gate. If the
+[deferred LangGraph option](README.md#deferred-options) is selected later, require
+the pinned adapter to obey the same resume/cancel, allowlist, approval, budget
+and failure contracts, using a deterministic fixture. No adapter job or runtime
+is required for the 17 core scenarios (S01–S16 and S18).
 
 ## Model experiments
 

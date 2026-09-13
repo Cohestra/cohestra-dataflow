@@ -162,6 +162,16 @@ also passed. Overall CI is not green:
 G10 tracks separate triage/remediation and rerunning skipped downstream security
 checks; a documentation-only diff is not grounds to waive those failures.
 
+### September14 HLD/LLD checkpoint
+
+Builds and tests passed on the published HLD/LLD commits. The refreshed history
+scan still failed (one detection in PR38's inspected job); the inspected backend
+image scan reported the same four advisories, now all classified high. PR38's
+image job passed while architecture-stack image jobs failed. No source dependency
+change or security remediation was made, and differing job outcomes do not
+establish that the historical findings are fixed. The [dated CI checkpoint](evals/ci-checkpoint-20260914.json)
+records exact heads and job links; earlier counts above describe September9.
+
 ## Challenger status and decision
 
 Granite4.2 8B is installed. The interrupted native pull was recovered over IPv4;
@@ -169,6 +179,9 @@ the complete official weight SHA-256 was verified before normal Ollama registrat
 The first run reached Granite successfully, but Docker became unavailable during
 the first case and the remaining 27 model-dependent requests lost the fixture DB.
 That report is preserved as an invalid infrastructure-interrupted attempt, not
-a Granite accuracy result. A fresh full run is pending isolated DB recovery.
+a Granite accuracy result. The fresh full run uses an isolated native PostgreSQL17.10
+fixture cluster on loopback15432; no default cluster or login service is enabled.
+The source, binary, corpus and request settings remain unchanged. Database
+deployment and host state differ from Qwen, so latency is diagnostic.
 Neither model is promoted. New model capability claims cannot resolve G11 or
 substitute for the missing native agent tool-use acceptance suite.

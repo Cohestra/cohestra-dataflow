@@ -71,10 +71,13 @@ larger weights or fine-tuning as the presumed fix. Prompt/schema changes and
 model changes must be evaluated independently on the corrected corpus. The first
 Granite inference also exposed a concrete readiness failure: it returned three
 disconnected nodes with no edges, and the API labelled the draft ready with zero
-repairs. The unchanged scorer rejected it. Add positive/negative connected-flow
-fixtures for source-transform-sink intent; validate intended connectivity before
-ready while retaining explicitly supported independent branches. This one response
-is evidence of a contract failure, not a complete Granite accuracy result.
+repairs. The actual output serialized edges as null and failed the scorer. An
+isolated offline counterfactual changing only null to an empty array made that
+same disconnected graph pass the current scorer: activity presence plus generic
+DAG checks do not establish the requested path. Add positive/negative case-specific
+source-transform-sink path assertions to the versioned corpus and readiness
+validation, while retaining explicitly supported independent branches. Neither
+counterfactual changes the retained report or proves complete Granite accuracy.
 
 ## Corrected assumptions
 
@@ -102,7 +105,7 @@ GAP-* are work packages, not a second implementation stack. B1 contains
 GAP-BE-01 (G01/G03) and GAP-BE-02 (G02), plus contract/replay fixtures; it may
 split along those review boundaries. GAP-CI-01 supplies the sandbox before
 B1/F1 integration acceptance. F1 is GAP-FE-01 (G09). GAP-DOC-01 owns G05/G08;
-GAP-AI-01 addresses planner quality separately from agent B2–B6.
+GAP-AI-01 addresses planner quality separately from agent B2–B5.
 
 The first executing agent slice needs G01–G03, G06 and G09. Non-executing agent
 management planning can proceed while model promotion is unresolved. Automatic
@@ -114,4 +117,4 @@ The user approved the architecture direction on 2026-09-14. B1 rejects unsupport
 manifest-only sinks until a write contract exists; native Temporal execution,
 durable control and OSS operational essentials are specified in the HLD/LLD. B4/F4 demonstrate the complete functional flow; release completion requires
 B5/F5 recovery and operations evidence. Mandatory B3/B4 safety checks cannot
-be deferred to B5. Use the backend and frontend LLD contracts for their separate implementation PRs. Refer to SANDBOX_AND_CI.md for the 18 acceptance scenarios.
+be deferred to B5. Use the backend and frontend LLD contracts for their separate implementation PRs. Refer to SANDBOX_AND_CI.md for the 17 core acceptance scenarios; S17 belongs to the deferred adapter option.
