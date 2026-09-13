@@ -36,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: AI evaluator offline self-test
+        run: python3 tests/ai-evals/run.py --self-test --strict
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
