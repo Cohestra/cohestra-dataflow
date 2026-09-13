@@ -7,6 +7,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Preserve pipeline concurrency, node policies and asset bindings across canvas load/save, AI Apply/Undo and Mermaid structural edits; block AI proposals based on an older draft.
+
 ### Added
 - AI pipeline builder — natural-language-to-Mermaid via local Ollama or cloud
 - React Flow canvas with live Mermaid sync
