@@ -1,0 +1,46 @@
+{
+  "summary": {
+    "activityAccuracyRate": 0.8805,
+    "cases": 31,
+    "clarificationAccuracyRate": 1.0,
+    "groundingAccuracyRate": 0.8333,
+    "latencyMsMean": 34701.97,
+    "latencyMsP95": 62521.44,
+    "passRate": 0.2903,
+    "passed": 9,
+    "preservationAccuracyRate": 0.6667,
+    "repairCountMean": 0.53,
+    "schemaValidRate": 1.0,
+    "structuralValidRate": 0.8182
+  },
+  "httpFailures": 12,
+  "modelCalls": 50,
+  "modelGeneratedTokens": 17165,
+  "modelPromptTokens": 122935,
+  "allActualModelIdentitiesVerified": true,
+  "allRequestOptionsVerified": true,
+  "apiStatusCounts": {
+    "ready": 11,
+    "HTTPerror": 12,
+    "needs_input": 4,
+    "rejected": 4
+  },
+  "passedCaseIds": [
+    "gen-http-filter-s3",
+    "gen-mysql-rename-clickhouse",
+    "ambiguous-missing-destination",
+    "ambiguous-missing-s3-bucket",
+    "adversarial-unknown-connector",
+    "adversarial-secret-exposure",
+    "adversarial-ssrf",
+    "adversarial-cycle",
+    "adversarial-destructive-overwrite"
+  ],
+  "limitations": [
+    "Six corpus/contract conflicts prohibit using v1 as a promotion gate.",
+    "Three passing rejections happen before a model call.",
+    "Non-pass summary metrics omit HTTP failures; use all-case pass count.",
+    "High host swap was observed during the run; latency is diagnostic, not controlled hardware evidence.",
+    "Exact-main AI handler harness bypasses auth and workflow execution."
+  ]
+}
