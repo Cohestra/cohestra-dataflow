@@ -4,7 +4,7 @@ import {
   addEdge, useNodesState, useEdgesState,
   type Node, type Connection, type ReactFlowInstance,
 } from 'reactflow';
-import { definitionToMermaid, mermaidToDefinition } from '@dataflow/shared';
+import { definitionToMermaid, mermaidToDefinition, type PipelineDefinition } from '@dataflow/shared';
 import { useCatalog } from '../context/CatalogContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -14,7 +14,7 @@ import { nodeTypes } from '../components/canvas/FlowNode';
 import { ExecutionMonitor } from '../components/canvas/ExecutionMonitor';
 import { useAiGenerate, type AiGenerateResult } from '../hooks/useAiGenerate';
 import { useApiQuery } from '../hooks/useApiQuery';
-import { definitionToFlow, flowToDefinition } from '../utils/pipelineConvert';
+import { definitionToFlow, flowToDefinition, applyGraphEdit, pipelineFingerprint } from '../utils/pipelineConvert';
 import { validatePipeline } from '../utils/validatePipeline';
 import { deriveStage, displayEnvironment, type Stage } from '../utils/pipelineStage';
 import { NodePalette, MOBILE_RAIL_CLEARANCE, type CatId } from './canvas/NodePalette';
@@ -52,6 +52,8 @@ export default function PipelineCanvasPage() {
   const [selectedEdge, setSelectedEdge] = useState<any | null>(null);
   const [flow, setFlow] = useState<ReactFlowInstance | null>(null);
 
+  const [baseDefinition, setBaseDefinition] = useState<Partial<PipelineDefinition>>({});
+  const hydratedPolicy = useRef<PipelinePolicy | null>(null);
   const [name, setName] = useState('My pipeline');
   const [pipelineKey, setPipelineKey] = useState('');
   const [trigger, setTrigger] = useState<any>({ type: 'manual' });
@@ -79,7 +81,8 @@ export default function PipelineCanvasPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiMessages, setAiMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [aiProposal, setAiProposal] = useState<AiGenerateResult | null>(null);
-  const [aiUndo, setAiUndo] = useState<any | null>(null);
+  const [aiUndo, setAiUndo] = useState<PipelineDefinition | null>(null);
+  const [aiProposalFingerprint, setAiProposalFingerprint] = useState<string | null>(null);
   const { generate: aiGenerate, refine: aiRefine, loading: aiLoading, error: aiError } = useAiGenerate();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -132,21 +135,25 @@ export default function PipelineCanvasPage() {
   }, [pipelinesQuery.error, lineageQuery.error]);
 
   const hydrateFromDefinition = useCallback((def: any, message: string) => {
-    const { nodes: ns, edges: es } = definitionToFlow(def, byType);
+    const snapshot = structuredClone(def);
+    setBaseDefinition(snapshot);
+    const { nodes: ns, edges: es } = definitionToFlow(snapshot, byType);
     fitPending.current = true;
     setNodes(ns); setEdges(es);
-    if (def.name) setName(def.name);
-    if (def.id) setPipelineKey(def.id);
-    if (def.trigger) setTrigger(def.trigger);
-    setExecution(def.execution);
-    setPolicy({
+    setName(snapshot.name ?? 'My pipeline');
+    setPipelineKey(snapshot.id ?? '');
+    setTrigger(snapshot.trigger ?? { type: 'manual' });
+    setExecution(snapshot.execution);
+    const nextPolicy: PipelinePolicy = {
       owner: def.metadata?.owner ?? '', domain: def.metadata?.domain ?? '', tags: (def.metadata?.tags ?? []).join(', '),
       freshnessMinutes: def.slo?.freshnessMinutes?.toString() ?? '',
       maxFailureRatePercent: def.slo?.maxFailureRatePercent?.toString() ?? '',
-      maxDurationSeconds: def.slo?.maxDurationMs ? String(def.slo.maxDurationMs / 1000) : '',
+      maxDurationSeconds: def.slo?.maxDurationMs !== undefined ? String(def.slo.maxDurationMs / 1000) : '',
       notificationConnectionId: def.notifications?.connectionId ?? '',
       minimumSeverity: def.notifications?.minimumSeverity ?? 'critical',
-    });
+    };
+    hydratedPolicy.current = nextPolicy;
+    setPolicy(nextPolicy);
     setMsg(message);
   }, [byType]);
 
@@ -161,6 +168,7 @@ export default function PipelineCanvasPage() {
     const openBackfill = (location.state as any)?.openBackfill === true || new URLSearchParams(location.search).get('backfill') === '1';
     const hydrationKey = pipelineId ?? (stateDef ? 'generated' : null);
     if (!hydrationKey || hydrated.current === hydrationKey) return;
+    setAiUndo(null); setAiProposal(null);
 
     if (stateDef) {
       hydrated.current = hydrationKey;
@@ -257,22 +265,25 @@ export default function PipelineCanvasPage() {
 
   const buildDefinition = () => flowToDefinition(nodes, edges, {
     name, trigger, pipelineKey, execution,
-    metadata: {
+    metadata: policy.owner === hydratedPolicy.current?.owner && policy.domain === hydratedPolicy.current?.domain && policy.tags === hydratedPolicy.current?.tags ? baseDefinition.metadata : {
+      ...baseDefinition.metadata,
       owner: policy.owner.trim() || undefined, domain: policy.domain.trim() || undefined,
       tags: policy.tags.split(',').map(tag => tag.trim()).filter(Boolean),
     },
-    slo: {
+    slo: policy.freshnessMinutes === hydratedPolicy.current?.freshnessMinutes && policy.maxFailureRatePercent === hydratedPolicy.current?.maxFailureRatePercent && policy.maxDurationSeconds === hydratedPolicy.current?.maxDurationSeconds ? baseDefinition.slo : {
+      ...baseDefinition.slo,
       freshnessMinutes: policy.freshnessMinutes ? Number(policy.freshnessMinutes) : undefined,
       maxFailureRatePercent: policy.maxFailureRatePercent ? Number(policy.maxFailureRatePercent) : undefined,
       maxDurationMs: policy.maxDurationSeconds ? Number(policy.maxDurationSeconds) * 1000 : undefined,
     },
-    notifications: policy.notificationConnectionId ? {
+    notifications: policy.notificationConnectionId === hydratedPolicy.current?.notificationConnectionId && policy.minimumSeverity === hydratedPolicy.current?.minimumSeverity ? baseDefinition.notifications : policy.notificationConnectionId ? {
       connectionId: policy.notificationConnectionId,
       minimumSeverity: policy.minimumSeverity as 'warning' | 'critical',
     } : undefined,
-  });
+  }, baseDefinition);
 
-  const definitionFingerprint = JSON.stringify(buildDefinition());
+  const definitionFingerprint = pipelineFingerprint(buildDefinition());
+  const aiProposalStale = aiProposal !== null && aiProposalFingerprint !== definitionFingerprint;
   const hasUnsavedChanges = savedRowId !== null && savedFingerprint !== definitionFingerprint;
 
   useEffect(() => {
@@ -298,7 +309,7 @@ export default function PipelineCanvasPage() {
       const r = await api.savePipeline(definition);
       setSavedRowId(r.rowId);
       setPipelineKey(r.pipelineKey);
-      setSavedFingerprint(JSON.stringify({ ...definition, id: r.pipelineKey }));
+      setSavedFingerprint(pipelineFingerprint({ ...definition, id: r.pipelineKey }));
       setPipelineStage(deriveStage('inactive', 'test'));
       setMsg(`Saved v${r.version}`);
     } catch (e: any) { setMsg(`Save failed: ${e.message}`); }
@@ -354,13 +365,14 @@ export default function PipelineCanvasPage() {
   const applyMermaid = () => {
     if (!mermaidValid) return setMsg('Fix Mermaid validation errors before applying');
     const { nodes: parsed, edges: pEdges, warnings } = mermaidToDefinition(mermaidDraft, catalog);
-    const prevData = new Map(nodes.map(n => [n.id, n.data]));
-    const flow = definitionToFlow({ nodes: parsed, edges: pEdges }, byType);
-    flow.nodes.forEach(n => {
-      const prev = prevData.get(n.id);
-      if (prev) { n.data.config = prev.config; if (prev.ingestion) n.data.ingestion = prev.ingestion; }
-    });
-    setNodes(flow.nodes); setEdges(flow.edges); setSelected(null);
+    const previous = buildDefinition();
+    const changedTypes = parsed.filter(node => previous.nodes.some(old => old.id === node.id && (old.activityType !== node.activityType || old.type !== node.type)));
+    const removed = previous.nodes.filter(old => !parsed.some(node => node.id === old.id));
+    if ((changedTypes.length || removed.length) && !window.confirm(
+      `This edit removes settings and bindings for: ${[...changedTypes, ...removed].map(node => node.id).join(', ')}. Review these nodes before saving. Apply structural changes?`,
+    )) return;
+    const next = definitionToFlow(applyGraphEdit(previous, { nodes: parsed, edges: pEdges }, 'mermaid'), byType);
+    setNodes(next.nodes); setEdges(next.edges); setSelected(null); setSelectedEdge(null);
     setMsg(warnings.length ? `Applied Mermaid · ${warnings.length} warning(s)` : 'Applied Mermaid');
   };
 
@@ -378,7 +390,8 @@ export default function PipelineCanvasPage() {
       : await aiGenerate(aiPrompt, currentMermaid, aiMessages);
 
     if (result) {
-      setAiProposal(result);
+      setAiProposal(structuredClone(result));
+      setAiProposalFingerprint(pipelineFingerprint(currentDefinition));
       const responseSummary = [
         result.status === 'ready' ? 'Proposal ready' : result.status === 'needs_input' ? 'I need more information.' : 'I could not create a safe proposal.',
         ...result.questions.map(question => `Question: ${question}`),
@@ -394,23 +407,25 @@ export default function PipelineCanvasPage() {
 
   const applyAI = () => {
     if (!aiProposal || aiProposal.status !== 'ready' || !aiProposal.definition) return;
+    if (aiProposalStale) return setMsg('This proposal is based on an older draft. Retry to regenerate before applying.');
     const previous = buildDefinition();
-    const next = definitionToFlow(aiProposal.definition, byType);
-    setAiUndo(previous); setNodes(next.nodes); setEdges(next.edges); fitPending.current = true;
-    if (aiProposal.definition.execution) setExecution(aiProposal.definition.execution);
+    const proposal = aiProposal.definition;
+    const next = applyGraphEdit(previous, proposal, 'ai');
+    if (proposal.execution) next.execution = structuredClone(proposal.execution);
     if (!nodes.length) {
-      setName(aiProposal.definition.suggestedName ?? aiProposal.definition.name ?? name);
-      if (aiProposal.definition.trigger) setTrigger(aiProposal.definition.trigger);
+      next.name = proposal.suggestedName ?? proposal.name ?? name;
+      next.trigger = structuredClone(proposal.trigger ?? previous.trigger);
     }
-    setAiProposal(null); setAiPrompt(''); setMsg('AI proposal applied');
+    setAiUndo(structuredClone(previous));
+    hydrateFromDefinition(next, 'AI proposal applied');
+    setSelected(null); setSelectedEdge(null);
+    setAiProposal(null); setAiPrompt('');
   };
 
   const undoAI = () => {
     if (!aiUndo) return;
-    const previous = definitionToFlow(aiUndo, byType);
-    setNodes(previous.nodes); setEdges(previous.edges); setName(aiUndo.name ?? name); setTrigger(aiUndo.trigger ?? trigger);
-    setExecution(aiUndo.execution);
-    setAiUndo(null); fitPending.current = true; setMsg('AI change undone');
+    hydrateFromDefinition(aiUndo, 'AI change undone');
+    setSelected(null); setSelectedEdge(null); setAiUndo(null);
   };
 
   const openDrawer = async (tab: BottomTab = 'runs') => {
@@ -519,7 +534,7 @@ export default function PipelineCanvasPage() {
 
       <AiBuilderPanel
         showAI={showAI} setShowAI={setShowAI} hasNodes={nodes.length > 0}
-        aiMessages={aiMessages} aiProposal={aiProposal} applyAI={applyAI}
+        aiMessages={aiMessages} aiProposal={aiProposal} aiProposalStale={aiProposalStale} applyAI={applyAI}
         discardProposal={() => setAiProposal(null)} aiLoading={aiLoading} runAI={runAI}
         aiPrompt={aiPrompt} setAiPrompt={setAiPrompt} aiError={aiError} aiUndo={aiUndo} undoAI={undoAI}
       />
