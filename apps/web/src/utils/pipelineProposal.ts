@@ -127,5 +127,17 @@ export function describeProposalChanges(before: PipelineDefinition, after: Pipel
       fields: (['source', 'target', 'condition'] as const).flatMap(key => fieldChange(key, a?.[key], b?.[key])),
     });
   }
+  // Incoming source order determines left/right join inputs and source tags.
+  // Interleaving edges belonging to different targets has no such effect.
+  for (const target of new Set([...before.edges, ...after.edges].map(edge => edge.target))) {
+    const a = before.edges.filter(edge => edge.target === target).map(edge => edge.source);
+    const b = after.edges.filter(edge => edge.target === target).map(edge => edge.source);
+    if (Math.max(a.length, b.length) < 2 || same(a, b)) continue;
+    changes.push({ subject: `Inputs to node ${short(target)}`, action: 'Changed', fields: [{
+      field: 'Source order', action: 'Changed',
+      before: a.length ? a.map(short).join(' → ') : 'Not set',
+      after: b.length ? b.map(short).join(' → ') : 'Not set',
+    }] });
+  }
   return changes;
 }

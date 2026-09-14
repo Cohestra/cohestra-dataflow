@@ -88,4 +88,36 @@ assert.equal(field(describeProposalChanges(base, removedField), 'Node source', '
 const unsafeIdentifier = structuredClone(base);
 unsafeIdentifier.nodes[0].config.table = 'https://SECRET_IN_TABLE';
 assert.equal(field(describeProposalChanges(base, unsafeIdentifier), 'Node source', 'config.table')?.after, 'Text hidden');
+// A left join takes its preserved side from the first incoming source. A pure
+// reorder must therefore be reviewable even when every edge object is identical.
+const joinBase: PipelineDefinition = {
+  ...base,
+  nodes: [
+    { id: 'customers', type: 'source', activityType: 'http.fetch', config: {} },
+    { id: 'orders', type: 'source', activityType: 'http.fetch', config: {} },
+    { id: 'joined', type: 'merge', activityType: 'flow.merge', config: {}, mergeStrategy: 'leftJoin', joinKey: 'customerId' },
+    { id: 'sink', type: 'sink', activityType: 'sink.postgres', config: {} },
+  ],
+  edges: [
+    { id: 'customers-join', source: 'customers', target: 'joined' },
+    { id: 'orders-join', source: 'orders', target: 'joined' },
+    { id: 'join-sink', source: 'joined', target: 'sink' },
+  ],
+};
+const reorderedJoin = mergeAiProposal(joinBase, {
+  nodes: joinBase.nodes, edges: [joinBase.edges[1], joinBase.edges[0], joinBase.edges[2]],
+});
+const orderChanges = describeProposalChanges(joinBase, reorderedJoin);
+assert.deepEqual(orderChanges, [{
+  subject: 'Inputs to node joined', action: 'Changed', fields: [{
+    field: 'Source order', action: 'Changed', before: 'customers → orders', after: 'orders → customers',
+  }],
+}]);
+const joinGraph = definitionToFlow(reorderedJoin, {});
+const savedJoin = flowToDefinition(joinGraph.nodes, joinGraph.edges, { name: reorderedJoin.name, trigger: reorderedJoin.trigger, pipelineKey: reorderedJoin.id }, reorderedJoin);
+assert.deepEqual(describeProposalChanges(joinBase, savedJoin), orderChanges, 'review preserves applied join-input ordering');
+const interleavedEdges = mergeAiProposal(joinBase, {
+  nodes: joinBase.nodes, edges: [joinBase.edges[0], joinBase.edges[2], joinBase.edges[1]],
+});
+assert.deepEqual(describeProposalChanges(joinBase, interleavedEdges), [], 'interleaving unrelated targets does not change input order');
 console.log('pipelineProposal.test.ts OK');
