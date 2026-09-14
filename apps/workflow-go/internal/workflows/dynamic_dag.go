@@ -40,6 +40,13 @@ func DynamicDAGWorkflow(ctx workflow.Context, input model.WorkflowInput) (model.
 			return model.ExecutionStatus{}, temporal.NewNonRetryableApplicationError(err.Error(), "InvalidNodePolicy", err)
 		}
 	}
+	// Preserve old histories while rejecting reserved agents on direct starts
+	// and scheduled runs, which can bypass the API admission checks.
+	if workflow.GetVersion(ctx, "agent-admission-v1", workflow.DefaultVersion, 1) != workflow.DefaultVersion {
+		if err := model.ValidateAgentAdmission(input.Definition); err != nil {
+			return model.ExecutionStatus{}, temporal.NewNonRetryableApplicationError(err.Error(), "AgentAdmissionRejected", err)
+		}
+	}
 
 	activityOptions := workflow.ActivityOptions{
 		TaskQueue:           "dynamic-activities-" + string(input.Environment),
