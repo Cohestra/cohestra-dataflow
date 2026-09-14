@@ -91,3 +91,9 @@ catalog entry. `ValidateAgentNodes` checks the reusable shape;
 preparation must validate immutable version ownership, input/output schemas,
 every projected field, and byte/record limits before any model or tool call.
 Data-only pipeline admission remains unchanged.
+
+Direct Temporal starts and scheduled preparation also reject reserved agents
+under the `agent-admission-v1` version marker; older histories retain their
+original behavior. Stored/imported definitions are checked before backfill job
+creation or webhook payload storage. The database CI job tests these entry
+points against PostgreSQL as well as running the workflow admission regression.
