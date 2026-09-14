@@ -8,6 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Durable execution pause/resume/cancel intent with atomic audit, retryable worker delivery, responsive workflow controls, and tenant-scoped activity admission
 - AI pipeline builder — natural-language-to-Mermaid via local Ollama or cloud
 - React Flow canvas with live Mermaid sync
 - Go backend: one module builds separate API, Temporal workflow-worker, and activity-worker binaries

@@ -19,6 +19,7 @@ func TestNodePoliciesApplyToPagesAndDoNotLeak(t *testing.T) {
 		t.Run(fmt.Sprintf("legacy=%v", legacy), func(t *testing.T) {
 			var suite testsuite.WorkflowTestSuite
 			env := suite.NewTestWorkflowEnvironment()
+			env.OnGetVersion("durable-execution-controls-v1", workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 			if legacy {
 				env.OnGetVersion("node-activity-policy-v1", workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 			}
@@ -103,6 +104,7 @@ func TestNodePoliciesApplyToPagesAndDoNotLeak(t *testing.T) {
 func TestInvalidNodePolicyFailsBeforeScheduling(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
+	env.OnGetVersion("durable-execution-controls-v1", workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 	zero := 0
 	env.ExecuteWorkflow(DynamicDAGWorkflow, model.WorkflowInput{Definition: model.PipelineDefinition{Nodes: []model.Node{{ID: "invalid", TimeoutSec: &zero}}}})
 	if err := env.GetWorkflowError(); err == nil {

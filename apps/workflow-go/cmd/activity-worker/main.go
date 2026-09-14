@@ -52,7 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer temporal.Close()
-	w := worker.New(temporal, cfg.TaskQueue, worker.Options{MaxConcurrentActivityExecutionSize: 20})
+	w := worker.New(temporal, cfg.TaskQueue, worker.Options{MaxConcurrentActivityExecutionSize: 20, MaxHeartbeatThrottleInterval: time.Second})
 	activities.Register(w, &activities.Activities{DB: db, Payloads: &activities.Payloads{DB: db, Store: store, PlatformKey: platformKey, MaxPayloadBytes: cfg.MaxPayloadBytes}, Runtime: runtime, PrivateKeyPath: cfg.WorkerPrivateKeyPath, MaxMergeInMemoryBytes: cfg.MaxMergeInMemoryBytes})
 	group, err := dispatchers.Start(ctx, db, runtime, cfg)
 	if err != nil {
@@ -60,6 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer group.Stop()
+	group.StartExecutionControls(db, temporal, cfg.TemporalNamespace)
 	slog.Info("activity worker started", "namespace", cfg.TemporalNamespace, "taskQueue", cfg.TaskQueue)
 	if err = w.Run(worker.InterruptCh()); err != nil {
 		slog.Error("activity worker stopped", "error", err)

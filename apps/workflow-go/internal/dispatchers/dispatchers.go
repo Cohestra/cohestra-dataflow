@@ -33,13 +33,14 @@ var alertHTTPClient = security.NewHTTPClient(5 * time.Second)
 var lineageHTTPClient = &http.Client{Timeout: 5 * time.Second}
 
 type Group struct {
+	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
 
 func Start(parent context.Context, db *database.DB, runtime *connectors.Runtime, cfg config.Config) (*Group, error) {
 	ctx, cancel := context.WithCancel(parent)
-	group := &Group{cancel: cancel}
+	group := &Group{ctx: ctx, cancel: cancel}
 	redisOptions, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		cancel()
