@@ -1,0 +1,47 @@
+name: Agent admission and execution controls
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  admission-and-control-transactions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dataflow
+          POSTGRES_PASSWORD: dataflow
+          POSTGRES_DB: controls_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dataflow -d controls_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CONTROL_TEST_DATABASE_URL: postgres://dataflow:dataflow@127.0.0.1:5432/controls_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/workflow-go/go.mod
+          cache-dependency-path: apps/workflow-go/go.sum
+      - name: Apply PostgreSQL migrations
+        run: |
+          for migration in db/[0-9][0-9][0-9]_*.sql; do
+            psql "$CONTROL_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Verify durable controls with real transactions and RLS
+        working-directory: apps/workflow-go
+        run: go test -race ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v
+      - name: Verify enterprise controls
+        working-directory: apps/workflow-go
+        run: go test -race -tags ee ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v

@@ -104,6 +104,9 @@ func (s *Server) webhookTrigger(w http.ResponseWriter, r *http.Request) error {
 	if err != nil || !hmac.Equal(provided, mac.Sum(nil)) {
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "bad signature"}
 	}
+	if err := model.ValidateAgentAdmission(def); err != nil {
+		return badRequest(ErrInvalidRequest, err.Error())
+	}
 	tenantID := stringValue(row["tenant_id"])
 	environment := model.Environment(stringValue(row["environment"]))
 	var payload *model.DataRef

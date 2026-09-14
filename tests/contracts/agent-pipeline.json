@@ -1,0 +1,61 @@
+{
+  "id": "30999ee1-b08a-4142-b1c1-41d769ec94b8",
+  "version": 1,
+  "name": "Reserved agent contract",
+  "tenantId": "a123238e-e248-43f6-8756-d266c25fd6ad",
+  "trigger": {
+    "type": "manual"
+  },
+  "execution": {
+    "engine": "workflow"
+  },
+  "nodes": [
+    {
+      "id": "tickets",
+      "type": "source",
+      "activityType": "http.fetch",
+      "config": {}
+    },
+    {
+      "id": "classifyTickets",
+      "type": "agent",
+      "activityType": "agent.run",
+      "label": "Classify tickets",
+      "config": {
+        "agentId": "cbb40a16-242b-4d78-87de-36a941635f48",
+        "agentVersion": 3,
+        "inputBinding": {
+          "mode": "batch",
+          "fields": [
+            "ticketId",
+            "subject",
+            "body"
+          ],
+          "maxRecords": 100
+        }
+      },
+      "timeoutSec": 240,
+      "retry": {
+        "maximumAttempts": 2
+      }
+    },
+    {
+      "id": "output",
+      "type": "sink",
+      "activityType": "sink.postgres",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "input",
+      "source": "tickets",
+      "target": "classifyTickets"
+    },
+    {
+      "id": "output",
+      "source": "classifyTickets",
+      "target": "output"
+    }
+  ]
+}
