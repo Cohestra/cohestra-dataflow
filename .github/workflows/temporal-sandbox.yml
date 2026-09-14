@@ -1,0 +1,70 @@
+name: Temporal sandbox
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temporal-sandbox-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  temporal-sandbox:
+    name: Temporal sandbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect relevant changes
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          base = os.environ['BASE_SHA']
+          forced = os.environ['EVENT_NAME'] == 'workflow_dispatch' or not base or set(base) == {'0'}
+          paths = [] if forced else subprocess.check_output(
+              ['git', 'diff', '--name-only', base, os.environ['HEAD_SHA']], text=True).splitlines()
+          relevant = forced or any(path.startswith(('apps/workflow-go/', 'db/', 'tests/contracts/')) or path in (
+              'scripts/temporal-sandbox.py', '.github/workflows/temporal-sandbox.yml') for path in paths)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'run={str(relevant).lower()}\n')
+          print('Running native Temporal sandbox.' if relevant else 'No relevant runtime changes; stable check passes without starting services.')
+          PY
+      - uses: actions/setup-go@v5
+        if: steps.scope.outputs.run == 'true'
+        with:
+          go-version-file: apps/workflow-go/go.mod
+          cache-dependency-path: apps/workflow-go/go.sum
+      - name: Verify test result parser
+        if: steps.scope.outputs.run == 'true'
+        run: python3 scripts/temporal-sandbox.py --self-test
+      - name: Install native PostgreSQL 16
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16
+      - name: Run community and enterprise sandbox
+        if: steps.scope.outputs.run == 'true'
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: python3 scripts/temporal-sandbox.py --artifacts "$GITHUB_WORKSPACE/.artifacts/temporal-sandbox"
+      - name: Upload synthetic histories and runtime logs
+        if: always() && steps.scope.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: temporal-sandbox-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/temporal-sandbox/
+          if-no-files-found: warn
+          retention-days: 7
