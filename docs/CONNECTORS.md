@@ -63,3 +63,6 @@ connector secrets in environment variables or a secret manager.
 Operators can mount declarative REST connector manifests through deployment
 configuration. They appear in the same UI and API catalog after the service is
 restarted; application users do not edit source code or rebuild images.
+Manifests currently support `kind: "source"` only. Sink manifests are excluded
+from registration and the catalog because manifest execution has no write
+contract. Use a coded sink for writes.

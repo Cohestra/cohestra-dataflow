@@ -71,7 +71,7 @@ func NewRuntime(db *database.DB, store *objectstore.Store, cfg config.Config, ht
 func (r *Runtime) Fetch(ctx context.Context, name string, p SourceParams) (SourceResult, error) {
 	source := r.Sources[name]
 	if source == nil {
-		if manifest, ok := r.Registry.Manifests[name]; ok {
+		if manifest, ok := r.Registry.Manifests[name]; ok && manifest.Kind == "source" {
 			return r.fetchManifest(ctx, manifest, p)
 		}
 		return SourceResult{}, fmt.Errorf("Unknown source: %s", name)

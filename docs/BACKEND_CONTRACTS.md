@@ -50,3 +50,25 @@ activity queues remain `dynamic-activities-{test,prod}`. Signals remain
 Canonical JSON examples, including `PipelineDefinition`, activity inputs,
 `DataRef`, `NodeResult`, connector manifest, and AES-GCM bytes, live in
 `tests/contracts/backend-wire.json`.
+
+## Node activity policies
+
+New workflow executions honor node `timeoutSec` as each activity attempt's
+start-to-close timeout, including every source page and source-page merge.
+`retry.maximumAttempts: 1` disables automatic retries. Omitted/null optional
+values, including an empty `retry` object, retain the existing ten-minute
+timeout and five-attempt policy. Execution bookkeeping retains these defaults;
+a node override does not change parallel siblings. The heartbeat timeout is
+lowered when necessary to fit the node timeout.
+
+Explicit values must be positive integers: `timeoutSec` cannot exceed
+9,223,372,036 seconds (Go duration range), and `maximumAttempts` cannot exceed
+2,147,483,647 (Temporal's signed 32-bit field). Zero does not request unlimited
+retries. Save, execution admission and schedule creation reject invalid values.
+Explicit node policies are supported only by the `workflow` engine; other
+engines reject them instead of silently ignoring them.
+
+The `node-activity-policy-v1` Temporal version marker preserves the old global
+options for existing histories, including previously ignored node settings.
+Rollout must retain this compatibility branch while old histories remain
+replayable. Pause/cancel behavior is unchanged by this policy increment.

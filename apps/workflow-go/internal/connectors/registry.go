@@ -26,7 +26,7 @@ func Load(dirs ...string) *Registry {
 				continue
 			}
 			var manifest model.ConnectorManifest
-			if json.Unmarshal(body, &manifest) == nil && manifest.ActivityType != "" && manifest.Label != "" && (manifest.Kind == "source" || manifest.Kind == "sink") && manifest.URL != "" {
+			if json.Unmarshal(body, &manifest) == nil && manifest.ActivityType != "" && manifest.Label != "" && manifest.Kind == "source" && manifest.URL != "" {
 				r.Manifests[manifest.ActivityType] = manifest
 			}
 		}
@@ -36,23 +36,19 @@ func Load(dirs ...string) *Registry {
 func (r *Registry) Catalog() []model.CatalogEntry {
 	out := make([]model.CatalogEntry, 0, len(r.Manifests))
 	for _, m := range r.Manifests {
-		nodeType := "source"
-		if m.Kind == "sink" {
-			nodeType = "sink"
+		// Manifest execution implements fetching records only; writes require a coded handler.
+		if m.Kind != "source" {
+			continue
 		}
 		color := m.Color
 		if color == "" {
-			if nodeType == "sink" {
-				color = "#639922"
-			} else {
-				color = "#1D9E75"
-			}
+			color = "#1D9E75"
 		}
-		ingestion := nodeType == "source"
+		ingestion := true
 		if m.SupportsIngestion != nil {
 			ingestion = *m.SupportsIngestion
 		}
-		out = append(out, model.CatalogEntry{ActivityType: m.ActivityType, NodeType: nodeType, Label: m.Label, Color: color, SupportsIngestion: ingestion, Fields: m.Fields})
+		out = append(out, model.CatalogEntry{ActivityType: m.ActivityType, NodeType: "source", Label: m.Label, Color: color, SupportsIngestion: ingestion, Fields: m.Fields})
 	}
 	return out
 }

@@ -1,11 +1,30 @@
 package api
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/dataflow-poc/workflow-go/internal/enterprise"
 	"github.com/dataflow-poc/workflow-go/internal/model"
 )
+
+func TestInvalidNodePolicyRejectedBeforeAdmission(t *testing.T) {
+	zero := 0
+	def := model.PipelineDefinition{Name: "invalid policy", Trigger: model.Trigger{Type: "cron", Schedule: "0 * * * *"},
+		Nodes: []model.Node{{ID: "source", Type: "source", ActivityType: "http.fetch", TimeoutSec: &zero}}}
+	if err := validatePipeline(def); err == nil || !strings.Contains(err.Error(), "timeoutSec") {
+		t.Fatalf("save validation: %v", err)
+	}
+	// No DB or Temporal client: validation must precede quota use and scheduling.
+	s := &Server{}
+	if _, err := s.fireExecution(context.Background(), def, "fixture", "manual", model.EnvironmentTest, nil, "", "", ""); err == nil || !strings.Contains(err.Error(), "timeoutSec") {
+		t.Fatalf("execution validation: %v", err)
+	}
+	if err := s.syncSchedule(context.Background(), def, "fixture", model.EnvironmentTest); err == nil || !strings.Contains(err.Error(), "timeoutSec") {
+		t.Fatalf("schedule validation: %v", err)
+	}
+}
 
 func TestStreamDirectValidationAndEntitlement(t *testing.T) {
 	def := model.PipelineDefinition{Name: "cdc", Trigger: model.Trigger{Type: "manual"}, Execution: &model.ExecutionConfig{Engine: "stream-direct"}, Nodes: []model.Node{
