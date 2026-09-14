@@ -8,6 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- AI pipeline proposals now show a keyboard-accessible before/after change review from the same merged definition used by Apply, with sensitive configuration values hidden.
 - Preserve pipeline concurrency, node policies and asset bindings across canvas load/save, AI Apply/Undo and Mermaid structural edits; block AI proposals based on an older draft.
 
 ### Added

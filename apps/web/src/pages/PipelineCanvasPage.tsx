@@ -15,6 +15,7 @@ import { ExecutionMonitor } from '../components/canvas/ExecutionMonitor';
 import { useAiGenerate, type AiGenerateResult } from '../hooks/useAiGenerate';
 import { useApiQuery } from '../hooks/useApiQuery';
 import { definitionToFlow, flowToDefinition, applyGraphEdit, pipelineFingerprint } from '../utils/pipelineConvert';
+import { mergeAiProposal, describeProposalChanges } from '../utils/pipelineProposal';
 import { validatePipeline } from '../utils/validatePipeline';
 import { deriveStage, displayEnvironment, type Stage } from '../utils/pipelineStage';
 import { NodePalette, MOBILE_RAIL_CLEARANCE, type CatId } from './canvas/NodePalette';
@@ -83,6 +84,12 @@ export default function PipelineCanvasPage() {
   const [aiProposal, setAiProposal] = useState<AiGenerateResult | null>(null);
   const [aiUndo, setAiUndo] = useState<PipelineDefinition | null>(null);
   const [aiProposalFingerprint, setAiProposalFingerprint] = useState<string | null>(null);
+  const [aiProposalBase, setAiProposalBase] = useState<PipelineDefinition | null>(null);
+  const aiReview = useMemo(() => {
+    if (!aiProposalBase || aiProposal?.status !== 'ready' || !aiProposal.definition) return null;
+    const definition = mergeAiProposal(aiProposalBase, aiProposal.definition);
+    return { definition, changes: describeProposalChanges(aiProposalBase, definition) };
+  }, [aiProposalBase, aiProposal]);
   const { generate: aiGenerate, refine: aiRefine, loading: aiLoading, error: aiError } = useAiGenerate();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -168,7 +175,7 @@ export default function PipelineCanvasPage() {
     const openBackfill = (location.state as any)?.openBackfill === true || new URLSearchParams(location.search).get('backfill') === '1';
     const hydrationKey = pipelineId ?? (stateDef ? 'generated' : null);
     if (!hydrationKey || hydrated.current === hydrationKey) return;
-    setAiUndo(null); setAiProposal(null);
+    setAiUndo(null); setAiProposal(null); setAiProposalBase(null);
 
     if (stateDef) {
       hydrated.current = hydrationKey;
@@ -390,6 +397,7 @@ export default function PipelineCanvasPage() {
       : await aiGenerate(aiPrompt, currentMermaid, aiMessages);
 
     if (result) {
+      setAiProposalBase(structuredClone(currentDefinition));
       setAiProposal(structuredClone(result));
       setAiProposalFingerprint(pipelineFingerprint(currentDefinition));
       const responseSummary = [
@@ -406,20 +414,13 @@ export default function PipelineCanvasPage() {
   };
 
   const applyAI = () => {
-    if (!aiProposal || aiProposal.status !== 'ready' || !aiProposal.definition) return;
+    if (!aiReview) return;
     if (aiProposalStale) return setMsg('This proposal is based on an older draft. Retry to regenerate before applying.');
     const previous = buildDefinition();
-    const proposal = aiProposal.definition;
-    const next = applyGraphEdit(previous, proposal, 'ai');
-    if (proposal.execution) next.execution = structuredClone(proposal.execution);
-    if (!nodes.length) {
-      next.name = proposal.suggestedName ?? proposal.name ?? name;
-      next.trigger = structuredClone(proposal.trigger ?? previous.trigger);
-    }
     setAiUndo(structuredClone(previous));
-    hydrateFromDefinition(next, 'AI proposal applied');
+    hydrateFromDefinition(aiReview.definition, 'AI proposal applied');
     setSelected(null); setSelectedEdge(null);
-    setAiProposal(null); setAiPrompt('');
+    setAiProposal(null); setAiProposalBase(null); setAiPrompt('');
   };
 
   const undoAI = () => {
@@ -534,8 +535,8 @@ export default function PipelineCanvasPage() {
 
       <AiBuilderPanel
         showAI={showAI} setShowAI={setShowAI} hasNodes={nodes.length > 0}
-        aiMessages={aiMessages} aiProposal={aiProposal} aiProposalStale={aiProposalStale} applyAI={applyAI}
-        discardProposal={() => setAiProposal(null)} aiLoading={aiLoading} runAI={runAI}
+        aiMessages={aiMessages} aiProposal={aiProposal} aiProposalStale={aiProposalStale} aiChanges={aiReview?.changes ?? null} applyAI={applyAI}
+        discardProposal={() => { setAiProposal(null); setAiProposalBase(null); }} aiLoading={aiLoading} runAI={runAI}
         aiPrompt={aiPrompt} setAiPrompt={setAiPrompt} aiError={aiError} aiUndo={aiUndo} undoAI={undoAI}
       />
 
