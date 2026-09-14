@@ -1,6 +1,6 @@
 module github.com/dataflow-poc/workflow-go
 
-go 1.25.12
+go 1.26.8
 
 require (
 	github.com/apache/arrow-go/v18 v18.6.0
@@ -25,7 +25,7 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.7.0
 	go.temporal.io/api v1.62.12
 	go.temporal.io/sdk v1.45.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	google.golang.org/protobuf v1.36.11
 )
 
