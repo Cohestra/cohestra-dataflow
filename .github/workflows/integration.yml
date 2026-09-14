@@ -1,8 +1,8 @@
 name: Integration
 
 on:
-  schedule:
-    - cron: '17 3 * * *' # daily, off the hour to avoid GH Actions cron pile-up
+  # Manual only: smoke-test.sh requires the public JSONPlaceholder service.
+  # Automated CI must provision its own application/test services.
   workflow_dispatch:
 
 permissions:
