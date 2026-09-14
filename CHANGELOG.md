@@ -7,6 +7,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- CI secret scanning exempts one exact historical documentation false positive; the external-service smoke workflow is manual-only.
+- Upgrade Go to 1.26.8 and the vendored SSH dependency to x/crypto 0.56.0 to clear reachable vulnerability findings.
+
 ### Added
 - Durable execution pause/resume/cancel intent with atomic audit, retryable worker delivery, responsive workflow controls, and tenant-scoped activity admission
 - Reserved agent node wire contract with immutable version binding, bounded batch input validation, and fail-closed admission until the agent runtime is implemented
