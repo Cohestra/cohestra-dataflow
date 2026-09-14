@@ -74,6 +74,19 @@ type Node struct {
 	OutputAssets  []DataAssetRef         `json:"outputAssets,omitempty"`
 }
 
+// AgentNodeConfig pins an immutable definition; it contains no executable instructions or secrets.
+type AgentNodeConfig struct {
+	AgentID      string            `json:"agentId"`
+	AgentVersion int64             `json:"agentVersion"`
+	InputBinding AgentInputBinding `json:"inputBinding"`
+}
+
+type AgentInputBinding struct {
+	Mode       string   `json:"mode"`
+	Fields     []string `json:"fields"`
+	MaxRecords int      `json:"maxRecords"`
+}
+
 type DataAssetRef struct {
 	URN       string                 `json:"urn"`
 	Platform  string                 `json:"platform"`

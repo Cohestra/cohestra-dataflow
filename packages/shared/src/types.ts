@@ -1,6 +1,6 @@
 // ─── Pipeline definition: the contract between UI, API, and Temporal ───────
 
-export type NodeType = 'source' | 'transform' | 'sink' | 'fork' | 'merge';
+export type NodeType = 'source' | 'transform' | 'sink' | 'fork' | 'merge' | 'agent';
 
 // M3: a pipeline version lives in exactly one environment. Each environment is
 // a separate Temporal namespace + task queue (dynamic-dag-<env>).
@@ -76,6 +76,19 @@ export interface PipelineNode {
   joinKey?: string;
   inputAssets?: DataAssetRef[];
   outputAssets?: DataAssetRef[];
+}
+
+// Reserved wire contract; production admission stays disabled until AgentWorkflow exists.
+export interface AgentNodeConfig extends Record<string, unknown> {
+  agentId: string; // UUID of an immutable published agent version
+  agentVersion: number; // positive integer
+  inputBinding: { mode: 'batch'; fields: string[]; maxRecords: number }; // 1..100
+}
+
+export interface AgentPipelineNode extends PipelineNode {
+  type: 'agent';
+  activityType: 'agent.run';
+  config: AgentNodeConfig;
 }
 
 export interface IngestionConfig {

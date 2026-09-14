@@ -118,6 +118,9 @@ func (s *Server) pipelineActivate(w http.ResponseWriter, r *http.Request) error 
 	if row == nil {
 		return notFound(ErrNotFound, "not found")
 	}
+	if err := model.ValidateAgentAdmission(def); err != nil {
+		return badRequest(ErrInvalidRequest, err.Error())
+	}
 	if err := s.enforcePipelineFeatures(r, def); err != nil {
 		return err
 	}
@@ -151,6 +154,9 @@ func (s *Server) pipelineRun(w http.ResponseWriter, r *http.Request) error {
 	}
 	if row == nil {
 		return notFound(ErrNotFound, "not found")
+	}
+	if err := model.ValidateAgentAdmission(def); err != nil {
+		return badRequest(ErrInvalidRequest, err.Error())
 	}
 	if err := s.enforcePipelineFeatures(r, def); err != nil {
 		return err
@@ -398,6 +404,9 @@ func trimOptional(spec string) string {
 }
 
 func (s *Server) createProductionVersion(r *http.Request, row map[string]interface{}, def model.PipelineDefinition, allowBreakingContract bool) (map[string]interface{}, error) {
+	if err := model.ValidateAgentAdmission(def); err != nil {
+		return nil, badRequest(ErrInvalidRequest, err.Error())
+	}
 	if stringValue(row["environment"]) != "test" {
 		return nil, &HTTPError{Status: http.StatusConflict, Message: "only Integration versions can be promoted"}
 	}
@@ -551,6 +560,9 @@ func (s *Server) backfillCreate(w http.ResponseWriter, r *http.Request) error {
 	}
 	if row == nil {
 		return notFound(ErrNotFound, "not found")
+	}
+	if err := model.ValidateAgentAdmission(def); err != nil {
+		return badRequest(ErrInvalidRequest, err.Error())
 	}
 	if err = validateBackfillSources(def); err != nil {
 		return badRequest(ErrInvalidRequest, err.Error())
