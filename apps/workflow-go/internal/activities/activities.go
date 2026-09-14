@@ -70,15 +70,16 @@ func (a *Activities) PrepareScheduledExecution(ctx context.Context, p ScheduledE
 }
 
 type FetchSourceParams struct {
-	ActivityType string                 `json:"activityType"`
-	Config       map[string]interface{} `json:"config"`
-	Ingestion    *model.IngestionConfig `json:"ingestion,omitempty"`
-	TenantID     string                 `json:"tenantId"`
-	ConnectionID string                 `json:"connectionId"`
-	ExecutionID  string                 `json:"executionId"`
-	NodeID       string                 `json:"nodeId"`
-	Cursor       map[string]interface{} `json:"cursor,omitempty"`
-	EncryptedDEK string                 `json:"encryptedDek,omitempty"`
+	ControlRequired bool                   `json:"controlRequired,omitempty"`
+	ActivityType    string                 `json:"activityType"`
+	Config          map[string]interface{} `json:"config"`
+	Ingestion       *model.IngestionConfig `json:"ingestion,omitempty"`
+	TenantID        string                 `json:"tenantId"`
+	ConnectionID    string                 `json:"connectionId"`
+	ExecutionID     string                 `json:"executionId"`
+	NodeID          string                 `json:"nodeId"`
+	Cursor          map[string]interface{} `json:"cursor,omitempty"`
+	EncryptedDEK    string                 `json:"encryptedDek,omitempty"`
 }
 type FetchSourceResult struct {
 	OutputRef   *model.DataRef         `json:"outputRef"`
@@ -95,6 +96,7 @@ func (a *Activities) dek(encoded string) ([]byte, error) {
 	return UnwrapDEK(encoded, a.PrivateKeyPath)
 }
 func (a *Activities) FetchSourcePage(ctx context.Context, p FetchSourceParams) (FetchSourceResult, error) {
+	defer controlledHeartbeat(ctx, p.ControlRequired)()
 	activity.RecordHeartbeat(ctx)
 	if err := a.requireEntitlement(ctx, p.TenantID, p.ActivityType, p.Config); err != nil {
 		return FetchSourceResult{}, err
@@ -113,6 +115,9 @@ func (a *Activities) FetchSourcePage(ctx context.Context, p FetchSourceParams) (
 		p.Cursor = map[string]interface{}{}
 	}
 	started := time.Now()
+	if err := a.admitControlledActivity(ctx, p.TenantID, p.ExecutionID, p.ControlRequired); err != nil {
+		return FetchSourceResult{}, err
+	}
 	result, err := a.Runtime.Fetch(ctx, p.ActivityType, connectors.SourceParams{Config: p.Config, Cursor: p.Cursor, Ingestion: p.Ingestion, TenantID: p.TenantID})
 	if err != nil {
 		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error())
@@ -196,6 +201,7 @@ func (a *Activities) CommitDedupeKeys(ctx context.Context, p CommitDedupeParams)
 }
 
 type DispatchParams struct {
+	ControlRequired bool                   `json:"controlRequired,omitempty"`
 	ActivityType    string                 `json:"activityType"`
 	Config          map[string]interface{} `json:"config"`
 	InputRef        *model.DataRef         `json:"inputRef,omitempty"`
@@ -207,6 +213,7 @@ type DispatchParams struct {
 }
 
 func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.NodeResult, error) {
+	defer controlledHeartbeat(ctx, p.ControlRequired)()
 	activity.RecordHeartbeat(ctx)
 	started := time.Now()
 	if err := a.requireEntitlement(ctx, p.TenantID, p.ActivityType, p.Config); err != nil {
@@ -225,6 +232,9 @@ func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.
 		if err != nil {
 			return model.NodeResult{}, err
 		}
+	}
+	if err := a.admitControlledActivity(ctx, p.TenantID, p.ExecutionID, p.ControlRequired); err != nil {
+		return model.NodeResult{}, err
 	}
 	output, meta, err := a.Runtime.Handle(ctx, p.ActivityType, input, p.Config, connectors.HandlerContext{TenantID: p.TenantID, ExecutionID: p.ExecutionID, NodeID: p.NodeID, PipelineVersion: p.PipelineVersion})
 	if err == nil && p.ActivityType == "transform.dedupe" && p.Config["scope"] == "pipeline" {
@@ -566,26 +576,34 @@ func (a *Activities) EvalEdgeCondition(ctx context.Context, p EdgeConditionParam
 }
 
 type MarkExecutionParams struct {
+	TenantID    string `json:"tenantId,omitempty"`
 	ExecutionID string `json:"executionId"`
 	Phase       string `json:"phase"`
 }
 
 func (a *Activities) MarkExecution(ctx context.Context, p MarkExecutionParams) error {
-	_, err := a.DB.Pool.Exec(ctx, `UPDATE executions SET phase=$2,completed_at=CASE WHEN $2 IN('completed','failed','cancelled') THEN now() ELSE completed_at END WHERE id=$1`, p.ExecutionID, p.Phase)
+	// Old Temporal payloads did not include tenantId. Resolve it once, then scope
+	// every write explicitly, including workers whose role bypasses RLS.
+	if p.TenantID == "" {
+		if err := a.DB.Pool.QueryRow(ctx, `SELECT tenant_id FROM executions WHERE id=$1`, p.ExecutionID).Scan(&p.TenantID); err != nil {
+			return err
+		}
+	}
+	err := a.DB.Pool.QueryRow(ctx, `UPDATE executions SET phase=CASE WHEN phase IN ('completed','failed','cancelled') THEN phase ELSE $2 END,completed_at=CASE WHEN $2 IN('completed','failed','cancelled') THEN COALESCE(completed_at,now()) ELSE completed_at END WHERE id=$1 AND tenant_id=$3 RETURNING phase`, p.ExecutionID, p.Phase, p.TenantID).Scan(&p.Phase)
 	if err != nil {
 		return err
 	}
-	_, _ = a.DB.Pool.Exec(ctx, `WITH changed AS (UPDATE backfill_partitions bp SET status=$2,completed_at=now() FROM executions e WHERE e.id=$1 AND e.backfill_partition_id=bp.id RETURNING bp.job_id) UPDATE backfill_jobs bj SET status=CASE WHEN EXISTS(SELECT 1 FROM backfill_partitions p WHERE p.job_id=bj.id AND p.status='failed') THEN 'failed' WHEN EXISTS(SELECT 1 FROM backfill_partitions p WHERE p.job_id=bj.id AND p.status='cancelled') THEN 'cancelled' ELSE 'completed' END,completed_at=now() FROM changed WHERE bj.id=changed.job_id AND NOT EXISTS(SELECT 1 FROM backfill_partitions p WHERE p.job_id=bj.id AND p.status IN('pending','starting','running'))`, p.ExecutionID, p.Phase)
+	_, _ = a.DB.Pool.Exec(ctx, `WITH changed AS (UPDATE backfill_partitions bp SET status=$2,completed_at=now() FROM executions e WHERE e.id=$1 AND e.tenant_id=$3 AND bp.tenant_id=$3 AND e.backfill_partition_id=bp.id RETURNING bp.job_id) UPDATE backfill_jobs bj SET status=CASE WHEN EXISTS(SELECT 1 FROM backfill_partitions p WHERE p.job_id=bj.id AND p.tenant_id=$3 AND p.status='failed') THEN 'failed' WHEN EXISTS(SELECT 1 FROM backfill_partitions p WHERE p.job_id=bj.id AND p.tenant_id=$3 AND p.status='cancelled') THEN 'cancelled' ELSE 'completed' END,completed_at=now() FROM changed WHERE bj.id=changed.job_id AND bj.tenant_id=$3 AND NOT EXISTS(SELECT 1 FROM backfill_partitions p WHERE p.job_id=bj.id AND p.tenant_id=$3 AND p.status IN('pending','starting','running'))`, p.ExecutionID, p.Phase, p.TenantID)
 	if p.Phase == "failed" {
 		if _, err := a.DB.Pool.Exec(ctx, `INSERT INTO pipeline_alerts (tenant_id,pipeline_id,execution_id,fingerprint,kind,severity,message,details)
 			SELECT e.tenant_id,e.pipeline_id,e.id,'execution_failed','execution_failed','critical',
 			  COALESCE('Node '||nr.node_id||' failed: '||nr.error,'Node '||nr.node_id||' failed','Execution failed'),
 			  jsonb_strip_nulls(jsonb_build_object('executionId',e.id,'nodeId',nr.node_id))
 			FROM executions e
-			LEFT JOIN LATERAL (SELECT node_id,error FROM node_runs WHERE execution_id=e.id AND status='failed' ORDER BY finished_at DESC NULLS LAST LIMIT 1) nr ON true
-			WHERE e.id=$1
+			LEFT JOIN LATERAL (SELECT node_id,error FROM node_runs WHERE execution_id=e.id AND tenant_id=$2 AND status='failed' ORDER BY finished_at DESC NULLS LAST LIMIT 1) nr ON true
+			WHERE e.id=$1 AND e.tenant_id=$2
 			ON CONFLICT (tenant_id,pipeline_id,fingerprint) WHERE status IN ('open','acknowledged')
-			DO UPDATE SET last_seen_at=now(),execution_id=EXCLUDED.execution_id,message=EXCLUDED.message,details=EXCLUDED.details`, p.ExecutionID); err != nil {
+			DO UPDATE SET last_seen_at=now(),execution_id=EXCLUDED.execution_id,message=EXCLUDED.message,details=EXCLUDED.details`, p.ExecutionID, p.TenantID); err != nil {
 			slog.Warn("failed to record pipeline alert", "executionId", p.ExecutionID, "error", err)
 		}
 	}
@@ -638,6 +656,8 @@ func Register(worker interface {
 	worker.RegisterActivityWithOptions(a.MergeRefs, activity.RegisterOptions{Name: "mergeRefs"})
 	worker.RegisterActivityWithOptions(a.EvalEdgeCondition, activity.RegisterOptions{Name: "evalEdgeCondition"})
 	worker.RegisterActivityWithOptions(a.MarkExecution, activity.RegisterOptions{Name: "markExecution"})
+	worker.RegisterActivityWithOptions(a.ReadExecutionControl, activity.RegisterOptions{Name: "readExecutionControl"})
+	worker.RegisterActivityWithOptions(a.FinalizeExecutionControl, activity.RegisterOptions{Name: "finalizeExecutionControl"})
 	registerEnterprise(worker, a)
 	slog.Info("registered Temporal activities")
 }

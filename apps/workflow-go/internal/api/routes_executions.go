@@ -353,22 +353,6 @@ func (s *Server) executionRetry(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s *Server) executionSignal(w http.ResponseWriter, r *http.Request) error {
-	action := r.PathValue("action")
-	if !map[string]bool{"pause": true, "resume": true, "cancel": true, "rollback": true}[action] {
-		return notFound(ErrNotFound, "not found")
-	}
-	environment, workflowID, runID, _, _, err := s.executionIdentity(r)
-	if err != nil {
-		return notFound(ErrNotFound, "not found")
-	}
-	if err = s.Temporal[environment].SignalWorkflow(r.Context(), workflowID, runID, action, nil); err != nil {
-		return err
-	}
-	jsonResponse(w, http.StatusOK, map[string]bool{"ok": true})
-	return nil
-}
-
 func (s *Server) executionTrace(w http.ResponseWriter, r *http.Request) error {
 	environment, workflowID, runID, _, _, err := s.executionIdentity(r)
 	if err != nil {
