@@ -72,3 +72,22 @@ The `node-activity-policy-v1` Temporal version marker preserves the old global
 options for existing histories, including previously ignored node settings.
 Rollout must retain this compatibility branch while old histories remain
 replayable. Pause/cancel behavior is unchanged by this policy increment.
+
+
+## Reserved agent node contract (B1)
+
+`tests/contracts/agent-pipeline.json` is the shared TypeScript/Go wire fixture.
+Agent nodes pin a UUID `agentId` and positive safe-integer `agentVersion`, use
+`type: agent` / `activityType: agent.run`, and accept exactly one predecessor.
+`inputBinding` requires `mode: batch`, unique nonempty literal top-level `fields`
+(no dotted paths, bracket paths or templates), and integer `maxRecords` from 1 to 100.
+Only the workflow engine supports this contract. Unknown configuration fields,
+including credentials, instructions and model tags, are rejected.
+
+B1 reserves this shape only: saves, runs, activation and promotion reject agent
+pipelines until the B3 child workflow is implemented. There is no enable flag or
+catalog entry. `ValidateAgentNodes` checks the reusable shape;
+`ValidateAgentAdmission` enforces the temporary execution boundary. Future runtime
+preparation must validate immutable version ownership, input/output schemas,
+every projected field, and byte/record limits before any model or tool call.
+Data-only pipeline admission remains unchanged.

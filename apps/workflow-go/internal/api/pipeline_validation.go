@@ -22,10 +22,13 @@ func validatePipeline(def model.PipelineDefinition) error {
 	if def.Execution != nil && !map[string]bool{"": true, "workflow": true, "stream-direct": true, "spark-sql": true, "flink-sql": true}[def.Execution.Engine] {
 		return fmt.Errorf("unsupported execution engine %q", def.Execution.Engine)
 	}
+	if err := model.ValidateAgentAdmission(def); err != nil {
+		return err
+	}
 	if err := model.ValidateNodePolicies(def); err != nil {
 		return err
 	}
-	validTypes := map[string]bool{"source": true, "transform": true, "sink": true, "fork": true, "merge": true}
+	validTypes := map[string]bool{"source": true, "transform": true, "sink": true, "fork": true, "merge": true, "agent": true}
 	ids := map[string]bool{}
 	indegree := map[string]int{}
 	outgoing := map[string][]string{}
