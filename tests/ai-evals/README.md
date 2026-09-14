@@ -11,7 +11,8 @@ python3 tests/ai-evals/run.py --self-test --strict
 ```
 
 This validates the corpus and exercises every scorer without credentials,
-Ollama, or a running API.
+Ollama, a database, or a running API. The CI tests job runs this same check on
+pull requests and pushes to main. It checks evaluator behavior, not model accuracy.
 
 ## Run against a deployment
 
@@ -69,3 +70,43 @@ Existing cases demonstrate all supported expectations: `status`,
 Update the file's versioned `catalog` when a supported activity or config key
 is intentionally added; unlisted model output is scored as hallucinated.
 Create `v2.json` rather than changing established expectations incompatibly.
+
+## Opt-in required paths
+
+New case versions can declare `expect.graph.requiredPaths` to require specific
+source-to-transform-to-sink relationships. Each path is an ordered array of
+node selectors; consecutive selectors must match nodes joined by a **direct,
+directed edge**. Include intermediate steps explicitly. Every declared path
+must exist as one continuous chain.
+
+```json
+{
+  "graph": {
+    "requiredPaths": [
+      [
+        {"activityType": "http.fetch"},
+        {"activityType": "transform.filter"},
+        {"activityType": "sink.s3", "config": {"bucket": "eval-bucket"}}
+      ]
+    ]
+  }
+}
+```
+
+Selectors require `id`, `activityType`, or both, with an optional `config`
+subset. All supplied fields must match the same node. Activity types must
+exist in the suite catalog. An explicitly supplied `requiredPaths` must be a
+non-empty array of paths with at least two selectors each; malformed contracts
+fail corpus loading before any API call.
+
+Each path is checked independently. Additional independent branches are valid;
+declare their paths separately only when the case requires those relationships.
+Missing required edges fail structural validity and the overall case, even when
+all requested activity types are present. Cases without this field keep their
+existing scoring behavior, including acceptance of disconnected DAGs.
+
+The offline self-test covers connected and disconnected chains, duplicate
+activity types across separate chains, selector mismatches, independent branches,
+and invalid contracts. The v1 corpus and historical reports remain unchanged.
+A corrected v2 corpus, fixture binding, and positive golden-output preflight
+remain separate work; this contract alone does not establish a model promotion gate.
