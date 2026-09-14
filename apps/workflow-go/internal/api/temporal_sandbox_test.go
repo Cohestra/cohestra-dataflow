@@ -188,6 +188,14 @@ func (b *temporalSandbox) request(method, path string) map[string]interface{} {
 	req.Header.Set("Content-Type", "application/json")
 	res, err := b.http.Client().Do(req)
 	if err != nil {
+		// Status is polled under the scenario deadline. During worker replacement,
+		// Temporal can wait for the old worker's 10s task lease to expire before
+		// serving a query; that can outlast this individual HTTP request.
+		// Never retry a mutation, and still require a real control-state response.
+		if method == http.MethodGet && errors.Is(err, context.DeadlineExceeded) {
+			b.summary["statusQueryDeadlineObserved"] = true
+			return nil
+		}
 		b.t.Fatal(err)
 	}
 	defer res.Body.Close()
