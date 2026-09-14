@@ -216,7 +216,8 @@ def run_sandbox(sandbox, runtime, args):
         if not (pg / name).is_file():
             raise RuntimeError(f"Missing PostgreSQL executable: {pg / name}")
     for name, argv in (("postgres", [pg / "postgres", "--version"]), ("go", ["go", "version"])):
-        _, output = sandbox.run(argv, f"{name}-version.log")
+        # Select the module's toolchain, just as the test command does.
+        _, output = sandbox.run(argv, f"{name}-version.log", cwd=REPO / "apps/workflow-go" if name == "go" else REPO)
         sandbox.summary["versions"][name] = output.read_text().strip()
     pg_port, temporal_port = free_ports(2)
     sandbox.summary["ports"] = {"postgres": pg_port, "temporal": temporal_port}
