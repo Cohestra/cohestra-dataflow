@@ -26,6 +26,16 @@ func ValidateAgentNodes(def PipelineDefinition) error {
 		if err != nil {
 			return fmt.Errorf("node %s invalid agent config", node.ID)
 		}
+		// encoding/json matches struct tags case-insensitively. Validate the raw
+		// object keys first so accepted maps also satisfy the TypeScript contract.
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(body, &fields); err != nil || len(fields) != 3 || fields["agentId"] == nil || fields["agentVersion"] == nil || fields["inputBinding"] == nil {
+			return fmt.Errorf("node %s agent config requires exactly agentId, agentVersion and inputBinding", node.ID)
+		}
+		var bindingFields map[string]json.RawMessage
+		if err := json.Unmarshal(fields["inputBinding"], &bindingFields); err != nil || len(bindingFields) != 3 || bindingFields["mode"] == nil || bindingFields["fields"] == nil || bindingFields["maxRecords"] == nil {
+			return fmt.Errorf("node %s inputBinding requires exactly mode, fields and maxRecords", node.ID)
+		}
 		var config AgentNodeConfig
 		decoder := json.NewDecoder(bytes.NewReader(body))
 		decoder.DisallowUnknownFields()
@@ -46,12 +56,12 @@ func ValidateAgentNodes(def PipelineDefinition) error {
 		if len(binding.Fields) == 0 {
 			return fmt.Errorf("node %s inputBinding.fields must be nonempty", node.ID)
 		}
-		fields := map[string]bool{}
+		seenFields := map[string]bool{}
 		for _, field := range binding.Fields {
-			if strings.TrimSpace(field) == "" || strings.ContainsAny(field, ".[]{}$\r\n\t") || fields[field] {
+			if strings.TrimSpace(field) == "" || strings.ContainsAny(field, ".[]{}$\r\n\t") || seenFields[field] {
 				return fmt.Errorf("node %s inputBinding.fields must be unique literal top-level keys", node.ID)
 			}
-			fields[field] = true
+			seenFields[field] = true
 		}
 		incoming := 0
 		for _, edge := range def.Edges {

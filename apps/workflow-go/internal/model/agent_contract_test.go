@@ -117,3 +117,63 @@ func TestAgentAdmissionPreservesDataOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAgentContractRequiresCanonicalKeys(t *testing.T) {
+	for _, tc := range []struct {
+		key, alias string
+		binding    bool
+	}{
+		{"agentId", "agentid", false}, {"agentId", "AgentID", false},
+		{"agentVersion", "agentversion", false}, {"inputBinding", "InputBinding", false},
+		{"mode", "Mode", true}, {"fields", "Fields", true}, {"maxRecords", "maxrecords", true},
+	} {
+		for _, collision := range []bool{false, true} {
+			name := tc.key + "/" + tc.alias
+			if collision {
+				name += "/collision"
+			}
+			t.Run(name, func(t *testing.T) {
+				def := agentFixture(t)
+				fields := def.Nodes[1].Config
+				if tc.binding {
+					fields = fields["inputBinding"].(map[string]interface{})
+				}
+				fields[tc.alias] = fields[tc.key]
+				if !collision {
+					delete(fields, tc.key)
+				}
+				// Exercise the same stored-definition map round trip as API admission.
+				body, err := json.Marshal(def)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var stored PipelineDefinition
+				if err := json.Unmarshal(body, &stored); err != nil {
+					t.Fatal(err)
+				}
+				if err := ValidateAgentNodes(stored); err == nil {
+					t.Fatal("accepted noncanonical keys")
+				}
+			})
+		}
+	}
+	for _, tc := range []struct {
+		key     string
+		binding bool
+	}{
+		{"agentId", false}, {"agentVersion", false}, {"inputBinding", false},
+		{"mode", true}, {"fields", true}, {"maxRecords", true},
+	} {
+		t.Run("missing/"+tc.key, func(t *testing.T) {
+			def := agentFixture(t)
+			fields := def.Nodes[1].Config
+			if tc.binding {
+				fields = fields["inputBinding"].(map[string]interface{})
+			}
+			delete(fields, tc.key)
+			if err := ValidateAgentNodes(def); err == nil {
+				t.Fatal("accepted missing required key")
+			}
+		})
+	}
+}

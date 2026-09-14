@@ -561,6 +561,9 @@ func (s *Server) backfillCreate(w http.ResponseWriter, r *http.Request) error {
 	if row == nil {
 		return notFound(ErrNotFound, "not found")
 	}
+	if err := model.ValidateAgentAdmission(def); err != nil {
+		return badRequest(ErrInvalidRequest, err.Error())
+	}
 	if err = validateBackfillSources(def); err != nil {
 		return badRequest(ErrInvalidRequest, err.Error())
 	}
