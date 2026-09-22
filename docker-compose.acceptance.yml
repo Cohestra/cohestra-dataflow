@@ -1,0 +1,67 @@
+# Local acceptance only: real Temporal dev server with persistent SQLite.
+# Production Cassandra/Elasticsearch operation is outside this test profile.
+x-local-app: &local-app
+  profiles: [container-app]
+
+services:
+  cassandra:
+    profiles: [production-topology]
+  elasticsearch:
+    profiles: [production-topology]
+  temporal-schema:
+    profiles: [production-topology]
+  temporal-state-init:
+    image: temporalio/temporal:1.8.3
+    user: root
+    entrypoint: [chown, temporal:temporal, /var/temporal]
+    volumes: [temporaldev:/var/temporal]
+    restart: "no"
+  temporal:
+    ports: ["127.0.0.1:17233:7233"]
+    image: temporalio/temporal:1.8.3
+    entrypoint: [temporal]
+    command: [server, start-dev, --ip, 0.0.0.0, --namespace, test, --namespace, prod, --headless, --db-filename, /var/temporal/acceptance.sqlite]
+    environment: !reset {}
+    depends_on: !override
+      temporal-state-init: {condition: service_completed_successfully}
+    volumes: !override
+      - temporaldev:/var/temporal
+    healthcheck:
+      test: [CMD, temporal, operator, cluster, health, --address, 127.0.0.1:7233]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  temporal-namespaces:
+    image: temporalio/temporal:1.8.3
+  api:
+    <<: *local-app
+    ports: !override ["127.0.0.1:14000:4000"]
+    environment:
+      APP_URL: http://localhost:13002
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen3:8b
+      SMTP_HOST: ""
+      SMTP_USER: ""
+      SMTP_PASS: ""
+  worker-test:
+    <<: *local-app
+  worker-prod:
+    <<: *local-app
+  workflow-test:
+    <<: *local-app
+  workflow-prod:
+    <<: *local-app
+  web:
+    profiles: [container-app]
+    ports: !override ["127.0.0.1:13002:80"]
+  temporal-ui:
+    ports: !override ["127.0.0.1:18082:8080"]
+  redis:
+    ports: ["127.0.0.1:16379:6379"]
+  clickhouse:
+    ports: ["127.0.0.1:18123:8123"]
+  postgres:
+    ports: ["127.0.0.1:15433:5432"]
+
+volumes:
+  temporaldev:

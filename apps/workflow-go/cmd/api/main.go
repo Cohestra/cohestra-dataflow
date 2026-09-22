@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,7 +25,7 @@ func main() {
 	}
 	defer server.Close()
 	server.StartBackground(ctx)
-	httpServer := &http.Server{Addr: ":" + server.Config.APIPort, Handler: server.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	httpServer := &http.Server{Addr: net.JoinHostPort(os.Getenv("API_HOST"), server.Config.APIPort), Handler: server.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

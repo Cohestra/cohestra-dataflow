@@ -26,3 +26,6 @@ graphify-out/
 *.tfstate*
 *.tfvars
 *.tfvars.json
+
+# Private local acceptance credentials, logs and test evidence
+/.artifacts/
