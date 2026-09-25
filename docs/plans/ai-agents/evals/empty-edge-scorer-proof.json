@@ -1,0 +1,30 @@
+{
+  "case": "gen-http-filter-s3",
+  "observed": "Granite emitted three disconnected nodes and no edges; main serialized edges:null and reported ready.",
+  "offlineChange": "Changed only API response edges:null to edges:[]; no model inference or app code changes.",
+  "scoreAfterEmptyArraySerialization": {
+    "id": "gen-http-filter-s3",
+    "category": "generation",
+    "responseStatus": "ready",
+    "schemaValid": true,
+    "structuralValid": true,
+    "activityAccuracy": 1.0,
+    "groundingAccuracy": 1.0,
+    "preservationAccuracy": null,
+    "clarificationAccuracy": null,
+    "latencyMs": 32846.24,
+    "repairCount": 0.0,
+    "passed": true
+  },
+  "meaning": "Current scorer accepts a disconnected source/filter/sink graph when edges is an array. v2 needs case-specific path/connectivity expectations, beyond fixing null serialization.",
+  "sourceCommit": "857f36f51d9d58c05b32a4d2941448b1eeebbcbd",
+  "sourceSha256": {
+    "tests/ai-evals/run.py": "c1725589d46e994ea9c0fa3110f860dc423c9e6a56e2ca206e626ba142ae2678",
+    "tests/ai-evals/cases/v1.json": "4ddbe8f79afa41f2755145a46c5d96b16cea1e97d5cf1f029471ab7a2a3a482f"
+  },
+  "actualResponseUnchanged": true,
+  "runnableCheck": "/private/tmp/cohestra-eval-20260909/granite42-8b-native-db-retry/prove_empty_edge_acceptance.py",
+  "actualReportCasePassed": false,
+  "actualReportSha256": "6a1537b7856fa5a89f59cc7042b8ed052c206047466f5362260039d6f431efc5",
+  "actualResponseJournalSha256": "db83eecfecbe18d07c00de91ad961766b59b9df6f893cd2faccd743c5501bb5c"
+}

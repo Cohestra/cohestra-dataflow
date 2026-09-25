@@ -1,0 +1,49 @@
+name: Canvas regression
+
+on:
+  pull_request:
+    paths:
+      - apps/web/**
+      - packages/shared/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/canvas-regression.yml
+  push:
+    branches: [main]
+    paths:
+      - apps/web/**
+      - packages/shared/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/canvas-regression.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canvas-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  metadata-round-trip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm -w @dataflow/shared run build
+      - name: Install browser
+        run: npx playwright install --with-deps chrome
+      - name: Check canvas metadata through browser controls
+        # Synthetic API responses only; this does not test backend execution.
+        run: npm -w @dataflow/web run test:e2e -- tests/pipeline-metadata.spec.ts --workers=1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: canvas-regression-failure
+          path: apps/web/test-results/
+          retention-days: 7
