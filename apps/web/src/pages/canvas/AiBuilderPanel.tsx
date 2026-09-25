@@ -6,7 +6,7 @@ import type { AiGenerateResult } from '../../hooks/useAiGenerate';
 // the pending proposal (mermaid preview + apply/discard/retry).
 export function AiBuilderPanel({
   showAI, setShowAI, hasNodes,
-  aiMessages, aiProposal, applyAI, discardProposal, aiLoading, runAI,
+  aiMessages, aiProposal, aiProposalStale, applyAI, discardProposal, aiLoading, runAI,
   aiPrompt, setAiPrompt, aiError, aiUndo, undoAI,
 }: {
   showAI: boolean;
@@ -14,6 +14,7 @@ export function AiBuilderPanel({
   hasNodes: boolean;
   aiMessages: Array<{ role: 'user' | 'assistant'; content: string }>;
   aiProposal: AiGenerateResult | null;
+  aiProposalStale: boolean;
   applyAI: () => void;
   discardProposal: () => void;
   aiLoading: boolean;
@@ -56,8 +57,9 @@ export function AiBuilderPanel({
                 <ul className="mt-1 list-disc space-y-1 pl-4">{aiProposal.assumptions.map((assumption, i) => <li key={i}>{assumption}</li>)}</ul>
               </div>}
               {aiProposal.warnings.map((warning, i) => <div key={i} className="text-xs text-amber-600 dark:text-amber-400">{warning}</div>)}
+              {aiProposalStale && <p id="ai-proposal-stale" className="text-xs text-amber-700 dark:text-amber-300">This proposal is based on an older draft. Retry to regenerate before applying.</p>}
               <div className="flex gap-2">
-                {aiProposal.status === 'ready' && aiProposal.definition && <button className="glass-btn-primary text-xs" onClick={applyAI}>Apply</button>}
+                {aiProposal.status === 'ready' && aiProposal.definition && <button className="glass-btn-primary text-xs disabled:opacity-40" disabled={aiProposalStale} aria-describedby={aiProposalStale ? 'ai-proposal-stale' : undefined} onClick={applyAI}>Apply</button>}
                 <button className="glass-btn-ghost text-xs" onClick={discardProposal}>Discard</button>
                 <button className="glass-btn-ghost text-xs" disabled={aiLoading || !aiPrompt.trim()} onClick={runAI}>Retry</button>
               </div>
