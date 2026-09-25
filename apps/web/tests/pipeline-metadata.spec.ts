@@ -15,7 +15,7 @@ test('canvas save, AI Apply/Undo and Mermaid edits preserve execution metadata',
     notifications: { connectionId: 'fixture-notifications', minimumSeverity: 'warning' },
     nodes: [
       { id: 'source', type: 'source', activityType: 'http.fetch', label: 'Read orders',
-        config: { url: 'https://fixture.example/orders' }, timeoutSec: 17,
+        config: { url: 'https://fixture.example/orders', headers: { Authorization: 'Bearer SECRET_HEADER_BEFORE' } }, timeoutSec: 17,
         retry: { maximumAttempts: 2 }, ingestion: { mode: 'incremental', pageSize: 25 },
         outputAssets: [asset] },
       { id: 'sink', type: 'sink', activityType: 'sink.postgres', label: 'Write orders',
@@ -39,7 +39,7 @@ test('canvas save, AI Apply/Undo and Mermaid edits preserve execution metadata',
       body = { status: 'ready', definition: {
         nodes: original.nodes.map(({ id, type, activityType, label, config }) => ({
           id, type, activityType, label: id === 'sink' ? 'Write reviewed orders' : label,
-          config: id === 'sink' ? { ...config, table: 'reviewed_orders' } : config,
+          config: id === 'sink' ? { ...config, table: 'reviewed_orders' } : { ...config, headers: { Authorization: 'Bearer SECRET_HEADER_AFTER' } },
         })), edges: original.edges,
       }, mermaid: '', questions: [], warnings: [], assumptions: [] };
     } else if (path === '/api/pipelines/p1') {
@@ -91,11 +91,31 @@ test('canvas save, AI Apply/Undo and Mermaid edits preserve execution metadata',
   await page.getByRole('button', { name: 'Refine', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Apply', exact: true })).toBeVisible();
   preserved(refinements[0].definition);
+  const review = page.getByRole('region', { name: 'Review changes' });
+  await expect(review).toBeVisible();
+  const sinkReview = review.locator('summary').filter({ hasText: 'Node sink' });
+  await sinkReview.focus();
+  await page.keyboard.press('Enter');
+  await expect(review.getByText('Changed: config.table', { exact: true })).toBeVisible();
+  await expect(review.getByText('Before: orders', { exact: true })).toBeVisible();
+  await expect(review.getByText('After: reviewed_orders', { exact: true })).toBeVisible();
+  const sourceReview = review.locator('summary').filter({ hasText: 'Node source' });
+  await sourceReview.focus();
+  await page.keyboard.press('Enter');
+  await expect(review.getByText('Changed: config.headers', { exact: true })).toBeVisible();
+  await expect(review.getByText('Before: Hidden', { exact: true })).toBeVisible();
+  await expect(review.getByText('After: Hidden', { exact: true })).toBeVisible();
+  expect(await review.textContent()).not.toMatch(/SECRET_HEADER_|Authorization|Bearer/);
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Write orders' })).toBeVisible();
+  await expect(page.locator('.react-flow__node').filter({ hasText: 'Write reviewed orders' })).toHaveCount(0);
+  expect(saves).toHaveLength(1); // Reading the proposal does not save or apply it.
   await page.getByLabel('Pipeline name').fill('Newer draft');
   await expect(page.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
   await expect(page.getByText('This proposal is based on an older draft. Retry to regenerate before applying.')).toBeVisible();
   await page.getByLabel('Pipeline name').fill('Renamed metadata pipeline');
-  await page.getByRole('button', { name: 'Apply', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('AI pipeline request')).toBeFocused();
   const applied = await save();
   expect(applied.name).toBe('Renamed metadata pipeline');
   expect(applied.nodes.find((node: any) => node.id === 'sink').config.table).toBe('reviewed_orders');
@@ -104,6 +124,16 @@ test('canvas save, AI Apply/Undo and Mermaid edits preserve execution metadata',
   expect(undone.name).toBe('Renamed metadata pipeline');
   expect(undone.nodes).toMatchObject(original.nodes);
 
+  // Discarding a second preview leaves the restored draft unchanged.
+  await page.getByLabel('AI pipeline request').fill('Review another proposal');
+  await page.getByRole('button', { name: 'Refine', exact: true }).click();
+  await expect(review).toBeVisible();
+  await page.getByRole('button', { name: 'Discard', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(review).toHaveCount(0);
+  await expect(page.getByLabel('AI pipeline request')).toBeFocused();
+  const discarded = await save();
+  expect(discarded.nodes).toMatchObject(original.nodes);
   await page.getByLabel('Close AI panel').click();
   await page.getByRole('button', { name: /Mermaid/i }).click();
   const editor = page.getByLabel('Mermaid diagram source');
