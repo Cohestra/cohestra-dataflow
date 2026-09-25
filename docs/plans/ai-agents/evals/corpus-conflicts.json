@@ -1,0 +1,93 @@
+{
+  "applicationCommit": "857f36f51d9d58c05b32a4d2941448b1eeebbcbd",
+  "suiteVersion": "1.0.0",
+  "conflictingCases": 5,
+  "conflictingNodes": 6,
+  "proof": [
+    {
+      "case": "refine-insert-dedupe",
+      "missingRequiredConnection": [
+        {
+          "node": "sink",
+          "activityType": "sink.s3"
+        }
+      ],
+      "preservationScoreAfterOnlyAddingRequiredIds": 0.8888888888888888,
+      "preservationOnlyCasePassed": false,
+      "outgoingRequestUnmodified": true
+    },
+    {
+      "case": "refine-change-filter",
+      "missingRequiredConnection": [
+        {
+          "node": "sink",
+          "activityType": "sink.s3"
+        }
+      ],
+      "preservationScoreAfterOnlyAddingRequiredIds": 0.8571428571428571,
+      "preservationOnlyCasePassed": false,
+      "outgoingRequestUnmodified": true
+    },
+    {
+      "case": "refine-change-s3-key",
+      "missingRequiredConnection": [
+        {
+          "node": "source",
+          "activityType": "postgres.fetch"
+        }
+      ],
+      "preservationScoreAfterOnlyAddingRequiredIds": 0.75,
+      "preservationOnlyCasePassed": false,
+      "outgoingRequestUnmodified": true
+    },
+    {
+      "case": "refine-add-select",
+      "missingRequiredConnection": [
+        {
+          "node": "source",
+          "activityType": "mysql.fetch"
+        },
+        {
+          "node": "sink",
+          "activityType": "sink.snowflake"
+        }
+      ],
+      "preservationScoreAfterOnlyAddingRequiredIds": 0.6666666666666666,
+      "preservationOnlyCasePassed": false,
+      "outgoingRequestUnmodified": true
+    },
+    {
+      "case": "refine-preserve-branch",
+      "missingRequiredConnection": [
+        {
+          "node": "store",
+          "activityType": "sink.s3"
+        }
+      ],
+      "preservationScoreAfterOnlyAddingRequiredIds": 0.9,
+      "preservationOnlyCasePassed": false,
+      "outgoingRequestUnmodified": true
+    }
+  ],
+  "liveRequestProof": {
+    "case": "refine-insert-dedupe",
+    "actualOllamaModel": "qwen3:8b",
+    "actualRefineSeedSinkConfig": {
+      "bucket": "eval-data",
+      "format": "json",
+      "key": "posts.json"
+    }
+  },
+  "expectedConfigCollisions": [
+    {
+      "case": "gen-postgres-snowflake",
+      "activityType": "sink.snowflake",
+      "key": "mode",
+      "expected": "upsert",
+      "problem": "expected key forbidden by main AI grounding"
+    }
+  ],
+  "allCasesStaticallyAudited": 31,
+  "interpretation": "Every v1 refinement case preserves a connector config lacking its mandatory connectionId. The original call_api sends that input unchanged. Adding the ID lowers exact-equality preservation; omitting it fails main grounding. No model can pass all five under these contracts.",
+  "scope": "Offline request preparation and scorer checks plus one captured real model request; this proof does not execute model inference or modify the established suite."
+}

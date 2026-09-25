@@ -5,7 +5,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/pages/runGraph.test.ts && ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/components/analytics/analytics.test.ts && ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/utils/pipelineConvert.test.ts && ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/api.test.ts",
+    "test": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/pages/runGraph.test.ts && ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/components/analytics/analytics.test.ts && ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/utils/pipelineConvert.test.ts && ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/utils/pipelineProposal.test.ts && ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/api.test.ts",
     "test:e2e": "playwright test",
     "test:deployed": "playwright test -c playwright.deployed.config.ts"
   },
