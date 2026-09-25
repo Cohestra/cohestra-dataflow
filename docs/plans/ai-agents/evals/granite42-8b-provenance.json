@@ -82,5 +82,12 @@
         }
       ]
     }
+  },
+  "host": {
+    "memoryGiB": 18,
+    "memoryKind": "unified/system",
+    "availableDiskGiB": 64,
+    "ollamaVersion": "0.30.10",
+    "note": "Shared developer host; concurrent services were running, so latency is not production-representative."
   }
 }

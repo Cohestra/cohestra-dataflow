@@ -1,7 +1,7 @@
 # AI agents and mixed data pipelines: planning stack
 
-Status: architecture direction approved by the user on 2026-09-14; detailed HLD/LLD
-added to the existing planning stack. Reconstructed and revalidated against
+Status: architecture direction accepted in maintainer review of #38–#40 on
+2026-09-14; detailed HLD/LLD added to the existing planning stack. Reconstructed and revalidated against
 main `857f36f51d9d58c05b32a4d2941448b1eeebbcbd` on 2026-09-09 UTC.
 This stack contains documentation only. Existing application code and production
 model defaults are unchanged. HLD/LLD contracts guide the separate implementation PRs.
@@ -14,7 +14,7 @@ model defaults are unchanged. HLD/LLD contracts guide the separate implementatio
 | 2 — Backend architecture | codex/plan-agent-backend / codex/plan-product-gaps | BACKEND_ARCHITECTURE.md, ARCHITECTURE_HLD.md, BACKEND_LLD.md; B1–B5 implementation sequence |
 | 3 — Frontend architecture | codex/plan-agent-frontend / codex/plan-agent-backend | FRONTEND_ARCHITECTURE.md, FRONTEND_LLD.md; F1–F5 implementation sequence |
 
-Published draft PRs: [#38](https://github.com/Cohestra/cohestra-dataflow/pull/38),
+Stack PRs: [#38](https://github.com/Cohestra/cohestra-dataflow/pull/38),
 [#39](https://github.com/Cohestra/cohestra-dataflow/pull/39), and
 [#40](https://github.com/Cohestra/cohestra-dataflow/pull/40).
 
@@ -37,7 +37,7 @@ No candidate is production-promoted from marketing benchmarks or a small smoke r
 
 ## Deferred options
 
-The user explicitly deferred LangGraph on 2026-09-14. Native Go + Temporal is
+Maintainer review deferred LangGraph on 2026-09-14. Native Go + Temporal is
 sufficient for the core release; there is no required LangGraph phase or dependency.
 
 | Option | Revisit only when | Required proof if selected |

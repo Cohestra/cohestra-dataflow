@@ -1,13 +1,16 @@
 # Ollama model assessment and evaluation record
 
 Status: investigation; no production model promotion or default change.
-Research date: 2026-09-09 UTC; Notion and primary candidate registry rechecked 2026-09-14.
+Research date: 2026-09-09 UTC; internal project notes and primary candidate registry rechecked 2026-09-14.
 Application baseline: `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`.
+
+Evidence files and the claim each one supports are indexed in
+[evals/README.md](evals/README.md).
 
 ## Latest recorded Dataflow accuracy
 
-The latest relevant Notion page found was **DataFlow AI Pipeline Builder —
-M0–M4 & Ollama Bake-off**, last edited 2026-08-12. Its retained full-suite
+The latest relevant internal project record found was the M0–M4 AI pipeline
+builder and Ollama bake-off summary, last edited 2026-08-12. Its retained full-suite
 measurements are dated August 7, against main `f4a4d824...` on an NVIDIA L4.
 A separate search for few-shot results returned that same page, not a newer
 completed experiment. This is the latest evidence located, not proof that no
@@ -40,7 +43,7 @@ Artifact sizes exclude runtime, KV cache, the application and operating system.
 | granite4.2:8b | 5.3 GB | Newly listed text model with tools/structured JSON support; primary new local challenger at roughly the existing 8B footprint. |
 | qwen3.5:9b | 6.6 GB | Practical second local challenger; compare with qwen3 using the same context and thinking controls. |
 | gemma4:12b | 7.6 GB | Conditional local candidate; validate runtime/template support and memory pressure before a sustained run. |
-| qwen3.6:27b / 35b | 18 / 23 GB | Exceeds practical headroom on this 18 GiB host. Separate larger-memory machine required for representative testing. |
+| qwen3.6:27b / 35b | 18 / 23 GB | Exceeds practical memory headroom on the evaluation host (see provenance). Separate larger-memory machine required for representative testing. |
 | qwen3:8b | Installed, digest prefix 500a1f067a9f | Current local comparison baseline, not a promoted production model. |
 
 As of this check the official Qwen3.6 library lists 27B/35B, not a 9B tag;
@@ -57,8 +60,8 @@ Sources: [Granite registry](https://ollama.com/library/granite4.2),
 
 ## Local protocol
 
-Host inventory: 18 GiB unified/system memory, approximately 64 GiB available disk,
-Ollama 0.30.10. Existing developer services remain running; memory pressure and
+The evaluation host inventory (memory, free disk, Ollama version) is recorded in
+each run's provenance file. Existing developer services remained running; memory pressure and
 concurrent workloads therefore limit production latency conclusions. Native
 Ollama, one request/model at a time; no new cloud instances or paid inference.
 
