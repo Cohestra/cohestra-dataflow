@@ -10,6 +10,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +97,7 @@ def schema_valid(response: dict[str, Any], catalog: dict[str, Any]) -> bool:
     )
 
 
-def structural_valid(response: dict[str, Any], expected: dict[str, Any]) -> bool | None:
+def structural_valid(response: dict[str, Any], expected: dict[str, Any], diagnostics: dict[str, Any] | None = None) -> bool | None:
     definition = response.get("definition")
     if not isinstance(definition, dict):
         return None
@@ -138,6 +139,25 @@ def structural_valid(response: dict[str, Any], expected: dict[str, Any]) -> bool
         return False
     if max_in_degree < graph.get("minInDegree", 0):
         return False
+    nodes_by_id = {node["id"]: node for node in nodes}
+    for path_index, path in enumerate(graph.get("requiredPaths", [])):
+        candidates = {node["id"] for node in nodes if subset(path[0], node)}
+        failed_hop = None if candidates else 0
+        for hop, selector in enumerate(path[1:], start=1):
+            if failed_hop is not None:
+                break
+            candidates = {
+                target for source in candidates for target in outgoing[source]
+                if subset(selector, nodes_by_id[target])
+            }
+            if not candidates:
+                failed_hop = hop
+        if failed_hop is not None:
+            if diagnostics is not None:
+                # hop 0: no node matches the first selector; hop N: no direct edge
+                # reaches a node matching selector N from the previous matches.
+                diagnostics["requiredPathFailure"] = {"path": path_index, "hop": failed_hop, "selector": path[failed_hop]}
+            return False
     conditional = sum(bool(edge.get("condition")) for edge in edges if isinstance(edge, dict))
     return conditional >= graph.get("minConditionalEdges", 0)
 
@@ -250,12 +270,13 @@ def nested_number(value: dict[str, Any], paths: list[tuple[str, ...]]) -> float 
 
 def score_case(case: dict[str, Any], response: dict[str, Any], latency_ms: float, catalog: dict[str, Any]) -> dict[str, Any]:
     expected = case.get("expect", {})
+    diagnostics: dict[str, Any] = {}
     result = {
         "id": case["id"],
         "category": case["category"],
         "responseStatus": response_status(response),
         "schemaValid": schema_valid(response, catalog),
-        "structuralValid": structural_valid(response, expected),
+        "structuralValid": structural_valid(response, expected, diagnostics),
         "activityAccuracy": activities_score(response, expected, catalog),
         "groundingAccuracy": grounding_score(response, expected, catalog),
         "preservationAccuracy": preservation_score(case, response),
@@ -271,6 +292,7 @@ def score_case(case: dict[str, Any], response: dict[str, Any], latency_ms: float
         if isinstance(value, (bool, int, float))
     ]
     result["passed"] = bool(scored) and all(float(value) == 1.0 for value in scored)
+    result.update(diagnostics)
     return result
 
 
@@ -320,6 +342,28 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
     return summary
 
 
+def validate_required_paths(paths: Any, activities: dict[str, str]) -> None:
+    if not isinstance(paths, list) or not paths:
+        raise ValueError("graph.requiredPaths must be a non-empty array")
+    for path in paths:
+        if not isinstance(path, list) or len(path) < 2:
+            raise ValueError("each required path must contain at least two node selectors")
+        for selector in path:
+            if (
+                not isinstance(selector, dict)
+                or set(selector) - {"id", "activityType", "config"}
+                or not {"id", "activityType"}.intersection(selector)
+            ):
+                raise ValueError("path selectors require id or activityType, with optional config")
+            for key in ("id", "activityType"):
+                if key in selector and (not isinstance(selector[key], str) or not selector[key].strip()):
+                    raise ValueError(f"path selector {key} must be a non-empty string")
+            if "activityType" in selector and selector["activityType"] not in activities:
+                raise ValueError("path selector activityType must exist in the catalog")
+            if "config" in selector and not isinstance(selector["config"], dict):
+                raise ValueError("path selector config must be an object")
+
+
 def load_suite(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as source:
         suite = json.load(source)
@@ -361,6 +405,12 @@ def load_suite(path: Path) -> dict[str, Any]:
         unknown_fixtures = set(case.get("connectorFixtures", [])) - set(fixture_names)
         if unknown_fixtures:
             raise ValueError(f"{case['id']}: unknown connector fixtures {sorted(unknown_fixtures)}")
+        graph = case.get("expect", {}).get("graph")
+        if isinstance(graph, dict) and "requiredPaths" in graph:
+            try:
+                validate_required_paths(graph["requiredPaths"], activities)
+            except ValueError as error:
+                raise ValueError(f"{case['id']}: {error}") from error
     return suite
 
 
@@ -416,6 +466,77 @@ def self_test(suite: dict[str, Any]) -> list[dict[str, Any]]:
     )
     if hallucinated["schemaValid"] or hallucinated["groundingAccuracy"] != 0 or hallucinated["passed"]:
         raise AssertionError(f"hallucination self-test was accepted: {hallucinated}")
+    path_case = deepcopy(cases[0])
+    path_case["expect"]["graph"] = {"requiredPaths": [[
+        {"activityType": "http.fetch"},
+        {"activityType": "transform.filter"},
+        {"activityType": "sink.s3", "config": {"bucket": "eval-bucket"}},
+    ]]}
+    connected = deepcopy(base_definition)
+    connected["nodes"].insert(1, {
+        "id": "filter", "type": "transform", "activityType": "transform.filter", "config": {},
+    })
+    connected["edges"] = [
+        {"source": "source", "target": "filter"}, {"source": "filter", "target": "sink"},
+    ]
+    disconnected = {**connected, "edges": []}
+    split = deepcopy(connected)
+    split["nodes"].append({**connected["nodes"][1], "id": "other-filter"})
+    split["edges"][1]["source"] = "other-filter"
+    independent = deepcopy(connected)
+    independent["nodes"].extend([
+        {**base_definition["nodes"][0], "id": "other-source"},
+        {**base_definition["nodes"][1], "id": "other-sink"},
+    ])
+    independent["edges"].append({"source": "other-source", "target": "other-sink"})
+    branches_case = deepcopy(path_case)
+    branches_case["expect"]["graph"]["requiredPaths"].append([
+        {"id": "other-source"}, {"id": "other-sink"},
+    ])
+    wrong_config = deepcopy(path_case)
+    wrong_config["expect"]["graph"]["requiredPaths"][0][-1]["config"]["bucket"] = "another-bucket"
+    wrong_identity = deepcopy(path_case)
+    wrong_identity["expect"]["graph"]["requiredPaths"][0][0]["id"] = "sink"
+    for label, case, definition, passed in [
+        ("connected chain", path_case, connected, True),
+        ("disconnected chain", path_case, disconnected, False),
+        ("legacy disconnected graph", cases[0], disconnected, True),
+        ("split chain with matching activities", path_case, split, False),
+        ("direct hops required", path_case, base_definition, False),
+        ("undeclared independent branch", path_case, independent, True),
+        ("declared independent branches", branches_case, independent, True),
+        ("missing declared branch", branches_case, connected, False),
+        ("selector config mismatch", wrong_config, connected, False),
+        ("selector fields match the same node", wrong_identity, connected, False),
+    ]:
+        paths = case["expect"].get("graph", {}).get("requiredPaths")
+        if paths is not None:
+            validate_required_paths(paths, activity_node_types(catalog))
+        result = score_case(case, {"definition": definition}, 1.0, catalog)
+        if result["passed"] != passed or result["structuralValid"] != passed:
+            raise AssertionError(f"{label} self-test failed: {result}")
+    split_result = score_case(path_case, {"definition": split}, 1.0, catalog)
+    if split_result.get("requiredPathFailure") != {"path": 0, "hop": 2, "selector": path_case["expect"]["graph"]["requiredPaths"][0][2]}:
+        raise AssertionError(f"required-path diagnostic names the wrong hop: {split_result}")
+    identity_result = score_case(wrong_identity, {"definition": connected}, 1.0, catalog)
+    if identity_result.get("requiredPathFailure", {}).get("hop") != 0:
+        raise AssertionError(f"required-path diagnostic misses a first-selector failure: {identity_result}")
+    if "requiredPathFailure" in score_case(path_case, {"definition": connected}, 1.0, catalog):
+        raise AssertionError("passing required paths must not report a failure")
+    for paths in [None, [], {}, [[]], [[{"id": "source"}]], [["source", "sink"]],
+                  [[{}, {"id": "sink"}]], [[{"id": ""}, {"id": "sink"}]],
+                  [[{"activityType": "sink.teleport"}, {"id": "sink"}]],
+                  [[{"id": "source", "config": []}, {"id": "sink"}]],
+                  [[{"id": "source", "unknown": True}, {"id": "sink"}]]]:
+        invalid_suite = deepcopy(suite)
+        invalid_suite["cases"][0]["expect"]["graph"] = {"requiredPaths": paths}
+        with patch.object(Path, "open", return_value=BytesIO(json.dumps(invalid_suite).encode())):
+            try:
+                load_suite(DEFAULT_CASES)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"invalid required paths were accepted: {paths}")
     with patch("urllib.request.urlopen", return_value=BytesIO(b"not-json")):
         try:
             call_api("http://example.test", None, {"endpoint": "/ai", "request": {}}, 1)
