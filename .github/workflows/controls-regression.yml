@@ -47,6 +47,12 @@ jobs:
           REQUIRED_TESTS: >-
             TestAgentAdmissionRejectsStoredDefinitionsBeforeWrites
             TestAgentAdmissionRejectsBeforeAnyActivity
+            TestControlAPITransactionsPermissionsAndTerminality
+            TestControlDispatcherRecoveryAndRevisionCAS
+            TestControlDispatcherStopsOnMissingWorkflow
+            TestControlActivityAdmissionAndFinalization
+            TestControlFirstResumeWakesLegacyHistory
+            TestControlWatcherSurvivesTransientReadFailure
         run: |
           set -o pipefail
           for tags in "" ee; do

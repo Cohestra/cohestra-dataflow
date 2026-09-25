@@ -13,6 +13,7 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 type controlTestState struct {
@@ -231,5 +232,52 @@ func TestControlPollingRecoversMissingWakeup(t *testing.T) {
 	env.ExecuteWorkflow(DynamicDAGWorkflow, controlInput([]model.Node{{ID: "work", Type: "transform"}}))
 	if result := controlResult(t, env); result.Phase != "completed" || effects.Load() != 1 {
 		t.Fatalf("poll recovery result=%+v effects=%d", result, effects.Load())
+	}
+}
+
+func TestControlWatcherSurvivesTransientReadFailure(t *testing.T) {
+	for _, legacy := range []bool{false, true} {
+		name := "current"
+		if legacy {
+			name = "legacy_history"
+		}
+		t.Run(name, func(t *testing.T) {
+			env, state := controlEnvironment(t)
+			if legacy {
+				env.OnGetVersion("control-watch-nonfatal-refresh-v1", workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
+			}
+			state.set("paused", 1)
+			var outage atomic.Bool
+			var failedReads, effects atomic.Int32
+			env.RegisterActivityWithOptions(func(context.Context, model.ExecutionControlRef) (model.ExecutionControl, error) {
+				if outage.Load() {
+					failedReads.Add(1)
+					return model.ExecutionControl{}, errors.New("synthetic database outage")
+				}
+				return state.get(), nil
+			}, activity.RegisterOptions{Name: "readExecutionControl", DisableAlreadyRegisteredCheck: true})
+			env.RegisterActivityWithOptions(func(context.Context, map[string]interface{}) (model.NodeResult, error) {
+				effects.Add(1)
+				return model.NodeResult{NodeID: "work", Status: "success"}, nil
+			}, activity.RegisterOptions{Name: "dispatchNode"})
+			env.RegisterDelayedCallback(func() { outage.Store(true) }, 10*time.Second)
+			env.RegisterDelayedCallback(func() {
+				outage.Store(false)
+				state.set("active", 2) // no signal: the next watcher poll must recover
+			}, 3*time.Minute)
+			env.ExecuteWorkflow(DynamicDAGWorkflow, controlInput([]model.Node{{ID: "work", Type: "transform"}}))
+			if failedReads.Load() == 0 {
+				t.Fatal("outage window did not cover a watcher read")
+			}
+			if legacy {
+				if env.GetWorkflowError() == nil || effects.Load() != 0 {
+					t.Fatalf("legacy history must keep failing on read errors: error=%v effects=%d", env.GetWorkflowError(), effects.Load())
+				}
+				return
+			}
+			if result := controlResult(t, env); result.Phase != "completed" || effects.Load() != 1 {
+				t.Fatalf("transient read failure ended the run: result=%+v effects=%d", result, effects.Load())
+			}
+		})
 	}
 }
