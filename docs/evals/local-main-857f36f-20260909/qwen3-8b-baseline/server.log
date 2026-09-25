@@ -1,0 +1,4 @@
+=== RUN   TestEvalHTTPHarness
+    eval_harness_test.go:74: isolated exact-main AI handlers, model=qwen3:8b, seeded=12
+--- PASS: TestEvalHTTPHarness (1076.40s)
+PASS

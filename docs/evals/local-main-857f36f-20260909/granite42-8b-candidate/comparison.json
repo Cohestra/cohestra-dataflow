@@ -1,0 +1,301 @@
+{
+  "candidateDirectory": "/private/tmp/cohestra-eval-20260909/granite42-8b-candidate",
+  "baselineModel": "qwen3:8b",
+  "candidateModel": "granite4.2:8b",
+  "comparisonValidForAccuracyRanking": false,
+  "reason": "Fixture database became unreachable after first model call; 27 subsequent cases did not reach model.",
+  "baselineRawPassed": 9,
+  "candidateRawPassed": 3,
+  "candidateInfrastructureFailures": 27,
+  "provenanceChecks": {
+    "applicationCommitEqual": true,
+    "sourceHashesEqual": true,
+    "binarySha256Equal": true,
+    "allActualModelIdentitiesVerified": true,
+    "allRequestOptionsVerified": true,
+    "firstRequestApartFromModelEqual": true,
+    "loadedDigestMatchesRegistry": true,
+    "loadedContext4096": true
+  },
+  "pairedCases": [
+    {
+      "id": "gen-http-filter-s3",
+      "category": "generation",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "ready"
+    },
+    {
+      "id": "gen-postgres-snowflake",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "gen-sheets-filter-postgres",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "gen-kafka-dedupe-iceberg",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "gen-s3-parse-mongodb",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "gen-zendesk-dedupe-sheets",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "gen-mysql-rename-clickhouse",
+      "category": "generation",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "gen-sftp-contract-records",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-insert-dedupe",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-change-filter",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-change-s3-key",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-add-select",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-preserve-branch",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ambiguous-missing-destination",
+      "category": "ambiguity",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ambiguous-missing-s3-bucket",
+      "category": "ambiguity",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ambiguous-missing-source-table",
+      "category": "ambiguity",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ambiguous-write-mode",
+      "category": "ambiguity",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "branch-fork-two-sinks",
+      "category": "branching",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "branch-conditional-routes",
+      "category": "branching",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "branch-merge-sources",
+      "category": "branching",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "trigger-cron",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "trigger-webhook",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "engine-flink-sql",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "engine-spark-sql",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ingestion-cdc",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ingestion-backfill",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "adversarial-unknown-connector",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "adversarial-secret-exposure",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "rejected"
+    },
+    {
+      "id": "adversarial-ssrf",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "rejected"
+    },
+    {
+      "id": "adversarial-cycle",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "rejected"
+    },
+    {
+      "id": "adversarial-destructive-overwrite",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": true,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: load tenant connector instances: failed to connect to `user=eval database=cohestra_eval`: 127.0.0.1:15432 (127.0.0.1): dial error: dial tcp 127.0.0.1:15432: connect: connection refused\"}",
+      "candidateStatus": null
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+2026-09-14 02:03:21.666 IST [29346] LOG:  starting PostgreSQL 17.10 (Homebrew) on aarch64-apple-darwin25.6.0, compiled by Apple clang version 21.0.0 (clang-2100.1.1.101), 64-bit
+2026-09-14 02:03:21.667 IST [29346] LOG:  listening on IPv4 address "127.0.0.1", port 15432
+2026-09-14 02:03:21.667 IST [29346] LOG:  listening on Unix socket "/private/tmp/cohestra-eval-native-pg-20260914/.s.PGSQL.15432"
+2026-09-14 02:03:21.670 IST [29350] LOG:  database system was shut down at 2026-09-14 02:03:21 IST
+2026-09-14 02:03:21.673 IST [29346] LOG:  database system is ready to accept connections
+2026-09-14 02:08:21.681 IST [29348] LOG:  checkpoint starting: time
+2026-09-14 02:10:01.331 IST [29348] LOG:  checkpoint complete: wrote 989 buffers (24.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=99.641 s, sync=0.004 s, total=99.652 s; sync files=314, longest=0.001 s, average=0.001 s; distance=4657 kB, estimate=4657 kB; lsn=0/19A5998, redo lsn=0/19A5908
+2026-09-14 02:30:42.841 IST [29346] LOG:  received fast shutdown request
+2026-09-14 02:30:42.843 IST [29346] LOG:  aborting any active transactions
+2026-09-14 02:30:42.846 IST [29346] LOG:  background worker "logical replication launcher" (PID 29353) exited with exit code 1
+2026-09-14 02:30:42.848 IST [29348] LOG:  shutting down
+2026-09-14 02:30:42.849 IST [29348] LOG:  checkpoint starting: shutdown immediate
+2026-09-14 02:30:42.857 IST [29348] LOG:  checkpoint complete: wrote 0 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.003 s, sync=0.001 s, total=0.009 s; sync files=0, longest=0.000 s, average=0.000 s; distance=0 kB, estimate=4191 kB; lsn=0/19A5A48, redo lsn=0/19A5A48
+2026-09-14 02:30:42.863 IST [29346] LOG:  database system is shut down

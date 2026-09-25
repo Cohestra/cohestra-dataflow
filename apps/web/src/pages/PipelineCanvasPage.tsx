@@ -454,7 +454,10 @@ export default function PipelineCanvasPage() {
 
   const selectRun = async (row: any) => {
     setSelectedRun(row); setBottomTab('logs'); setRunDetail(null);
-    try { setRunDetail(await api.getExecution(row.id)); }
+    try {
+      setRunDetail(await api.getExecution(row.id));
+      setExecutionId(row.id);
+    }
     catch (e: any) { setRunDetail({ error: e.message }); }
   };
 
@@ -491,7 +494,7 @@ export default function PipelineCanvasPage() {
   const selectedNode = selected ? (nodes.find(n => n.id === selected.id) ?? selected) : null;
 
   return (
-    <div ref={canvasRef} className="flex h-screen overflow-hidden bg-[#f5f5f5] dark:bg-[#0d0f17]">
+    <div ref={canvasRef} className="flex h-screen overflow-hidden bg-[#f5f5f5] pt-28 sm:pt-0 dark:bg-[#0d0f17]">
       {/* ── Canvas area (flex-1, shrinks when AI panel opens) ── */}
       <div className="relative flex-1 min-w-0 overflow-hidden">
         <PipelineFlowCanvas
@@ -529,6 +532,7 @@ export default function PipelineCanvasPage() {
           inviteMsg={inviteMsg} inviteMember={inviteMember}
         />
 
+        <div className="contents max-sm:fixed max-sm:inset-x-0 max-sm:top-0 max-sm:z-30 max-sm:block max-sm:h-28 max-sm:bg-[#f5f5f5] max-sm:dark:bg-[#0d0f17] max-sm:[&>div:nth-child(2)]:top-16">
         <PipelineHeaderBar
           leftOffset={workspacePanel || activeCat ? 400 : 90}
           name={name} setName={setName}
@@ -544,6 +548,7 @@ export default function PipelineCanvasPage() {
           execution={execution} setExecution={setExecution} features={features}
           savedRowId={savedRowId} save={save} activate={activate} run={run}
         />
+        </div>
       </div>{/* end canvas area */}
 
       <AiBuilderPanel
@@ -569,7 +574,12 @@ export default function PipelineCanvasPage() {
       {executionId && (
         <div className={`absolute left-1/2 z-20 -translate-x-1/2 ${drawerOpen ? '' : MOBILE_RAIL_CLEARANCE}`}
           style={drawerOpen ? { bottom: executionOffset } : undefined}>
-          <ExecutionMonitor executionId={executionId} onNodeStatus={onNodeStatus} />
+          <ExecutionMonitor key={executionId} executionId={executionId} onNodeStatus={onNodeStatus}
+            onPhase={phase => {
+              if (['completed', 'failed', 'cancelled'].includes(phase)) {
+                setMsg(current => current === 'Running…' ? `Run ${phase}` : current);
+              }
+            }} />
         </div>
       )}
 

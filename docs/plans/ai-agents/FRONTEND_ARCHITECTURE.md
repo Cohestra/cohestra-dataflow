@@ -92,7 +92,7 @@ All endpoints below are proposals, not existing callable APIs. B1 locks public t
 | Model profiles | `GET /api/agent-models` | Configured id/provider/tag/resolvedDigest/status/capabilities/contextLimit/priceKnown, timestamped health and optional task evaluation evidence. Operator configuration is authority; browser never contacts Ollama directly. |
 | Tools | `/api/agent-tools` | Versioned schemas/destination metadata, connection references, classification and permission/approval policy. Existing `/api/connectors` continues credential management. |
 | Child runs | `/api/executions/{id}/agent-runs`, `/api/agent-runs/{id}` | Parent execution/node, pinned definition/model, phase/stop reason, times, output refs, pending approvals and allowed actions. |
-| Steps/usage | `/api/agent-runs/{id}/steps`, `/api/agent-runs/{id}/usage` | Stable IDs/order, pagination, attempts/outcomes, redacted bounded previews, tokens, known/estimated/unavailable money, consumed/reserved amounts and limits. |
+| Steps/usage | `/api/agent-runs/{id}/steps`, `/api/agent-runs/{id}/usage` | Stable IDs/order, pagination, attempts/outcomes, redacted bounded previews, token counts; monetary estimates that may be unavailable, consumed/reserved amounts and limits. |
 | Approvals | `/api/approvals`, `/api/approvals/{id}/decision` | Tenant-filtered requests, state/version, call/argument hash, expiry/actor, allowed decisions. Submit requestId, expectedVersion and approve/reject decision. Separate recorded decision from application status; detail-read shape finalized in B4. |
 | Audit/lineage | Extend execution/lineage projections; audit read endpoint finalized in B5 | Correlation IDs, actor/action/outcome, sanitized metadata and typed declared/observed relationships. |
 

@@ -64,6 +64,11 @@ func TestOllamaJSONSendsSchemaAndDeterministicOptions(t *testing.T) {
 	if nodeProperties["ingestion"] == nil || nodeProperties["id"].(map[string]interface{})["pattern"] != "^[A-Za-z][A-Za-z0-9_-]*$" {
 		t.Fatalf("node schema omitted ingestion or safe existing IDs: %#v", nodeProperties)
 	}
+	ingestionProperties := nodeProperties["ingestion"].(map[string]interface{})["properties"].(map[string]interface{})
+	modes, err := json.Marshal(ingestionProperties["mode"].(map[string]interface{})["enum"])
+	if err != nil || string(modes) != `["incremental","backfill","realtime"]` {
+		t.Fatalf("AI ingestion modes must match the shared pipeline contract: %s (%v)", modes, err)
+	}
 	if (*requests)[0].Options["temperature"] != float64(0) || (*requests)[0].Options["seed"] != float64(42) || (*requests)[0].Options["num_ctx"] != float64(4096) {
 		t.Fatalf("options = %#v", (*requests)[0].Options)
 	}
@@ -74,10 +79,10 @@ func TestOllamaJSONSendsSchemaAndDeterministicOptions(t *testing.T) {
 
 func TestBuildPipelinePreservesExecutionIngestionAndExistingID(t *testing.T) {
 	response := `{
-		"status":"ready","reason":"","suggestedName":"CDC","questions":[],"assumptions":[],"warnings":[],
+		"status":"ready","reason":"","suggestedName":"Incremental orders","questions":[],"assumptions":[],"warnings":[],
 		"trigger":{"type":"manual"},"execution":{"engine":"workflow"},
 		"nodes":[
-			{"id":"nN-1234","label":"Orders API","activityType":"http.fetch","config":{"url":"https://example.test/orders"},"ingestion":{"mode":"cdc","stateKey":"orders-cdc"}},
+			{"id":"nN-1234","label":"Orders API","activityType":"http.fetch","config":{"url":"https://example.test/orders"},"ingestion":{"mode":"incremental","stateKey":"orders-cursor"}},
 			{"id":"sink_1","label":"Store","activityType":"sink.records","config":{"collection":"orders"}}
 		],"edges":[{"source":"nN-1234","target":"sink_1"}]
 	}`
@@ -85,7 +90,7 @@ func TestBuildPipelinePreservesExecutionIngestionAndExistingID(t *testing.T) {
 	defer server.Close()
 	t.Setenv("OLLAMA_URL", server.URL)
 
-	result, err := (&Server{HTTP: server.Client()}).buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "Preserve my CDC pipeline")
+	result, err := (&Server{HTTP: server.Client()}).buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "Preserve my incremental pipeline")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +99,7 @@ func TestBuildPipelinePreservesExecutionIngestionAndExistingID(t *testing.T) {
 		t.Fatalf("execution = %#v", definition["execution"])
 	}
 	nodes := definition["nodes"].([]model.Node)
-	if nodes[0].ID != "nN-1234" || nodes[0].Ingestion == nil || nodes[0].Ingestion.Mode != "cdc" || nodes[0].Ingestion.StateKey != "orders-cdc" {
+	if nodes[0].ID != "nN-1234" || nodes[0].Ingestion == nil || nodes[0].Ingestion.Mode != "incremental" || nodes[0].Ingestion.StateKey != "orders-cursor" {
 		t.Fatalf("nodes = %#v", nodes)
 	}
 }
