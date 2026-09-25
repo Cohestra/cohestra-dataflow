@@ -43,6 +43,16 @@ export function normalizeAiGenerateResult(response: any): AiGenerateResult {
   };
 }
 
+// api.ts errors are "<status> <body>". Users get recovery copy, not transport text.
+export function aiErrorMessage(error: unknown): string {
+  const [, status, body] = String((error as Error)?.message ?? '').match(/^(\d{3}) ([\s\S]*)$/) ?? [];
+  if (status === '422') return 'The AI could not produce a valid proposal for this request. Your pipeline is unchanged. Rephrase the request and retry, or edit the node settings directly.';
+  if (status === '400') {
+    try { const detail = JSON.parse(body).error; if (typeof detail === 'string' && detail) return `Request not accepted: ${detail}.`; } catch { /* fall through */ }
+  }
+  return 'The AI builder is unavailable right now. Your pipeline is unchanged. Try again shortly or edit the node settings directly.';
+}
+
 export function useAiGenerate() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +61,7 @@ export function useAiGenerate() {
     setLoading(true); setError(null);
     try {
       return normalizeAiGenerateResult(await api.generatePipeline(prompt, { mermaid, messages }));
-    } catch (e: any) { setError(e.message); return null; }
+    } catch (e) { setError(aiErrorMessage(e)); return null; }
     finally { setLoading(false); }
   };
 
@@ -59,7 +69,7 @@ export function useAiGenerate() {
     setLoading(true); setError(null);
     try {
       return normalizeAiGenerateResult(await api.refinePipeline(definition, prompt, { mermaid, messages }));
-    } catch (e: any) { setError(e.message); return null; }
+    } catch (e) { setError(aiErrorMessage(e)); return null; }
     finally { setLoading(false); }
   };
 

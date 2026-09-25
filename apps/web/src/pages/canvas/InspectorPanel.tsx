@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Code2, X } from 'lucide-react';
 import type { Node } from 'reactflow';
 import { MermaidPreview } from '../../components/MermaidPreview';
@@ -7,7 +8,7 @@ import { ConfigPanel } from '../../components/canvas/ConfigPanel';
 // is active — Mermaid structure editor, selected-edge branch condition, or
 // selected-node config — shares one header/close button and one width.
 export function InspectorPanel({
-  open, showMermaid, selected, selectedEdge, onClose,
+  open, showMermaid, selected, selectedEdge, onClose, focusOnOpen,
   mermaidDraft, setMermaidDraft, mermaidValid, setMermaidValid, applyMermaid,
   onEdgeConditionChange,
   onNodeChange, onNodeDelete,
@@ -17,6 +18,7 @@ export function InspectorPanel({
   selected: Node | null;
   selectedEdge: any | null;
   onClose: () => void;
+  focusOnOpen: boolean;
   mermaidDraft: string;
   setMermaidDraft: (value: string) => void;
   mermaidValid: boolean;
@@ -26,8 +28,13 @@ export function InspectorPanel({
   onNodeChange: (id: string, patch: any) => void;
   onNodeDelete: (id: string) => void;
 }) {
+  const body = useRef<HTMLDivElement>(null);
+  // Keyboard activation moves focus to the first setting; Close returns it to the node.
+  useEffect(() => {
+    if (open && focusOnOpen) body.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus();
+  }, [open, focusOnOpen, selected?.id]);
   return (
-    <aside
+    <aside aria-label="Inspector" onKeyDown={event => { if (open && event.key === 'Escape') onClose(); }}
       className={`flex flex-col flex-none overflow-hidden border-l border-gray-200 dark:border-white/[0.08] bg-white/97 dark:bg-[#0d1018]/94 backdrop-blur-xl transition-[width] duration-200 ease-in-out ${
         open ? 'w-[360px]' : 'w-0'
       }`}
@@ -47,7 +54,7 @@ export function InspectorPanel({
               <X size={15} />
             </button>
           </div>
-          <div className="flex-1 overflow-auto p-4">
+          <div ref={body} className="flex-1 overflow-auto p-4">
             {showMermaid ? (
               <>
                 <textarea className="glass-input h-52 w-full font-mono text-[11px]" aria-label="Mermaid diagram source"

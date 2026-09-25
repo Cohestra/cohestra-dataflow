@@ -35,6 +35,8 @@ type PipelineListParams = {
   search?: string;
   stage?: string;
   trigger?: string;
+  key?: string;
+  view?: 'current';
 };
 
 type PipelineListPage = { rows: any[]; nextCursor: string | null };

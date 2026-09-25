@@ -33,7 +33,8 @@ case "${1:-status}" in
     npx playwright test --config tests/local-acceptance/controls.config.ts
     ;;
   review) npx playwright test --config tests/local-acceptance/review.config.ts ;;
+  issues) npx playwright test --config tests/local-acceptance/issues.config.ts ;;
   responsive) npx playwright test --config tests/local-acceptance/responsive.config.ts ;;
   runtime) npx playwright test --config tests/local-acceptance/runtime.config.ts ;;
-  *) echo "Usage: $0 {up|start|stop|down|status|logs [service]|smoke|browser|controls|review|runtime|responsive}" >&2; exit 2 ;;
+  *) echo "Usage: $0 {up|start|stop|down|status|logs [service]|smoke|browser|controls|review|issues|runtime|responsive}" >&2; exit 2 ;;
 esac

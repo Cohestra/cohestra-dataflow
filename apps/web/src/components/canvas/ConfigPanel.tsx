@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Settings2, Trash2 } from 'lucide-react';
 import type { Node } from 'reactflow';
 import type { CatalogEntry, FieldSpec } from '@dataflow/shared';
@@ -23,8 +23,8 @@ function OAuthPickerField({ field, value, onChange }: {
   return Comp ? <Comp value={value} onChange={onChange} /> : null;
 }
 
-function InstancePicker({ provider, value, onChange }: {
-  provider?: string; value: Record<string, string>; onChange: (p: Record<string, string>) => void;
+function InstancePicker({ id, describedBy, provider, value, onChange }: {
+  id: string; describedBy?: string; provider?: string; value: Record<string, string>; onChange: (p: Record<string, string>) => void;
 }) {
   const [instances, setInstances] = useState<any[]>([]);
   useEffect(() => {
@@ -33,7 +33,7 @@ function InstancePicker({ provider, value, onChange }: {
       .catch(() => setInstances([]));
   }, [provider]);
   return (
-    <select className="glass-select" value={value.connectionId ?? ''}
+    <select id={id} aria-describedby={describedBy} className="glass-select" value={value.connectionId ?? ''}
       onChange={e => onChange({ connectionId: e.target.value })}>
       <option value="">— select connection —</option>
       {instances.map(i => <option key={i.id} value={i.id}>{i.name ?? i.email ?? i.id} ({i.provider}{i.kind ? `, ${i.kind}` : ''})</option>)}
@@ -45,6 +45,7 @@ export function ConfigPanel({ node, onChange, onDelete }: {
   node: Node; onChange: (id: string, patch: any) => void; onDelete: (id: string) => void;
 }) {
   const { byType } = useCatalog();
+  const uid = useId();
   const entry: CatalogEntry = byType[node.data.activityType];
   if (!entry) return null;
   const cfg = node.data.config ?? {};
@@ -69,36 +70,41 @@ export function ConfigPanel({ node, onChange, onDelete }: {
         <input className="glass-input" value={node.data.label ?? ''}
           onChange={e => onChange(node.id, { label: e.target.value })} />
       </label>
-      {entry.fields.filter(visible).map(f => (
-        <div key={f.key} className="glass-label">
-          <span>{f.label}</span>
-          {f.type === 'oauth-picker' ? (
-            <OAuthPickerField field={f} value={cfg} onChange={p => onChange(node.id, { config: { ...cfg, ...p } })} />
-          ) : f.type === 'instance-picker' ? (
-            <InstancePicker provider={f.provider} value={cfg} onChange={p => onChange(node.id, { config: { ...cfg, ...p } })} />
-          ) : f.type === 'checkbox' ? (
-            <input type="checkbox" checked={!!cfg[f.key]}
-              onChange={e => onChange(node.id, { config: { ...cfg, [f.key]: e.target.checked } })} />
-          ) : f.type === 'select' ? (
-            <select className="glass-select" value={cfg[f.key] ?? f.options?.[0]}
-              onChange={e => onChange(node.id, { config: { ...cfg, [f.key]: e.target.value } })}>
-              {f.options?.map(o => <option key={o}>{o}</option>)}
-            </select>
-          ) : f.type === 'textarea' ? (
-            <textarea className="glass-input h-16 font-mono text-[11px]"
-              placeholder={f.placeholder} value={cfg[f.key] ?? ''}
-              onChange={e => onChange(node.id, { config: { ...cfg, [f.key]: e.target.value } })} />
-          ) : (
-            <input className="glass-input" placeholder={f.placeholder} value={cfg[f.key] ?? ''}
-              onChange={e => onChange(node.id, { config: { ...cfg, [f.key]: e.target.value } })} />
-          )}
-          {f.help && <span className="text-[10px] opacity-60">{f.help}</span>}
-        </div>
-      ))}
+      {entry.fields.filter(visible).map(f => {
+        // Every control is named by its visible field title; help text is its description.
+        const id = `${uid}-${f.key}`;
+        const labelId = `${id}-label`;
+        const helpId = f.help ? `${id}-help` : undefined;
+        const set = (value: unknown) => onChange(node.id, { config: { ...cfg, [f.key]: value } });
+        return (
+          <div key={f.key} className="glass-label" role={f.type === 'oauth-picker' ? 'group' : undefined}
+            aria-labelledby={f.type === 'oauth-picker' ? labelId : undefined} aria-describedby={f.type === 'oauth-picker' ? helpId : undefined}>
+            {f.type === 'oauth-picker' ? <span id={labelId}>{f.label}</span> : <label id={labelId} htmlFor={id}>{f.label}</label>}
+            {f.type === 'oauth-picker' ? (
+              <OAuthPickerField field={f} value={cfg} onChange={p => onChange(node.id, { config: { ...cfg, ...p } })} />
+            ) : f.type === 'instance-picker' ? (
+              <InstancePicker id={id} describedBy={helpId} provider={f.provider} value={cfg} onChange={p => onChange(node.id, { config: { ...cfg, ...p } })} />
+            ) : f.type === 'checkbox' ? (
+              <input id={id} aria-describedby={helpId} type="checkbox" checked={!!cfg[f.key]} onChange={e => set(e.target.checked)} />
+            ) : f.type === 'select' ? (
+              <select id={id} aria-describedby={helpId} className="glass-select" value={cfg[f.key] ?? f.options?.[0]} onChange={e => set(e.target.value)}>
+                {f.options?.map(o => <option key={o}>{o}</option>)}
+              </select>
+            ) : f.type === 'textarea' ? (
+              <textarea id={id} aria-describedby={helpId} className="glass-input h-16 font-mono text-[11px]"
+                placeholder={f.placeholder} value={cfg[f.key] ?? ''} onChange={e => set(e.target.value)} />
+            ) : (
+              <input id={id} aria-describedby={helpId} className="glass-input" placeholder={f.placeholder} value={cfg[f.key] ?? ''}
+                onChange={e => set(e.target.value)} />
+            )}
+            {f.help && <span id={helpId} className="text-[10px] opacity-60">{f.help}</span>}
+          </div>
+        );
+      })}
       {entry.supportsIngestion && cfg.syncMode !== 'cdc' && (
         <fieldset className="my-4 rounded-[14px] border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-black/10 p-3">
           <legend className="text-[11px] text-gray-500 dark:opacity-70 px-1">Ingestion mode</legend>
-          <select className="glass-select" value={ing.mode}
+          <select className="glass-select" aria-label="Ingestion mode" value={ing.mode}
             onChange={e => onChange(node.id, { ingestion: { ...ing, mode: e.target.value } })}>
             <option value="incremental">Incremental (cursor)</option>
             <option value="backfill">Historical backfill → then incremental</option>

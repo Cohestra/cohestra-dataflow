@@ -26,6 +26,10 @@ interface Pipeline {
   last_run_phase: string | null;
   last_run_at: string | null;
   last_run_id: string | null;
+  last_run_version: number | null;
+  // view=current rows only: one row per logical pipeline/environment.
+  active_version?: number | null;
+  version_count?: number;
 }
 
 interface Execution {
@@ -35,6 +39,7 @@ interface Execution {
   completed_at: string | null;
   error?: string;
   record_count?: number;
+  pipeline_version?: number;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -57,6 +62,12 @@ function duration(started: string, completed: string | null): string {
 }
 
 // ponytail: activityIcon() removed — use ActivityIcon from FlowNode directly
+
+function versionLabel(p: Pipeline): string {
+  const count = (p.version_count ?? 1) > 1 ? ` of ${p.version_count}` : '';
+  const active = p.active_version != null && p.active_version !== p.version ? ` · v${p.active_version} active` : '';
+  return `v${p.version}${count}${active}`;
+}
 
 function stageOf(p: Pipeline): Stage { return deriveStage(p.status, p.environment); }
 
@@ -100,18 +111,29 @@ const STAGE_CFG: Record<Stage, { bar: string; badge: string; label: string }> = 
 // per row would defeat the point of the Gate 1 summary query. The drawer's
 // topology section (below) still shows it once the row is selected.
 
+// Every execution phase gets an explicit label; "Never run" only when there is no run.
+// Text colours hold >= 4.5:1 on the light and dark list surfaces (WCAG 1.4.3).
+const RUN_STATUS: Record<string, { dot: string; text: string; label: string }> = {
+  completed:  { dot: 'bg-emerald-500 dark:bg-emerald-400', text: 'text-emerald-700 dark:text-emerald-400', label: 'Success' },
+  failed:     { dot: 'bg-red-500 dark:bg-red-400', text: 'text-red-700 dark:text-red-400', label: 'Failed' },
+  running:    { dot: 'bg-cyan-500 dark:bg-cyan-400 animate-pulse', text: 'text-cyan-700 dark:text-cyan-400', label: 'Running' },
+  paused:     { dot: 'bg-amber-500 dark:bg-amber-400', text: 'text-amber-800 dark:text-amber-300', label: 'Paused' },
+  cancelling: { dot: 'bg-gray-500 dark:bg-white/60 animate-pulse', text: 'text-gray-700 dark:text-white/75', label: 'Cancelling' },
+  cancelled:  { dot: 'bg-gray-500 dark:bg-white/60', text: 'text-gray-700 dark:text-white/75', label: 'Cancelled' },
+};
+
+function runStatus(phase: string | null) {
+  if (!phase) return { dot: 'bg-gray-400 dark:bg-white/40', text: 'text-gray-600 dark:text-white/70', label: 'Never run' };
+  return RUN_STATUS[phase] ?? { dot: 'bg-gray-500 dark:bg-white/60', text: 'text-gray-700 dark:text-white/75', label: phase.charAt(0).toUpperCase() + phase.slice(1) };
+}
+
 function RunDot({ phase }: { phase: string | null }) {
-  if (phase === 'completed') return <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />;
-  if (phase === 'failed')    return <span className="h-1.5 w-1.5 rounded-full bg-red-500 dark:bg-red-400" />;
-  if (phase === 'running')   return <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />;
-  return <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-white/20" />;
+  return <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${runStatus(phase).dot}`} />;
 }
 
 function RunLabel({ phase }: { phase: string | null }) {
-  if (phase === 'completed') return <span className="text-emerald-600 dark:text-emerald-400">Success</span>;
-  if (phase === 'failed')    return <span className="text-red-600 dark:text-red-400">Failed</span>;
-  if (phase === 'running')   return <span className="text-cyan-600 dark:text-cyan-400">Running</span>;
-  return <span className="text-gray-400 dark:text-white/40">Never run</span>;
+  const status = runStatus(phase);
+  return <span className={status.text}>{status.label}</span>;
 }
 
 // ── drawer ────────────────────────────────────────────────────────────────────
@@ -128,9 +150,15 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
   const cfg = STAGE_CFG[stage];
   const nodes = pipelineNodes(definition);
 
+  const [versions, setVersions] = useState<Pipeline[]>([]);
+
+  // Runs and versions span every saved version of this pipeline/environment.
   useEffect(() => {
-    api.listExecutions({ pipeline: pipeline.id, limit: '30' })
+    api.listExecutions({ pipelineKey: pipeline.pipeline_key, env: pipeline.environment, limit: '30' })
       .then((d: Execution[]) => setRuns(d))
+      .catch(() => {});
+    api.listPipelines({ key: pipeline.pipeline_key, limit: '50' })
+      .then(page => setVersions(page.rows.filter((row: Pipeline) => row.environment === pipeline.environment)))
       .catch(() => {});
   }, [pipeline.id]);
 
@@ -167,11 +195,11 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-white/35">
           <Clock size={11} />
-          <span>v{pipeline.version} · {definition ? triggerLabel(definition) : triggerTypeLabel(pipeline.trigger_type)}</span>
+          <span>{versionLabel(pipeline)} · {definition ? triggerLabel(definition) : triggerTypeLabel(pipeline.trigger_type)}</span>
         </div>
         <div className="flex gap-1.5 mt-3">
           {[
-            { label: 'Edit',     icon: <ChevronRight size={12}/>, action: () => navigate('/', { state: { pipelineId: pipeline.id } }) },
+            { label: 'Edit', icon: <ChevronRight size={12}/>, action: () => navigate('/', { state: { pipelineId: pipeline.id } }) },
             { label: 'Run now',  icon: <Play size={11}/>,         action: () => api.run(pipeline.id).catch(() => {}) },
             { label: 'Backfill', icon: <RotateCcw size={11}/>,    action: () => navigate('/lifecycle', { state: { openBackfillId: pipeline.id } }) },
           ].map(({ label, icon, action }) => (
@@ -224,18 +252,21 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
               <div key={run.id}
                 className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 dark:border-white/[0.05]
                   hover:bg-gray-50 dark:hover:bg-white/[0.025] cursor-pointer">
-                <span className={`flex h-[26px] w-[26px] items-center justify-center rounded-[7px] border shrink-0 text-[12px] font-semibold ${
+                <span aria-hidden className={`flex h-[26px] w-[26px] items-center justify-center rounded-[7px] border shrink-0 text-[12px] font-semibold ${
                   run.phase === 'completed'
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
                     : run.phase === 'failed'
                     ? 'bg-red-50 border-red-200 text-red-500 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400'
+                    : run.phase === 'cancelled'
+                    ? 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-white/[0.05] dark:border-white/10 dark:text-white/60'
                     : 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-cyan-500/10 dark:border-cyan-500/20 dark:text-cyan-400'
                 }`}>
-                  {run.phase === 'completed' ? '✓' : run.phase === 'failed' ? '✕' : '↻'}
+                  {run.phase === 'completed' ? '✓' : run.phase === 'failed' ? '✕' : run.phase === 'cancelled' ? '⊘' : '↻'}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px] font-medium text-gray-700 dark:text-white/80 truncate">
-                    {reltime(run.started_at)}
+                    <RunLabel phase={run.phase} /> · {reltime(run.started_at)}
+                    {run.pipeline_version != null && <span className="ml-1.5 text-gray-600 dark:text-white/60">v{run.pipeline_version}</span>}
                     {run.record_count != null && (
                       <span className="ml-1.5 text-gray-400 dark:text-white/45">{run.record_count.toLocaleString()} rows</span>
                     )}
@@ -250,6 +281,23 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
           <div className="flex items-center justify-center h-32 text-[12px] text-gray-400 dark:text-white/40">Coming soon</div>
         )}
       </div>
+
+      {/* version history */}
+      {versions.length > 1 && (
+        <div className="max-h-40 overflow-y-auto border-t border-gray-100 px-4 py-3 dark:border-white/[0.07] shrink-0">
+          <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-gray-600 dark:text-white/60 mb-1.5">Versions</div>
+          <ul>
+            {versions.map(v => (
+              <li key={v.id} className="flex items-center gap-2 py-1 text-[11px] text-gray-700 dark:text-white/75">
+                <span className="font-medium">v{v.version}</span>
+                <span className="text-gray-600 dark:text-white/60">{v.status === 'active' ? 'Active' : v.status === 'archived' ? 'Archived' : 'Draft'} · saved {reltime(v.created_at)}</span>
+                <button className="ml-auto text-brand-600 hover:underline dark:text-brand-300" aria-label={`Open version ${v.version} in editor`}
+                  onClick={() => navigate('/', { state: { pipelineId: v.id } })}>Open</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* mini topology */}
       {nodes.length > 0 && (
@@ -325,6 +373,7 @@ export default function PipelinesPage() {
 
   const queryParams = {
     limit: '50',
+    view: 'current' as const,
     search: debouncedSearch || undefined,
     stage: STAGE_PARAM[filter],
     trigger: triggerFilter === 'all' ? undefined : triggerFilter,
@@ -458,15 +507,18 @@ export default function PipelinesPage() {
                 <div className="flex flex-1 flex-wrap items-center gap-3.5 px-5 py-3 min-w-0">
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium text-gray-900 dark:text-white/90 truncate">{pipelineName(p)}</div>
-                    <div className="text-[11px] text-gray-400 dark:text-white/32 mt-0.5">{triggerTypeLabel(p.trigger_type)}</div>
+                    <div className="text-[11px] text-gray-600 dark:text-white/60 mt-0.5">{versionLabel(p)} · {triggerTypeLabel(p.trigger_type)}</div>
                   </div>
                   <div className="flex flex-none items-center gap-2.5 ml-auto">
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.badge}`}>{cfg.label}</span>
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-white/50">
+                    <div className="flex items-center gap-1.5 text-[11px]">
                       <RunDot phase={p.last_run_phase} />
                       <RunLabel phase={p.last_run_phase} />
                     </div>
-                    <span className="text-[11px] text-gray-400 dark:text-white/28 w-16 text-right">{reltime(p.last_run_at)}</span>
+                    <span className="text-[11px] text-gray-600 dark:text-white/60 w-20 text-right"
+                      title={p.last_run_version != null ? `Last run used v${p.last_run_version}` : undefined}>
+                      {reltime(p.last_run_at)}{p.last_run_version != null && p.last_run_version !== p.version ? ` · v${p.last_run_version}` : ''}
+                    </span>
                   </div>
                 </div>
               </button>
@@ -476,7 +528,7 @@ export default function PipelinesPage() {
 
         {/* footer */}
         <div className="flex items-center gap-3 px-6 py-2 border-t border-gray-100 dark:border-white/[0.06] shrink-0">
-          <span className="text-[11px] text-gray-400 dark:text-white/28">{visible.length} pipeline{visible.length !== 1 ? 's' : ''} loaded</span>
+          <span className="text-[11px] text-gray-600 dark:text-white/60">{visible.length} pipeline{visible.length !== 1 ? 's' : ''} loaded</span>
           {nextCursor && (
             <button onClick={loadMore} disabled={loadingMore}
               className="glass-btn-ghost px-2.5 py-1 text-[11px] disabled:opacity-50">
