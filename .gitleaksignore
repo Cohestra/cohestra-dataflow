@@ -1,2 +1,7 @@
 f4a4d824dad2ff346e3707d4ca52861f07c00d07:apps/workflow-go/internal/api/routes_ai.go:generic-api-key:300
 b205c9a2ec2f5581b9dbb8f3a244f66225073314:apps/workflow-go/internal/api/routes_ai.go:generic-api-key:300
+
+# False positives in history: a docs table row listing cost/usage fields, and a
+# former .gitleaksignore comment that quoted that row. Neither is a credential.
+eac5ff69ea6f8d36c0a79755f99102f52444f0ef:docs/plans/ai-agents/FRONTEND_ARCHITECTURE.md:generic-api-key:94
+47ed4ad5473e9c0631e145350f3921a9573148a9:.gitleaksignore:generic-api-key:5
