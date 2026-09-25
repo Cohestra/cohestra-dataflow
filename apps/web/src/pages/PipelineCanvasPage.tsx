@@ -83,6 +83,7 @@ export default function PipelineCanvasPage() {
   const [aiMessages, setAiMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [aiProposal, setAiProposal] = useState<AiGenerateResult | null>(null);
   const [aiUndo, setAiUndo] = useState<PipelineDefinition | null>(null);
+  const aiUndoPositions = useRef<Map<string, Node['position']> | null>(null);
   const [aiProposalFingerprint, setAiProposalFingerprint] = useState<string | null>(null);
   const [aiProposalBase, setAiProposalBase] = useState<PipelineDefinition | null>(null);
   const aiReview = useMemo(() => {
@@ -141,11 +142,18 @@ export default function PipelineCanvasPage() {
     if (err) setMsg(`Load failed: ${err}`);
   }, [pipelinesQuery.error, lineageQuery.error]);
 
-  const hydrateFromDefinition = useCallback((def: any, message: string) => {
+  // positions: keep these node placements (by ID) instead of the default layout.
+  const hydrateFromDefinition = useCallback((def: any, message: string, positions?: Map<string, Node['position']>) => {
     const snapshot = structuredClone(def);
     setBaseDefinition(snapshot);
     const { nodes: ns, edges: es } = definitionToFlow(snapshot, byType);
-    fitPending.current = true;
+    let placedAll = !!positions;
+    for (const node of ns) {
+      const position = positions?.get(node.id);
+      if (position) node.position = { ...position };
+      else placedAll = false;
+    }
+    fitPending.current = !placedAll;
     setNodes(ns); setEdges(es);
     setName(snapshot.name ?? 'My pipeline');
     setPipelineKey(snapshot.id ?? '');
@@ -270,20 +278,23 @@ export default function PipelineCanvasPage() {
     setSelected(null);
   };
 
+  // Untouched policy groups keep the loaded values verbatim (including fields the form cannot show).
+  const policyUnchanged = (...keys: (keyof PipelinePolicy)[]) =>
+    hydratedPolicy.current !== null && keys.every(key => policy[key] === hydratedPolicy.current![key]);
   const buildDefinition = () => flowToDefinition(nodes, edges, {
     name, trigger, pipelineKey, execution,
-    metadata: policy.owner === hydratedPolicy.current?.owner && policy.domain === hydratedPolicy.current?.domain && policy.tags === hydratedPolicy.current?.tags ? baseDefinition.metadata : {
+    metadata: policyUnchanged('owner', 'domain', 'tags') ? baseDefinition.metadata : {
       ...baseDefinition.metadata,
       owner: policy.owner.trim() || undefined, domain: policy.domain.trim() || undefined,
       tags: policy.tags.split(',').map(tag => tag.trim()).filter(Boolean),
     },
-    slo: policy.freshnessMinutes === hydratedPolicy.current?.freshnessMinutes && policy.maxFailureRatePercent === hydratedPolicy.current?.maxFailureRatePercent && policy.maxDurationSeconds === hydratedPolicy.current?.maxDurationSeconds ? baseDefinition.slo : {
+    slo: policyUnchanged('freshnessMinutes', 'maxFailureRatePercent', 'maxDurationSeconds') ? baseDefinition.slo : {
       ...baseDefinition.slo,
       freshnessMinutes: policy.freshnessMinutes ? Number(policy.freshnessMinutes) : undefined,
       maxFailureRatePercent: policy.maxFailureRatePercent ? Number(policy.maxFailureRatePercent) : undefined,
       maxDurationMs: policy.maxDurationSeconds ? Number(policy.maxDurationSeconds) * 1000 : undefined,
     },
-    notifications: policy.notificationConnectionId === hydratedPolicy.current?.notificationConnectionId && policy.minimumSeverity === hydratedPolicy.current?.minimumSeverity ? baseDefinition.notifications : policy.notificationConnectionId ? {
+    notifications: policyUnchanged('notificationConnectionId', 'minimumSeverity') ? baseDefinition.notifications : policy.notificationConnectionId ? {
       connectionId: policy.notificationConnectionId,
       minimumSeverity: policy.minimumSeverity as 'warning' | 'critical',
     } : undefined,
@@ -417,16 +428,18 @@ export default function PipelineCanvasPage() {
     if (!aiReview) return;
     if (aiProposalStale) return setMsg('This proposal is based on an older draft. Retry to regenerate before applying.');
     const previous = buildDefinition();
+    const positions = new Map(nodes.map(node => [node.id, { ...node.position }]));
     setAiUndo(structuredClone(previous));
-    hydrateFromDefinition(aiReview.definition, 'AI proposal applied');
+    aiUndoPositions.current = new Map(positions);
+    hydrateFromDefinition(aiReview.definition, 'AI proposal applied', positions);
     setSelected(null); setSelectedEdge(null);
     setAiProposal(null); setAiProposalBase(null); setAiPrompt('');
   };
 
   const undoAI = () => {
     if (!aiUndo) return;
-    hydrateFromDefinition(aiUndo, 'AI change undone');
-    setSelected(null); setSelectedEdge(null); setAiUndo(null);
+    hydrateFromDefinition(aiUndo, 'AI change undone', aiUndoPositions.current ?? undefined);
+    setSelected(null); setSelectedEdge(null); setAiUndo(null); aiUndoPositions.current = null;
   };
 
   const openDrawer = async (tab: BottomTab = 'runs') => {

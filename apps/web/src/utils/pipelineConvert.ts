@@ -69,7 +69,7 @@ export function flowToDefinition(
     }),
     edges: edges.map(e => ({
       id: e.id, source: e.source, target: e.target,
-      condition: e.data?.condition,
+      condition: e.data?.condition || undefined,
     })),
   });
 }
@@ -101,10 +101,18 @@ export function applyGraphEdit(
       if (!old || old.activityType !== node.activityType || old.type !== node.type) return node;
       return source === 'mermaid'
         ? { ...old, id: node.id, type: node.type, activityType: node.activityType, label: node.label }
-        : { ...old, ...node };
+        : { ...old, ...plannerFields(node) };
     }),
     edges,
   });
+}
+
+// The planner may omit or blank fields it does not own. null/undefined never
+// clear a preserved value, and an empty list never drops existing asset bindings.
+function plannerFields(node: PipelineNode): Partial<PipelineNode> {
+  return Object.fromEntries(Object.entries(node).filter(([key, value]) =>
+    value !== undefined && value !== null &&
+    !((key === 'inputAssets' || key === 'outputAssets') && Array.isArray(value) && value.length === 0)));
 }
 
 // Object key insertion order and server-assigned version do not make an edit.

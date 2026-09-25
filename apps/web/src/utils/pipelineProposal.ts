@@ -23,6 +23,7 @@ export interface ProposalFieldChange {
   after: string;
 }
 export interface ProposalChange {
+  key: string; // stable identity for rendering: pipeline, node ID, edge ID or input target
   subject: string;
   action: 'Added' | 'Removed' | 'Changed' | 'Activity changed';
   fields: ProposalFieldChange[];
@@ -34,6 +35,12 @@ const sorted = (_key: string, value: unknown) => value && typeof value === 'obje
 const short = (value: string) => value.length > 80 ? `${value.slice(0, 80)}… (shortened)` : value;
 const identifier = /^[a-zA-Z_][a-zA-Z0-9_.-]{0,63}$/;
 const privateField = /secret|token|password|credential|authorization|header|cookie|body|payload|private|api.?key|url|uri|sql|query|connection/i;
+// Non-secret fields a reviewer needs to judge a change (branch logic, schedule,
+// ownership, backfill window). Shown length-capped unless the text looks like it
+// carries a credential or a URL.
+const decisionFields = new Set(['condition', 'trigger.type', 'trigger.schedule', 'metadata.owner', 'metadata.domain',
+  'notifications.minimumSeverity', 'ingestion.backfillStart', 'ingestion.backfillEnd', 'ingestion.stateKey', 'joinKey']);
+const secretBearing = /\b(bearer|basic|password|passwd|secret|token|api.?key)\b|:\/\/|@/i;
 const identifierFields = new Set(['table', 'schema', 'database', 'collection', 'topic', 'platform', 'namespace', 'name', 'type', 'layer', 'engine', 'activityType', 'mode', 'mergeStrategy']);
 
 function previewValue(path: string, value: unknown): string {
@@ -47,7 +54,11 @@ function previewValue(path: string, value: unknown): string {
     // Only short identifiers for known fields are shown; no URL parsing leaks.
     if (identifierFields.has(key) && identifier.test(value)) return value;
     if ((path === 'label' || path === 'name') && !/[:/=@]|\b(bearer|password|secret|token)\b/i.test(value)) return short(value);
+    if (decisionFields.has(path) && !secretBearing.test(value)) return short(value);
     return 'Text hidden';
+  }
+  if (path === 'metadata.tags' && Array.isArray(value) && value.every(tag => typeof tag === 'string' && identifier.test(tag))) {
+    return value.length ? short(value.join(', ')) : 'No tags';
   }
   if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? '' : 's'} (values hidden)`;
   return `${Object.keys(value as object).length} field${Object.keys(value as object).length === 1 ? '' : 's'} (values hidden)`;
@@ -102,7 +113,7 @@ export function describeProposalChanges(before: PipelineDefinition, after: Pipel
     ...(['trigger', 'execution', 'concurrency', 'metadata', 'slo', 'notifications'] as const)
       .flatMap(key => objectChanges(key, before[key], after[key])),
   ];
-  if (pipelineFields.length) changes.push({ subject: 'Pipeline settings', action: 'Changed', fields: pipelineFields });
+  if (pipelineFields.length) changes.push({ key: 'pipeline', subject: 'Pipeline settings', action: 'Changed', fields: pipelineFields });
   const oldNodes = new Map(before.nodes.map(node => [node.id, node]));
   const newNodes = new Map(after.nodes.map(node => [node.id, node]));
   for (const id of new Set([...oldNodes.keys(), ...newNodes.keys()])) {
@@ -110,6 +121,7 @@ export function describeProposalChanges(before: PipelineDefinition, after: Pipel
     const b = newNodes.get(id);
     const fields = nodeChanges(a ?? {} as PipelineNode, b ?? {} as PipelineNode);
     if (fields.length || !a || !b) changes.push({
+      key: `node:${id}`,
       subject: `Node ${short(id)}`,
       action: !a ? 'Added' : !b ? 'Removed' : a.activityType !== b.activityType || a.type !== b.type ? 'Activity changed' : 'Changed',
       fields,
@@ -122,7 +134,7 @@ export function describeProposalChanges(before: PipelineDefinition, after: Pipel
     const b = newEdges.get(id);
     if (same(a, b)) continue;
     const edge = b ?? a!;
-    changes.push({ subject: `Connection ${short(edge.source)} → ${short(edge.target)}`,
+    changes.push({ key: `edge:${id}`, subject: `Connection ${short(edge.source)} → ${short(edge.target)}`,
       action: !a ? 'Added' : !b ? 'Removed' : 'Changed',
       fields: (['source', 'target', 'condition'] as const).flatMap(key => fieldChange(key, a?.[key], b?.[key])),
     });
@@ -133,7 +145,7 @@ export function describeProposalChanges(before: PipelineDefinition, after: Pipel
     const a = before.edges.filter(edge => edge.target === target).map(edge => edge.source);
     const b = after.edges.filter(edge => edge.target === target).map(edge => edge.source);
     if (Math.max(a.length, b.length) < 2 || same(a, b)) continue;
-    changes.push({ subject: `Inputs to node ${short(target)}`, action: 'Changed', fields: [{
+    changes.push({ key: `inputs:${target}`, subject: `Inputs to node ${short(target)}`, action: 'Changed', fields: [{
       field: 'Source order', action: 'Changed',
       before: a.length ? a.map(short).join(' → ') : 'Not set',
       after: b.length ? b.map(short).join(' → ') : 'Not set',
