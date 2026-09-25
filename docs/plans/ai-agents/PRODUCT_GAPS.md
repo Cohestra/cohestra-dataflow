@@ -1,6 +1,6 @@
 # Product gaps before AI agent implementation
 
-Status: architecture direction approved by the user on 2026-09-14; no runtime changes. Baseline:
+Status: architecture direction accepted in maintainer review of #38–#40 on 2026-09-14; no runtime changes. Baseline:
 `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`, reviewed 2026-09-09 UTC.
 This reconstructs the earlier scope from current source; the original package
 was not recoverable. Its reported count of 13 gaps is not a target to fill.
@@ -113,7 +113,7 @@ acceptance/execution of generated drafts is out of scope.
 
 ## Approved direction and detailed design
 
-The user approved the architecture direction on 2026-09-14. B1 rejects unsupported
+Maintainer review accepted the architecture direction on 2026-09-14. B1 rejects unsupported
 manifest-only sinks until a write contract exists; native Temporal execution,
 durable control and OSS operational essentials are specified in the HLD/LLD. B4/F4 demonstrate the complete functional flow; release completion requires
 B5/F5 recovery and operations evidence. Mandatory B3/B4 safety checks cannot

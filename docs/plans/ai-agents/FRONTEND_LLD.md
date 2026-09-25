@@ -1,6 +1,6 @@
 # Frontend low-level design: agents and mixed pipelines
 
-Status: implementation design following the user's approval of the agent planning PRs on 2026-09-14. The [frontend architecture](FRONTEND_ARCHITECTURE.md) and [backend architecture](BACKEND_ARCHITECTURE.md) are the approved parent direction; their historical draft labels describe the earlier review state. This document specifies the next implementation work, not an already shipped capability or approval to deploy. Application source remains the inspected main baseline `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`.
+Status: implementation design, 2026-09-14, following maintainer review of the agent planning PRs (#38–#40). The [frontend architecture](FRONTEND_ARCHITECTURE.md) and [backend architecture](BACKEND_ARCHITECTURE.md) are the parent direction, and the [backend LLD](BACKEND_LLD.md) is authoritative for wire contracts. This document specifies the next implementation work, not an already shipped capability or approval to deploy. Application source remains the inspected main baseline `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`.
 
 Read with the [system HLD](ARCHITECTURE_HLD.md), [backend LLD](BACKEND_LLD.md), [product work packages](PRODUCT_GAPS.md) and [sandbox gates](SANDBOX_AND_CI.md). All new routes, types and component names below are **proposed**. Existing paths are identified explicitly. Backend LLD is the authority for wire names and server-side invariants; shared fixture changes must update both consumers in the same contract increment.
 
@@ -35,7 +35,7 @@ The existing query hook is per-component request state, **not a shared cache**. 
 | `/?pipeline=:rowId` | Existing pipeline selector | Existing builder. Use in pipeline inserts a node with exact version into the current editable graph through explicit navigation state; opening a different pipeline requires saving/discarding dirty edits. |
 | `/runs/:id` | `node`, `agentRun`, `step`, `tab` | Canonical parent execution. Backend verifies that selected child/step belongs to this parent; URL selectors never grant access. Tab defaults to run summary. |
 | `/approvals` | `status=pending|decided`, opaque `cursor` | Server-filtered queue/history; no cross-tenant client filtering. |
-| `/approvals/:id` | None | Direct-linkable authoritative request; after decision it remains readable within approved read policy. |
+| `/approvals/:id` | None | Direct-linkable authoritative request; after decision it remains readable within approved read policy. An inaccessible ID renders the same not-found state as a nonexistent one (the API returns 404 for both), so IDs cannot be probed. |
 
 Add Agents/Approvals to AppShell and reachable canvas navigation. Keep Build with AI as pipeline drafting, not an agent chat route. Do not expose prompts, input rows, approval arguments, credential names containing secrets or model responses in URLs. Invalid route selectors show a safe invalid/not-found state; never silently switch to another version or tenant.
 
@@ -55,9 +55,9 @@ type ApiFailure = {
   details?: { fieldErrors?: Array<{ path: string; message: string }>; currentVersion?: number; currentStatus?: string };
 };
 type AgentNodeConfig = {
-  agentId: string;
-  agentVersion: number;
-  inputBinding: { mode: 'batch'; fields: string[]; maxRecords: number };
+  agentId: string; // canonical lowercase UUID (36 chars); server rejects other forms
+  agentVersion: number; // positive safe integer, exact immutable version
+  inputBinding: { mode: 'batch'; fields: string[]; maxRecords: number }; // fields: unique literal top-level keys; maxRecords: 1..100
 };
 type AgentRunSummary = {
   id: string; executionId: string; nodeId: string;
@@ -197,7 +197,7 @@ Add agent to both shared NodeType/NodeKind and the catalog/Go mirror in B1 contr
 
 ## 6. Query ownership, refresh and mutation rules
 
-Use useApiQuery for new key-based resource reads. For mutable live detail, extend the existing useEffect polling pattern inside AgentRunInspector/ApprovalDetailPage: one sequential setTimeout loop, one in-flight request, AbortController cleanup and a current-route guard. Do not use overlapping async setInterval calls. The existing 1.5-second run interval is an initial active cadence; a queue can refresh every 15 seconds while visible. Pause background polling when the document is hidden, refresh on return, and stop terminal run polling. Pending approval delivery may continue until applied even after the decision itself is final. Stop on authoritative run cancellation/revocation/terminal failure even when a previously approved decision will never be applied; show that reason rather than polling indefinitely.
+Use useApiQuery for new key-based resource reads. For mutable live detail, extend the existing useEffect polling pattern inside AgentRunInspector/ApprovalDetailPage: one sequential setTimeout loop, one in-flight request, AbortController cleanup and a current-route guard. Do not use overlapping async setInterval calls. Active run/step/approval detail polls every 2 seconds; while the snapshot is unchanged, back off by 1.5× per poll up to 10 seconds, and reset to 2 seconds on any change or user action. A queue can refresh every 15 seconds while visible. Pause background polling when the document is hidden, refresh on return, and stop terminal run polling. Pending approval delivery may continue until applied even after the decision itself is final. Stop on authoritative run cancellation/revocation/terminal failure even when a previously approved decision will never be applied; show that reason rather than polling indefinitely.
 
 | Owner / query key | Refresh or invalidation |
 | --- | --- |
@@ -230,7 +230,7 @@ Local state is separate from server status: loading → ready → submitting →
 | Parent pauses while approval pending | Show paused controlState separately from awaiting_approval phase. A permitted human can record a decision, but dispatch waits for parent Resume. Resume never creates approval. |
 | Cancel parent while approval pending | Submit parent cancellation once; show Cancellation requested and poll. Server cancels pending approval and stops new dispatch. Do not mark external actions rolled back. |
 
-Use a page for approval detail, not a disappearing confirmation toast. Put the tool action details before the decision controls, keep the submit status announced with aria-live=polite, and never move focus away while the user reads. After an action makes buttons unavailable, focus the durable result heading. A confirmation dialog, if used for parent cancellation, traps/restores focus and describes already dispatched actions accurately.
+Use a page for approval detail, not a disappearing confirmation toast. Put the tool action details before the decision controls, keep the submit status announced with aria-live=polite, and never move focus away while the user reads. Approve and Reject are never autofocused or the default action; a decision needs an explicit second confirmation step that repeats the tool, destination, argument preview and hash. After an action makes buttons unavailable, focus the durable result heading. A confirmation dialog, if used for parent cancellation, traps/restores focus and describes already dispatched actions accurately.
 
 ## 8. Run inspection, errors and OSS essentials
 

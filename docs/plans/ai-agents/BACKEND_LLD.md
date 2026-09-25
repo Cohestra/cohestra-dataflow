@@ -1,6 +1,6 @@
 # Cohestra agents: backend low-level design
 
-Status: implementation specification, 2026-09-14. Develops the user-approved agent direction in [backend architecture](BACKEND_ARCHITECTURE.md) and [system HLD](ARCHITECTURE_HLD.md). **All agent tables, endpoints, DTOs and algorithms below are proposed additions, not existing APIs.** Existing application baseline is `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`. No application implementation is included in this document.
+Status: implementation specification, 2026-09-14. Develops the agent direction accepted in maintainer review of #38–#40 in [backend architecture](BACKEND_ARCHITECTURE.md) and [system HLD](ARCHITECTURE_HLD.md). Authority: this LLD is the source of truth for wire names, schema and server-side invariants; the HLD and backend architecture summarize it and defer to it on conflict. **All agent tables, endpoints, DTOs and algorithms below are proposed additions, not existing APIs.** Existing application baseline is `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`. No application implementation is included in this document.
 
 ## 1. Fixed decisions and bounds
 
@@ -10,7 +10,7 @@ The first flow uses workflow-engine bounded batches and existing coded sinks. B1
 
 Initial definition defaults, validated against operator/tenant/model ceilings: `maxSteps=8`, `maxToolCalls=4`, `maxInputTokens=16384`, `maxOutputTokens=4096`, `maxOutputTokensPerCall=512`, `deadlineSeconds=900`, `approvalTtlSeconds=600`, and no monetary cap (`maxCostMicros=null`, `currency=null`). Steps here mean actual model attempts, including repairs and retries; logical tool calls have their own counter. All numeric limits are positive bounded integers; per-call output cannot exceed remaining output allowance; approval expiry cannot exceed the run deadline. These are conservative implementation defaults, not a latency SLO or an approved model recommendation.
 
-Local model-host admission: profiles declare `deploymentConcurrency:1` initially on the 18 GiB host. The operator configures the shared Ollama process with `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_MAX_LOADED_MODELS=1`, and `OLLAMA_MAX_QUEUE=8`, then verifies them with overlapping requests from separate workers/test namespaces. These server controls apply beyond a single run/process; the existing activity-worker concurrency of 20 does not provide this guarantee. [Ollama FAQ](https://docs.ollama.com/faq). Do not enable a strict local profile on an unmanaged server without capacity evidence. Server queue rejection is classified separately from a started inference; retry only within the overall deadline and reserve each potentially billable attempt. No custom distributed semaphore is required initially.
+Local model-host admission: `deploymentConcurrency` is an operator-configured model-profile property. Start it at 1 for any shared local Ollama host (the evaluation host in [MODEL_EVALUATION.md](MODEL_EVALUATION.md) is one example) and raise it only with capacity evidence from the intended hardware. The operator configures the shared Ollama process with `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_MAX_LOADED_MODELS=1`, and `OLLAMA_MAX_QUEUE=8`, then verifies them with overlapping requests from separate workers/test namespaces. These server controls apply beyond a single run/process; the existing activity-worker concurrency of 20 does not provide this guarantee. [Ollama FAQ](https://docs.ollama.com/faq). Do not enable a strict local profile on an unmanaged server without capacity evidence. Server queue rejection is classified separately from a started inference; retry only within the overall deadline and reserve each potentially billable attempt. No custom distributed semaphore is required initially.
 
 V1 resource bounds: at most 100 input records, 64 KiB projected input, 8 KiB instructions, 32 KiB total tool/schema descriptions, 64 KiB tool arguments, 256 KiB tool/model response body, 16 KiB previews, 50 paginated rows by default and 100 maximum. Model-profile context limits may require smaller inputs. Schema and decoded-body limits are enforced before allocation/dispatch; excess input fails rather than being silently sampled or truncated. A run preview may truncate with an explicit flag; execution data may not. Approval-required proposals must have a complete decision-relevant preview within 16 KiB; reject an oversized or materially redacted proposal rather than enabling approval of unseen arguments.
 
@@ -23,7 +23,7 @@ V1 resource bounds: at most 100 input records, 64 KiB projected input, 8 KiB ins
   "activityType": "agent.run",
   "label": "Classify tickets",
   "config": {
-    "agentId": "agt_triage",
+    "agentId": "3f0c7a52-9d41-4b8e-a6f2-1c5d8e9b7a30",
     "agentVersion": 3,
     "inputBinding": {"mode": "batch", "fields": ["ticketId", "subject", "body"], "maxRecords": 100}
   },
@@ -32,7 +32,7 @@ V1 resource bounds: at most 100 input records, 64 KiB projected input, 8 KiB ins
 }
 ```
 
-IDs in examples are illustrative opaque IDs. Production entity IDs are server-generated UUIDs rendered as strings, except existing execution IDs. The agent node accepts exactly one incoming reference; multiple predecessors require an explicit merge. `fields` is a nonempty unique list of literal top-level keys, not expressions or dotted paths. All fields must exist in every record. The projected array must satisfy the immutable version's input schema. Final output must satisfy its output schema and the downstream record-array contract; an existing transform handles an explicit conversion. Do not embed credentials, instructions or mutable model names in node configuration.
+`agentId` in node configuration must be a canonical lowercase UUID (36 characters); other IDs in examples are illustrative opaque IDs. Production entity IDs are server-generated UUIDs rendered as strings, except existing execution IDs. The agent node accepts exactly one incoming reference; multiple predecessors require an explicit merge. `fields` is a nonempty unique list of literal top-level keys, not expressions or dotted paths. All fields must exist in every record. The projected array must satisfy the immutable version's input schema. Final output must satisfy its output schema and the downstream record-array contract; an existing transform handles an explicit conversion. Do not embed credentials, instructions or mutable model names in node configuration.
 
 Owner publication request, `POST /api/agents/{id}/versions`:
 
@@ -53,7 +53,7 @@ Owner publication request, `POST /api/agents/{id}/versions`:
 }
 ```
 
-Creation uses the same wrapper at `POST /api/agents`, without `expectedVersion`. Publication returns `201 {"id":"agt_triage","version":3,"revision":4}`. `revision` belongs to mutable resource state; `version` selects an immutable executable definition. Server normalizes defaults, validates profile/tool ownership and schemas, encrypts instructions, and pins hashes. A client cannot supply tenant ID, effect policy, arbitrary model endpoint, or secret content through the agent definition.
+Creation uses the same wrapper at `POST /api/agents`, without `expectedVersion`. Publication returns `201 {"id":"3f0c7a52-9d41-4b8e-a6f2-1c5d8e9b7a30","version":3,"revision":4}`. `revision` belongs to mutable resource state; `version` selects an immutable executable definition. Server normalizes defaults, validates profile/tool ownership and schemas, encrypts instructions, and pins hashes. A client cannot supply tenant ID, effect policy, arbitrary model endpoint, or secret content through the agent definition.
 
 Schemas use a bounded supported JSON Schema subset: object/array/string/number/integer/boolean/null, properties/required/additionalProperties/items, enum, numeric bounds, and string/array length bounds. Reject remote references and unsupported schema keywords at publication; do not silently ignore them. Reuse a suitable installed validator if available when implementing; otherwise one maintained validator is justified by this trust boundary, with a compatibility fixture. There is no custom schema language.
 
@@ -89,9 +89,9 @@ Every new table has `tenant_id UUID NOT NULL`, created/updated timestamps as app
 
 Mixed agent pipeline admission requires configured payload encryption; it cannot inherit an unencrypted development payload setup. Existing source DataRefs retain their compatibility format (including encrypted inline references); preparation materializes the bounded agent memory as opaque persisted references before model/tool execution. Reuse `node_payloads` for encrypted persisted agent content even when small; do not use inline `DataRef.Key` bodies for agent memory. Reuse existing AES-GCM primitives. Agent run content has a per-run key wrapped at rest; only activities resolve it, and no wrapped/plain content key goes into Temporal history. Agent definitions keep separately encrypted instructions while the version is retained. Agent output intended for downstream nodes is written using the existing execution payload encryption contract so ordinary sinks can read it. No new object-store service is introduced.
 
-Add durable control intent fields to `executions`: `control_state` (`active`, `paused`, `cancel_requested`), `control_revision`, and `control_delivered_revision`; current execution phases remain unchanged. These fields support reliable parent control delivery and effect admission. Agents copy observed control into their read projection, but the parent execution row is authoritative.
+Add durable control intent fields to `executions`: `control_state` (`active`, `paused`, `cancel_requested`), `control_revision`, `control_delivered_revision`, and `control_next_delivery_at` (delivery backoff: the dispatcher skips a row until this time after a failed signal); current execution phases remain unchanged. These fields support reliable parent control delivery and effect admission. Agents copy observed control into their read projection, but the parent execution row is authoritative.
 
-Use additive migrations selected from the next available migration numbers during implementation. No destructive change to existing rows/JSON types. Retain immutable referenced versions; disabling stops future admission, it does not erase history. Request-deduplication retention must cover the documented client retry window; v1 retains it for at least the owning resource/version lifetime, rather than silently forgetting an old request ID.
+Use additive migrations selected from the next available migration numbers during implementation. No destructive change to existing rows/JSON types. Retain immutable referenced versions; disabling stops future admission, it does not erase history. Request-deduplication retention must cover the documented client retry window. v1 documents a 24-hour client retry window: a pending or in-flight request record is kept at least 24 hours, and a completed request record is kept 7 days, after which a B5 cleanup job deletes it. A retry after that window is treated as a new request; clients must not retry a mutation older than 24 hours.
 
 ## 4. HTTP reads, writes, permissions and pagination
 
@@ -123,7 +123,7 @@ Run summary:
 ```json
 {
   "id": "ar_triage_1", "executionId": "exec_example", "nodeId": "classifyTickets",
-  "agentId": "agt_triage", "agentVersion": 3, "phase": "awaiting_approval",
+  "agentId": "3f0c7a52-9d41-4b8e-a6f2-1c5d8e9b7a30", "agentVersion": 3, "phase": "awaiting_approval",
   "controlState": "active", "stopReason": null, "revision": 7,
   "startedAt": "2026-09-14T09:00:00Z", "completedAt": null,
   "model": {"profileId": "local-evaluated-profile", "tag": "operator-selected-tag", "resolvedDigest": "recorded-at-admission"},
@@ -196,7 +196,7 @@ Use Temporal deterministic time/timers and recorded activity results only. Gate 
 
 Decision handler: authenticate human → authorize parent pipeline → `TenantTx` → lock approval → if same decision request/hash already committed, return it → compare version/pending state → atomically check expiry against database time → verify exact call binding → update decision/version → append audit → mark delivery pending → commit. It does not call a tool. Reject different reuse of the request ID or stale/conflicting decisions with 409.
 
-Child expiry activity competes with decision using the same row lock and pending-state predicate. A decision committed before expiry remains decided if signal delivery is late. Expiry cannot replace an already approved row. Cancelling a pending run atomically closes still-pending approvals; approval and cancellation serialize against effect admission through the execution/run lock ordering below.
+Approval expiry is wall-clock: the `approvalTtlSeconds` clock keeps running while the parent execution is paused, and a pause longer than the remaining TTL expires the approval (stop reason `approval_expired`); resuming does not extend it. Child expiry activity competes with decision using the same row lock and pending-state predicate. A decision committed before expiry remains decided if signal delivery is late. Expiry cannot replace an already approved row. Cancelling a pending run atomically closes still-pending approvals; approval and cancellation serialize against effect admission through the execution/run lock ordering below.
 
 The activity-worker-owned delivery loop claims pending approval rows in bounded batches using `FOR UPDATE SKIP LOCKED`, with a short delivery lease; commit the claim before network I/O. Signal by stored tenant/environment/workflow identity. Mark delivered conditionally on the same decision version; on failure release/expire the lease and retry with bounded backoff. A crash after a successful signal but before the delivery mark causes safe redelivery. The child deduplicates by approval ID/version and reads the row; it never executes from the signal's asserted decision. Delivery continues until acknowledged or terminal-state reconciliation says the child cannot consume it. Retain last sanitized error for the inspector.
 

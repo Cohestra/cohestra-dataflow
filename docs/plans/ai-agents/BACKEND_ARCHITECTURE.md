@@ -1,6 +1,6 @@
 # Durable agents: backend architecture and implementation plan
 
-Status: architecture direction approved in the user conversation on 2026-09-14; architecture only. Reviewed against `main` commit `857f36f51d9d58c05b32a4d2941448b1eeebbcbd` on 2026-09-09. Agent execution, MCP, approvals, and model budgets described below are proposed additions. The [HLD](ARCHITECTURE_HLD.md) and [backend LLD](BACKEND_LLD.md) guide the separate implementation PRs.
+Status: architecture direction accepted in maintainer review of #38–#40 on 2026-09-14; architecture only. Reviewed against `main` commit `857f36f51d9d58c05b32a4d2941448b1eeebbcbd` on 2026-09-09. Agent execution, MCP, approvals, and model budgets described below are proposed additions. The [HLD](ARCHITECTURE_HLD.md) and [backend LLD](BACKEND_LLD.md) guide the separate implementation PRs; this document is a summary, and the LLD wins on any conflict.
 
 ## Outcome and boundary
 
@@ -88,7 +88,7 @@ Persist approvals bound to tool version, connection reference, destination, norm
 
 In one transaction, compare `expectedVersion`, verify pending/unexpired state using database time, record actor/decision/audit, and mark pending delivery. A bounded dispatcher sends the decision ID to the child and retries. Reuse the dispatcher pattern; approval rows can carry delivery fields rather than introducing a generic bus. The child re-reads the durable decision, verifies the binding, deduplicates it, and records application. An accepted approval is not a completed tool action.
 
-Expiry uses a Temporal timer and atomic pending→expired database transition. First valid committed decision/expiry transition wins; approval committed before expiry remains valid if delivery is delayed. Cancellation blocks dispatch regardless of approved state. Rejection/expiry ends the run with its reason in v1; another attempt requires a new run/proposal.
+Expiry uses a Temporal timer and atomic pending→expired database transition; the TTL keeps running while the parent is paused (see LLD). First valid committed decision/expiry transition wins; approval committed before expiry remains valid if delivery is delayed. Cancellation blocks dispatch regardless of approved state. Rejection/expiry ends the run with its reason in v1; another attempt requires a new run/proposal.
 
 ### Idempotency and unknown outcomes
 

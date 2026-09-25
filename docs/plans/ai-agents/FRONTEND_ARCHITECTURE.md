@@ -1,6 +1,6 @@
 # Agent and mixed-pipeline frontend plan
 
-Status: architecture direction approved in the user conversation on 2026-09-14.
+Status: architecture direction accepted in maintainer review of #38–#40 on 2026-09-14.
 The [frontend LLD](FRONTEND_LLD.md) guides the separate implementation PRs.
 Baseline: repository main at `857f36f51d9d58c05b32a4d2941448b1eeebbcbd`, inspected 2026-09-09.
 Companion: [backend architecture](BACKEND_ARCHITECTURE.md). Backend milestone IDs B1–B5 below refer to that plan.

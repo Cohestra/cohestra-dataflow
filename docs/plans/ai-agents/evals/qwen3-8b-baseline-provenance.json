@@ -54,5 +54,12 @@
     "ollama": "qwen3:8b 5.6GB 100%GPU context4096",
     "swapUsageUsedMiB": 17567.81
   },
-  "resourceCaveat": "Host already had substantial swap in use during this run; no pre-run snapshot was taken. Do not attribute swap to qwen3 or treat latency/stability as a promotion benchmark."
+  "resourceCaveat": "Host already had substantial swap in use during this run; no pre-run snapshot was taken. Do not attribute swap to qwen3 or treat latency/stability as a promotion benchmark.",
+  "host": {
+    "memoryGiB": 18,
+    "memoryKind": "unified/system",
+    "availableDiskGiB": 64,
+    "ollamaVersion": "0.30.10",
+    "note": "Shared developer host; concurrent services were running, so latency is not production-representative."
+  }
 }
