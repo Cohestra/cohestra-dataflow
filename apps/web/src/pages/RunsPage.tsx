@@ -8,7 +8,7 @@ import { ApiError } from '../components/ApiError';
 
 interface Execution {
   id: string; name: string; pipeline_id: string; environment?: string;
-  phase?: string; started_at?: string; finished_at?: string; error?: string;
+  phase?: string; started_at?: string; completed_at?: string; error?: string;
 }
 
 const PHASE_STYLE: Record<string, { bar: string; badge: string }> = {
@@ -91,8 +91,8 @@ function RunDrawer({ run, onClose }: { run: Execution; onClose: () => void }) {
       <div className="flex-1 overflow-y-auto p-5 space-y-0">
         {[
           { label: 'Started',  value: fmtDt(run.started_at) },
-          { label: 'Finished', value: fmtDt(run.finished_at) },
-          { label: 'Duration', value: durMs(run.started_at, run.finished_at) },
+          { label: 'Finished', value: fmtDt(run.completed_at) },
+          { label: 'Duration', value: durMs(run.started_at, run.completed_at) },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between border-b border-gray-100 dark:border-white/[0.06] py-3 text-[12px]">
             <span className="text-gray-400 dark:text-white/40">{label}</span>
@@ -251,7 +251,7 @@ export default function RunsPage() {
                       {r.phase ?? 'unknown'}
                     </span>
                     <span className="text-[11px] text-gray-400 dark:text-white/35 w-12 text-right tabular-nums">
-                      {durMs(r.started_at, r.finished_at)}
+                      {durMs(r.started_at, r.completed_at)}
                     </span>
                   </div>
                 </div>

@@ -111,7 +111,7 @@ func aiPipelineJSONSchema(activityTypes []string) map[string]interface{} {
 							"additionalProperties": false,
 							"required":             []string{"mode"},
 							"properties": map[string]interface{}{
-								"mode":          map[string]interface{}{"type": "string", "enum": []string{"cdc", "backfill"}},
+								"mode":          map[string]interface{}{"type": "string", "enum": []string{"incremental", "backfill", "realtime"}},
 								"backfillStart": map[string]interface{}{"type": "string"},
 								"backfillEnd":   map[string]interface{}{"type": "string"},
 								"stateKey":      map[string]interface{}{"type": "string"},
@@ -292,7 +292,7 @@ func (s *Server) buildPipeline(r *http.Request, prompt string) (map[string]inter
 		`- When refining, preserve existing nodes, IDs, edges, and config unless the requested change requires modifying them.`,
 		`- Always include a "trigger" with at least {"type":"manual"}.`,
 		`- When the user explicitly requests an execution engine, set execution.engine to workflow, stream-direct, spark-sql, or flink-sql. Put Spark/Flink SELECT SQL in execution.transformSql instead of a transform node.`,
-		`- Put CDC or backfill settings in the source node ingestion object, not node config. Preserve named state keys and backfill boundaries exactly.`,
+		`- Use ingestion.mode incremental, backfill, or realtime. CDC is connector config.syncMode=cdc, not an ingestion mode. Preserve existing ingestion modes, named state keys, and backfill boundaries exactly.`,
 		`RESPONSE RULES:`,
 		`- Return status "needs_input" with one or more targeted questions when an executable pipeline requires a saved connection, table, topic, bucket, path, URL, or other external resource the user did not provide. Do not guess it.`,
 		`- Never ask for or return raw credentials or secrets. Ask the user to configure or select a saved connection instead.`,

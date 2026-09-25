@@ -120,7 +120,7 @@ func (a *Activities) FetchSourcePage(ctx context.Context, p FetchSourceParams) (
 	}
 	result, err := a.Runtime.Fetch(ctx, p.ActivityType, connectors.SourceParams{Config: p.Config, Cursor: p.Cursor, Ingestion: p.Ingestion, TenantID: p.TenantID})
 	if err != nil {
-		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error())
+		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error(), false)
 		return FetchSourceResult{}, err
 	}
 	dek, err := a.dek(p.EncryptedDEK)
@@ -131,7 +131,7 @@ func (a *Activities) FetchSourcePage(ctx context.Context, p FetchSourceParams) (
 	if err != nil {
 		return FetchSourceResult{}, err
 	}
-	_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, time.Since(started), len(result.Records), "")
+	_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, time.Since(started), len(result.Records), "", true)
 	return FetchSourceResult{OutputRef: ref, HasMore: result.HasMore, RecordCount: len(result.Records), Checkpoint: result.NextCursor, LagRecords: result.LagRecords}, nil
 }
 
@@ -242,7 +242,7 @@ func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.
 	}
 	duration := time.Since(started)
 	if err != nil {
-		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, duration, 0, err.Error())
+		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, duration, 0, err.Error(), false)
 		return model.NodeResult{}, err
 	}
 	var ref *model.DataRef
@@ -258,7 +258,7 @@ func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.
 	} else if p.InputRef != nil {
 		count = p.InputRef.RecordCount
 	}
-	_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, duration, count, "")
+	_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, duration, count, "", false)
 	if meta == nil {
 		meta = map[string]interface{}{}
 	}
@@ -412,7 +412,7 @@ type MergeParams struct {
 func (a *Activities) MergeRefs(ctx context.Context, p MergeParams) (model.NodeResult, error) {
 	started := time.Now()
 	fail := func(err error) (model.NodeResult, error) {
-		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error())
+		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error(), false)
 		return model.NodeResult{}, err
 	}
 	dek, err := a.dek(p.EncryptedDEK)
@@ -447,7 +447,7 @@ func (a *Activities) MergeRefs(ctx context.Context, p MergeParams) (model.NodeRe
 			// writes raw JSON, so carry the count it already computed.
 			ref.RecordCount = count
 		}
-		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, time.Since(started), count, "")
+		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, time.Since(started), count, "", false)
 		return model.NodeResult{NodeID: p.NodeID, Status: "success", OutputRef: ref, Meta: map[string]interface{}{"durationMs": time.Since(started).Milliseconds(), "recordCount": count}}, nil
 	}
 
@@ -471,7 +471,7 @@ func (a *Activities) MergeRefs(ctx context.Context, p MergeParams) (model.NodeRe
 	if err != nil {
 		return fail(err)
 	}
-	_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, time.Since(started), len(merged), "")
+	_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, time.Since(started), len(merged), "", false)
 	return model.NodeResult{NodeID: p.NodeID, Status: "success", OutputRef: ref, Meta: map[string]interface{}{"durationMs": time.Since(started).Milliseconds(), "recordCount": len(merged)}}, nil
 }
 
@@ -613,23 +613,25 @@ func (a *Activities) MarkExecution(ctx context.Context, p MarkExecutionParams) e
 // recordNodeRun upserts the step row. A node can be recorded multiple times
 // within one execution (paged source fetches, Temporal activity retries): the
 // first write pins started_at, later writes refresh status/duration/counts,
-// and a write that follows a recorded failure counts as a new attempt and
+// source pages append counts; complete dispatch/merge results replace counts.
+// A write that follows a recorded failure counts as a new attempt and
 // restarts the step clock.
-func (a *Activities) recordNodeRun(ctx context.Context, executionID, nodeID, tenantID, status string, startedAt time.Time, duration time.Duration, count int, errorText string) error {
+func (a *Activities) recordNodeRun(ctx context.Context, executionID, nodeID, tenantID, status string, startedAt time.Time, duration time.Duration, count int, errorText string, appendRecords bool) error {
 	// Same-attempt re-writes (paged source fetches) keep the pinned start, so
 	// duration must be recomputed from that pinned start and record counts
-	// accumulated — otherwise a multi-page step reports only its last page.
+	// accumulated for page fetches. Consolidating those pages replaces the total
+	// instead of counting every source record twice.
 	// A write after a recorded failure is a fresh attempt: reset the clock.
 	_, err := a.DB.Pool.Exec(ctx, `INSERT INTO node_runs (execution_id,node_id,tenant_id,status,duration_ms,record_count,error,started_at,attempt)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,1)
 ON CONFLICT(execution_id,node_id) DO UPDATE SET status=$4,error=$7,finished_at=now(),
   duration_ms=CASE WHEN node_runs.status='failed' THEN $5
     ELSE greatest($5,round(extract(epoch FROM (now()-coalesce(node_runs.started_at,EXCLUDED.started_at)))*1000))::int END,
-  record_count=CASE WHEN node_runs.status='failed' THEN $6
+  record_count=CASE WHEN node_runs.status='failed' OR NOT $9 THEN $6
     ELSE nullif(coalesce(node_runs.record_count,0)+coalesce($6,0),0) END,
   started_at=CASE WHEN node_runs.status='failed' THEN EXCLUDED.started_at ELSE coalesce(node_runs.started_at,EXCLUDED.started_at) END,
   attempt=node_runs.attempt+CASE WHEN node_runs.status='failed' THEN 1 ELSE 0 END`,
-		executionID, nodeID, tenantID, status, duration.Milliseconds(), nullableCount(count), redactError(errorText), startedAt.UTC())
+		executionID, nodeID, tenantID, status, duration.Milliseconds(), nullableCount(count), redactError(errorText), startedAt.UTC(), appendRecords)
 	return err
 }
 func nullableCount(value int) interface{} {

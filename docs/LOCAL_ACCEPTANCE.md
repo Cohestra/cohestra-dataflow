@@ -1,5 +1,7 @@
 # Local acceptance: PRs 42–49
 
+Latest execution results and discovered fixes: [September 25 report](LOCAL_ACCEPTANCE_RESULTS_20260925.md).
+
 This plan covers the combined local checkout. A historical PR result is not a
 PASS for this checkout. Record PASS only after running the corresponding command
 and retaining its output; skipped or unavailable scenarios remain NOT RUN.
@@ -42,6 +44,9 @@ the test environment.
 rtk proxy ./scripts/local-acceptance.sh status
 rtk proxy ./scripts/local-acceptance.sh smoke
 rtk proxy ./scripts/local-acceptance.sh browser
+rtk proxy ./scripts/local-acceptance.sh controls
+rtk proxy ./scripts/local-acceptance.sh review
+rtk proxy ./scripts/local-acceptance.sh runtime
 rtk proxy ./scripts/local-acceptance.sh stop
 rtk proxy ./scripts/local-acceptance.sh down
 ```
@@ -203,8 +208,8 @@ CodeQL, image/IaC scanning and other platform jobs not reproduced locally.
 
 ## Manual integrated UI acceptance
 
-These remain MANUAL / NOT RUN until exercised against the actual local API,
-database and workers. Use disposable fixture records and retain screenshots,
+The September 25 report records the executed results for these journeys, including
+real browser and API evidence. Read that ledger for passes, failures and scope limits. Use disposable fixture records and retain screenshots,
 saved definitions, run IDs and output comparisons.
 
 1. **Sign in and persist:** use a real local account; open a pipeline with node

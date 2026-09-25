@@ -26,5 +26,11 @@ case "${1:-status}" in
   logs) "${compose[@]}" logs --tail 100 "${@:2}" ;;
   smoke) python3 scripts/local-acceptance-smoke.py ;;
   browser) npx playwright test --config tests/local-acceptance/playwright.config.ts ;;
-  *) echo "Usage: $0 {up|start|stop|down|status|logs [service]|smoke|browser}" >&2; exit 2 ;;
+  controls)
+    python3 scripts/local-acceptance-controls.py
+    npx playwright test --config tests/local-acceptance/controls.config.ts
+    ;;
+  review) npx playwright test --config tests/local-acceptance/review.config.ts ;;
+  runtime) npx playwright test --config tests/local-acceptance/runtime.config.ts ;;
+  *) echo "Usage: $0 {up|start|stop|down|status|logs [service]|smoke|browser|controls|review|runtime}" >&2; exit 2 ;;
 esac

@@ -117,9 +117,11 @@ func (s *Server) pipelineAccess(minimum string, next http.Handler) http.Handler 
 		}
 		rowID := r.PathValue("rowId")
 		var createdBy, role *string
-		err := s.DB.Pool.QueryRow(r.Context(), `SELECT p.created_by,pa.role FROM pipelines p
+		err := s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
+			return tx.QueryRow(r.Context(), `SELECT p.created_by,pa.role FROM pipelines p
         LEFT JOIN pipeline_access pa ON pa.pipeline_id=p.id AND pa.user_id=$2
         WHERE p.id=$1 AND p.tenant_id=$3 LIMIT 1`, rowID, tenant.UserID, tenant.TenantID).Scan(&createdBy, &role)
+		})
 		if err != nil {
 			jsonError(w, http.StatusNotFound, ErrNotFound, "not found", nil)
 			return
