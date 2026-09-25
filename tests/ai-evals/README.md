@@ -99,14 +99,26 @@ exist in the suite catalog. An explicitly supplied `requiredPaths` must be a
 non-empty array of paths with at least two selectors each; malformed contracts
 fail corpus loading before any API call.
 
+Prefer `activityType` (plus a `config` subset when it disambiguates) for
+generation cases: node IDs there are chosen by the model and are not stable.
+Use `id` selectors for refinement cases, where the request pins existing IDs.
+
 Each path is checked independently. Additional independent branches are valid;
 declare their paths separately only when the case requires those relationships.
 Missing required edges fail structural validity and the overall case, even when
 all requested activity types are present. Cases without this field keep their
 existing scoring behavior, including acceptance of disconnected DAGs.
 
+A failed path is reported on the case result as
+`requiredPathFailure: {"path": <index>, "hop": <index>, "selector": {...}}`.
+Hop 0 means no node matches the first selector; hop N means no direct edge
+reaches a node matching selector N from the nodes matched at hop N-1.
+
 The offline self-test covers connected and disconnected chains, duplicate
 activity types across separate chains, selector mismatches, independent branches,
 and invalid contracts. The v1 corpus and historical reports remain unchanged.
 A corrected v2 corpus, fixture binding, and positive golden-output preflight
 remain separate work; this contract alone does not establish a model promotion gate.
+At least six v1 cases cannot pass the current API and scorer at all (G11); see
+[the corpus-conflict analysis](../../docs/plans/ai-agents/PRODUCT_GAPS.md#evaluation-and-ci-findings-during-this-review)
+before reading v1 scores as model accuracy.
