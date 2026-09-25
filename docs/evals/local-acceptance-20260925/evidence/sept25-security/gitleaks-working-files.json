@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 300,
+  "EndLine": 300,
+  "StartColumn": 94,
+  "EndColumn": 125,
+  "Match": "secret exposure, REDACTED ",
+  "Secret": "REDACTED",
+  "File": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/.artifacts/local-acceptance/sept25-security/working-files/apps/workflow-go/internal/api/routes_ai.go",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 3.5216405,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/.artifacts/local-acceptance/sept25-security/working-files/apps/workflow-go/internal/api/routes_ai.go:generic-api-key:300"
+ }
+]

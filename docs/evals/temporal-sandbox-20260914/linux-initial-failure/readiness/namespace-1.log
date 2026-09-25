@@ -1,0 +1,18 @@
+  NamespaceInfo.Name                    test
+  NamespaceInfo.Id                      01a09ec3-7340-781f-a4e5-34cd64ef749f
+  NamespaceInfo.Description
+  NamespaceInfo.OwnerEmail
+  NamespaceInfo.State                   Registered
+  NamespaceInfo.Data                    map[]
+  Config.WorkflowExecutionRetentionTtl  24h0m0s
+  ReplicationConfig.ActiveClusterName   active
+  ReplicationConfig.Clusters            [{"clusterName":"active"}]
+  ReplicationConfig.State               Unspecified
+  Config.HistoryArchivalState           Disabled
+  Config.VisibilityArchivalState        Disabled
+  IsGlobalNamespace                     false
+  FailoverVersion                       0
+  FailoverHistory                       []
+  Config.HistoryArchivalUri
+  Config.VisibilityArchivalUri
+  Config.CustomSearchAttributeAliases   map[]

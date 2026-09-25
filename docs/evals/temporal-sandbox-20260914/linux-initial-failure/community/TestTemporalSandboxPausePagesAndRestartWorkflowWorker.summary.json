@@ -1,0 +1,11 @@
+{
+  "authContextInjected": true,
+  "connectorBoundaryInjected": true,
+  "executionId": "exec-014a7651-93d3-410d-91fc-c512254adc30",
+  "historyEvents": 54,
+  "pauseDeliveredRevision": 1,
+  "realPostgres": true,
+  "realTemporal": true,
+  "test": "TestTemporalSandboxPausePagesAndRestartWorkflowWorker",
+  "testFailed": true
+}

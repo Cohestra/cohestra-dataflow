@@ -1,0 +1,12 @@
+2026-09-14 12:40:22.102 IST [13750] LOG:  starting PostgreSQL 17.10 (Homebrew) on aarch64-apple-darwin25.6.0, compiled by Apple clang version 21.0.0 (clang-2100.1.1.101), 64-bit
+2026-09-14 12:40:22.102 IST [13750] LOG:  listening on IPv4 address "127.0.0.1", port 58975
+2026-09-14 12:40:22.102 IST [13750] LOG:  listening on Unix socket "/tmp/cohestra-ts-rh5vxrtn/sockets/.s.PGSQL.58975"
+2026-09-14 12:40:22.105 IST [13754] LOG:  database system was shut down at 2026-09-14 12:40:22 IST
+2026-09-14 12:40:22.106 IST [13755] FATAL:  the database system is starting up
+2026-09-14 12:40:22.107 IST [13750] LOG:  database system is ready to accept connections
+2026-09-14 12:40:25.155 IST [13750] LOG:  received smart shutdown request
+2026-09-14 12:40:25.157 IST [13750] LOG:  background worker "logical replication launcher" (PID 13758) exited with exit code 1
+2026-09-14 12:40:25.157 IST [13752] LOG:  shutting down
+2026-09-14 12:40:25.157 IST [13752] LOG:  checkpoint starting: shutdown immediate
+2026-09-14 12:40:25.203 IST [13752] LOG:  checkpoint complete: wrote 1053 buffers (25.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.033 s, sync=0.014 s, total=0.047 s; sync files=506, longest=0.001 s, average=0.001 s; distance=5647 kB, estimate=5647 kB; lsn=0/1A9C880, redo lsn=0/1A9C880
+2026-09-14 12:40:25.207 IST [13750] LOG:  database system is shut down

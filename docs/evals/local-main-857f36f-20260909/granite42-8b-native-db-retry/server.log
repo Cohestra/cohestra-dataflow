@@ -1,0 +1,4 @@
+=== RUN   TestEvalHTTPHarness
+    eval_harness_test.go:74: isolated exact-main AI handlers, model=granite4.2:8b, seeded=12
+--- PASS: TestEvalHTTPHarness (1381.73s)
+PASS

@@ -1,0 +1,105 @@
+{
+  "recordedAt": "2026-09-25T12:36:57.518692+00:00",
+  "sourceCommit": "10a82e337a6c392a32ecc7f73d3b9b13ef9701b6",
+  "issues": [
+    {
+      "number": 51,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/51",
+      "title": "[P1][UX] Leaving the canvas silently discards unsaved pipeline edits",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 2
+    },
+    {
+      "number": 52,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/52",
+      "title": "[P1][Accessibility] Enter and Space cannot open focused node settings",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 2
+    },
+    {
+      "number": 53,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/53",
+      "title": "[P2][Accessibility] Node configuration controls lack programmatic labels",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 1
+    },
+    {
+      "number": 54,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/54",
+      "title": "[P2][UX] Stale Loaded/Saved status hides dirty state and why Save is disabled",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 1
+    },
+    {
+      "number": 55,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/55",
+      "title": "[P2][UX] Cancelled pipelines are labelled Never run despite a recent execution",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 2
+    },
+    {
+      "number": 56,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/56",
+      "title": "[P2][UX] Each saved version appears as an indistinguishable pipeline row",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 1
+    },
+    {
+      "number": 57,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/57",
+      "title": "[P2][Accessibility] Dark-mode pipeline status text falls below AA contrast",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 1
+    },
+    {
+      "number": 58,
+      "url": "https://github.com/Cohestra/cohestra-dataflow/issues/58",
+      "title": "[P2][AI][UX] Local refinement fails after repair and exposes raw 422 without useful recovery",
+      "state": "OPEN",
+      "label": "bug",
+      "exactBodyVerified": true,
+      "screenshots": 1
+    }
+  ],
+  "files": {
+    "README.md": "67b3f5833f70a79eba1c60a903f3af36ef0ddd73919753fe65f6b1656e03c981",
+    "ai-refinement-422.png": "ac0bba143dc017733772196ad3ed64584ec53baf79beacccd2630de2c0ba4cd4",
+    "ai-refinement.md": "1227247f0cd7366841e8e9ac51b3b7b82afce61af212c0a73858aa8935f8c8e7",
+    "attachments.json": "c068aae6115ed2966eabb01603d8dea0edd42fa9f2c8a88dd440e03dedaaa483",
+    "cancelled-detail.png": "40fa92d297bb2b9f81f378c6573e7ea645a6c76f92785594baa421e846c73b1d",
+    "cancelled-never-run.png": "729ba1fbd34c831fea5c100785000e7116f673feefeb06aeb3475ef66d114ef6",
+    "cancelled-status.md": "2821ba7ff4afde9fe16b2f2b3fc442bebb2a04a5754a891f5c9e6f2671fc5af9",
+    "duplicate-pipeline-versions.png": "0d54bd69776c4c85263688aac800cf022f9a418a0ddc4787675887ca624d834a",
+    "field-labels.md": "90348a7dff964d93dc1dd76443d1b82a409c02f6f00973994f5f77fbfa4b6ab3",
+    "github-image-markdown.txt": "2b562845d4a763c78a953be69c751ea831636dcd5de1c612d536fcfa8a227ba3",
+    "invalid-draft-no-explanation.png": "146f09e5652565d7ff0d9f1e5e7985750484c4c76200546713bb46a1562492e9",
+    "invalid-draft-stale-loaded.png": "605b0e16b08cd9081dda5e8c496abbdf91ff8ff98093fadd02786333eab91e93",
+    "issues-created.json": "98195116d42f79041b86b96dfe7e52dd6f4c194f90398de456cb30504cccce91",
+    "issues-draft.json": "9b19d6f37df8d95539bca9ec21e1e942d7eae7a34f52aa96af3e0b92b79740b1",
+    "issues-verified.json": "77d0b99c0737780031120b91943c5449b595b27ef23e5e413e6965fd7f26417d",
+    "keyboard-node-does-not-open.png": "134903861656cd79a03213d1c39f89dd9a2bba8093bc127bb0bb7f3e6a9d71ea",
+    "keyboard-node-editor.md": "b85a1c1cc58ce9135c27696e8ebe4ba61793d4e909a09127cc3154f1240b5174",
+    "node-settings-unlabelled.png": "5fd2103b7b0be9f4d9286be230b67b74e66cb4319922cef360c062e80bcc4fc6",
+    "pipelines-mobile.png": "3b4943a605f11805b710bb13cc9c5b5fb1ad87554726934482631b2c93964697",
+    "status-contrast.md": "b60f3c7fe42f278831fdf75aef04639555473dca867682d7884084c45cda79ce",
+    "unsaved-before-leaving.png": "196505b4c9f599313823cbaf8031fd7249a354c314aa188663464d7441152a3b",
+    "unsaved-edits.md": "faea4ed9752c16b863584b1ea3e9b33a89194804d9bc375f261706ef99a3aec1",
+    "unsaved-reopened-lost.png": "89db227b85f3bf07c62fb919fc921ebf450372908472db45f2edb1654a6a8df3",
+    "validation-feedback.md": "efcff7dd6dff376ceaa7d130cec98a6bfe8e58ecb7af805828e081c1b3ba2f52",
+    "version-duplicates.md": "ee91a867459db904018d3969d5a53679b25cf05d734f0b915f65acb38ce945bd"
+  }
+}

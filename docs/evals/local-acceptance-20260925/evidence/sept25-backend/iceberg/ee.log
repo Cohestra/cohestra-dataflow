@@ -1,0 +1,4 @@
+=== RUN   TestIcebergRESTMinIOAppendAndRetry
+--- PASS: TestIcebergRESTMinIOAppendAndRetry (0.96s)
+PASS
+ok  	github.com/dataflow-poc/workflow-go/internal/connectors	4.618s

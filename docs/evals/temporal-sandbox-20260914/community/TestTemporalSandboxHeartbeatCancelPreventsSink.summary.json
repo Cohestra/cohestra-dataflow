@@ -1,0 +1,18 @@
+{
+  "authContextInjected": true,
+  "cancelDeliveredRevision": 1,
+  "connectorBoundaryInjected": true,
+  "executionId": "exec-70ac20f4-003e-44f8-a1b5-590304d868a1",
+  "gates": [
+    "S13"
+  ],
+  "historyEvents": 49,
+  "httpCrossTenantControlDenied": true,
+  "phase": "cancelled",
+  "realActivityContextCancelled": true,
+  "realPostgres": true,
+  "realTemporal": true,
+  "sinkCalls": 0,
+  "test": "TestTemporalSandboxHeartbeatCancelPreventsSink",
+  "testFailed": false
+}

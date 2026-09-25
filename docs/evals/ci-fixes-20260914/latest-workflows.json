@@ -1,0 +1,155 @@
+{
+  "codex/impl-temporal-sandbox / CI": {
+    "conclusion": "success",
+    "databaseId": 34819285184,
+    "headBranch": "codex/impl-temporal-sandbox",
+    "headSha": "2cd1e5c5a2e5b6f76feb88e00e0a62ad873b7070",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819285184",
+    "workflowName": "CI"
+  },
+  "codex/impl-temporal-sandbox / Temporal sandbox": {
+    "conclusion": "success",
+    "databaseId": 34819285178,
+    "headBranch": "codex/impl-temporal-sandbox",
+    "headSha": "2cd1e5c5a2e5b6f76feb88e00e0a62ad873b7070",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819285178",
+    "workflowName": "Temporal sandbox"
+  },
+  "codex/impl-temporal-sandbox / Agent admission and execution controls": {
+    "conclusion": "success",
+    "databaseId": 34819285054,
+    "headBranch": "codex/impl-temporal-sandbox",
+    "headSha": "2cd1e5c5a2e5b6f76feb88e00e0a62ad873b7070",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819285054",
+    "workflowName": "Agent admission and execution controls"
+  },
+  "codex/fix-ci-security / CI": {
+    "conclusion": "success",
+    "databaseId": 34819283187,
+    "headBranch": "codex/fix-ci-security",
+    "headSha": "29467c9875ebf3f46f12d1230f6c146e9437a149",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819283187",
+    "workflowName": "CI"
+  },
+  "codex/impl-frontend-foundations / CI": {
+    "conclusion": "success",
+    "databaseId": 34819282590,
+    "headBranch": "codex/impl-frontend-foundations",
+    "headSha": "e274016a89803a64b3b7c64a04ec3b97d0a0e308",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819282590",
+    "workflowName": "CI"
+  },
+  "codex/plan-agent-frontend / CI": {
+    "conclusion": "success",
+    "databaseId": 34819282576,
+    "headBranch": "codex/plan-agent-frontend",
+    "headSha": "afeff80c73ce1ad9f9355c537e9be6420d947adb",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819282576",
+    "workflowName": "CI"
+  },
+  "codex/impl-durable-controls / CI": {
+    "conclusion": "success",
+    "databaseId": 34819282547,
+    "headBranch": "codex/impl-durable-controls",
+    "headSha": "0d2a8d9777b7e63d58bc3cabae83e3bc59b3cec5",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819282547",
+    "workflowName": "CI"
+  },
+  "codex/impl-durable-controls / Agent admission and execution controls": {
+    "conclusion": "success",
+    "databaseId": 34819282526,
+    "headBranch": "codex/impl-durable-controls",
+    "headSha": "0d2a8d9777b7e63d58bc3cabae83e3bc59b3cec5",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819282526",
+    "workflowName": "Agent admission and execution controls"
+  },
+  "codex/impl-frontend-foundations / Canvas regression": {
+    "conclusion": "success",
+    "databaseId": 34819282425,
+    "headBranch": "codex/impl-frontend-foundations",
+    "headSha": "e274016a89803a64b3b7c64a04ec3b97d0a0e308",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819282425",
+    "workflowName": "Canvas regression"
+  },
+  "codex/impl-proposal-preview / Canvas regression": {
+    "conclusion": "success",
+    "databaseId": 34819282039,
+    "headBranch": "codex/impl-proposal-preview",
+    "headSha": "46662431303e34c465c4421f52965e3fd65a7d9c",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819282039",
+    "workflowName": "Canvas regression"
+  },
+  "codex/impl-ci-foundations / CI": {
+    "conclusion": "success",
+    "databaseId": 34819282027,
+    "headBranch": "codex/impl-ci-foundations",
+    "headSha": "473146e20a895aeebc2c9ca8d8cccc7f653533e6",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819282027",
+    "workflowName": "CI"
+  },
+  "codex/plan-agent-backend / CI": {
+    "conclusion": "success",
+    "databaseId": 34819281992,
+    "headBranch": "codex/plan-agent-backend",
+    "headSha": "dcb66169bd6640b9b8873f7758b3c8f5c664faf1",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819281992",
+    "workflowName": "CI"
+  },
+  "codex/impl-backend-foundations / CI": {
+    "conclusion": "success",
+    "databaseId": 34819281983,
+    "headBranch": "codex/impl-backend-foundations",
+    "headSha": "268d176d06b9bc7ab1f2623cc993522cde095d9b",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819281983",
+    "workflowName": "CI"
+  },
+  "codex/impl-proposal-preview / CI": {
+    "conclusion": "success",
+    "databaseId": 34819281956,
+    "headBranch": "codex/impl-proposal-preview",
+    "headSha": "46662431303e34c465c4421f52965e3fd65a7d9c",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819281956",
+    "workflowName": "CI"
+  },
+  "codex/impl-agent-contracts / Agent admission and execution controls": {
+    "conclusion": "success",
+    "databaseId": 34819281814,
+    "headBranch": "codex/impl-agent-contracts",
+    "headSha": "037d2642d10d774e56cc6aaca63c88739a00395a",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819281814",
+    "workflowName": "Agent admission and execution controls"
+  },
+  "codex/impl-agent-contracts / CI": {
+    "conclusion": "success",
+    "databaseId": 34819281765,
+    "headBranch": "codex/impl-agent-contracts",
+    "headSha": "037d2642d10d774e56cc6aaca63c88739a00395a",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819281765",
+    "workflowName": "CI"
+  },
+  "codex/plan-product-gaps / CI": {
+    "conclusion": "success",
+    "databaseId": 34819280903,
+    "headBranch": "codex/plan-product-gaps",
+    "headSha": "55e785f609b7858dcd9aee57175fc2b81e9fa4bf",
+    "status": "completed",
+    "url": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34819280903",
+    "workflowName": "CI"
+  }
+}

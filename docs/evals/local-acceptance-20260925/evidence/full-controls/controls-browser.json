@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "realAPI": true,
+  "runs": [
+    {
+      "executionId": "exec-f8a8dcf0-249b-4370-8693-681aa3c5d474",
+      "rowId": "b6eaeedb-32e7-4ca8-beb2-dfac7231078f"
+    },
+    {
+      "executionId": "exec-ecb81787-9046-405f-8f90-50f23e144d8c",
+      "rowId": "8afa28eb-a177-4150-a2b5-a6a0763c2123"
+    }
+  ],
+  "viewer403Visible": true,
+  "completedControlsDisabled": true,
+  "reloadedMonitorVisible": false,
+  "reopenedPausedMonitorVisible": true,
+  "reopenedFinalPhase": "cancelled",
+  "cancelledControlsDisabled": true
+}

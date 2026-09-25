@@ -1,0 +1,46 @@
+{
+  "49": {
+    "branch": "codex/fix-ci-security",
+    "head": "29467c9875ebf3f46f12d1230f6c146e9437a149"
+  },
+  "38": {
+    "branch": "codex/plan-product-gaps",
+    "head": "55e785f609b7858dcd9aee57175fc2b81e9fa4bf"
+  },
+  "39": {
+    "branch": "codex/plan-agent-backend",
+    "head": "dcb66169bd6640b9b8873f7758b3c8f5c664faf1"
+  },
+  "40": {
+    "branch": "codex/plan-agent-frontend",
+    "head": "afeff80c73ce1ad9f9355c537e9be6420d947adb"
+  },
+  "42": {
+    "branch": "codex/impl-ci-foundations",
+    "head": "473146e20a895aeebc2c9ca8d8cccc7f653533e6"
+  },
+  "43": {
+    "branch": "codex/impl-frontend-foundations",
+    "head": "e274016a89803a64b3b7c64a04ec3b97d0a0e308"
+  },
+  "44": {
+    "branch": "codex/impl-backend-foundations",
+    "head": "268d176d06b9bc7ab1f2623cc993522cde095d9b"
+  },
+  "45": {
+    "branch": "codex/impl-proposal-preview",
+    "head": "46662431303e34c465c4421f52965e3fd65a7d9c"
+  },
+  "46": {
+    "branch": "codex/impl-agent-contracts",
+    "head": "037d2642d10d774e56cc6aaca63c88739a00395a"
+  },
+  "47": {
+    "branch": "codex/impl-durable-controls",
+    "head": "0d2a8d9777b7e63d58bc3cabae83e3bc59b3cec5"
+  },
+  "48": {
+    "branch": "codex/impl-temporal-sandbox",
+    "head": "2cd1e5c5a2e5b6f76feb88e00e0a62ad873b7070"
+  }
+}

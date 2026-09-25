@@ -1,0 +1,12 @@
+[
+  {
+    "edition": "community",
+    "exitCode": 0,
+    "skipped": false
+  },
+  {
+    "edition": "ee",
+    "exitCode": 0,
+    "skipped": false
+  }
+]

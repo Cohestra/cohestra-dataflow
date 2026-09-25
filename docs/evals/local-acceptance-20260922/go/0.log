@@ -1,0 +1,20 @@
+?   	github.com/dataflow-poc/workflow-go/cmd/activity-worker	[no test files]
+?   	github.com/dataflow-poc/workflow-go/cmd/api	[no test files]
+?   	github.com/dataflow-poc/workflow-go/cmd/worker	[no test files]
+?   	github.com/dataflow-poc/workflow-go/ee/activities	[no test files]
+ok  	github.com/dataflow-poc/workflow-go/ee/flink	2.733s
+ok  	github.com/dataflow-poc/workflow-go/ee/spark	2.083s
+ok  	github.com/dataflow-poc/workflow-go/ee/workflows	9.759s
+ok  	github.com/dataflow-poc/workflow-go/internal/activities	5.367s
+ok  	github.com/dataflow-poc/workflow-go/internal/api	9.842s
+ok  	github.com/dataflow-poc/workflow-go/internal/chsql	1.848s
+ok  	github.com/dataflow-poc/workflow-go/internal/codec	13.229s
+?   	github.com/dataflow-poc/workflow-go/internal/config	[no test files]
+ok  	github.com/dataflow-poc/workflow-go/internal/connectors	16.853s
+?   	github.com/dataflow-poc/workflow-go/internal/database	[no test files]
+?   	github.com/dataflow-poc/workflow-go/internal/dispatchers	[no test files]
+?   	github.com/dataflow-poc/workflow-go/internal/enterprise	[no test files]
+ok  	github.com/dataflow-poc/workflow-go/internal/model	2.632s
+?   	github.com/dataflow-poc/workflow-go/internal/objectstore	[no test files]
+ok  	github.com/dataflow-poc/workflow-go/internal/security	5.513s
+ok  	github.com/dataflow-poc/workflow-go/internal/workflows	16.707s

@@ -1,0 +1,152 @@
+{
+  "passed": true,
+  "realAPI": true,
+  "realTemporal": true,
+  "checks": [
+    {
+      "name": "Pointer drag then Save/reopen preserves entire definition",
+      "passed": true,
+      "originalRowId": "789591f6-f351-45aa-8ec9-fc5b49afce8b",
+      "savedRowId": "85bdf779-f0bf-4df6-b237-7963d77ecb9e",
+      "layoutPersistence": "Layout is a temporary canvas projection; no persisted position field exists."
+    },
+    {
+      "name": "UI-triggered timeout exhausts two attempts and fails with no sink records",
+      "passed": true,
+      "attempts": [
+        2
+      ],
+      "timeoutEvent": {
+        "eventId": "32",
+        "eventTime": "2026-09-25T12:05:39.518341834Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_TIMED_OUT",
+        "taskId": "3148853",
+        "activityTaskTimedOutEventAttributes": {
+          "failure": {
+            "message": "activity StartToClose timeout",
+            "source": "Server",
+            "cause": {
+              "message": "activity StartToClose timeout",
+              "source": "Server",
+              "timeoutFailureInfo": {
+                "timeoutType": "TIMEOUT_TYPE_START_TO_CLOSE"
+              }
+            },
+            "timeoutFailureInfo": {
+              "timeoutType": "TIMEOUT_TYPE_START_TO_CLOSE"
+            }
+          },
+          "scheduledEventId": "30",
+          "startedEventId": "31",
+          "retryState": "RETRY_STATE_MAXIMUM_ATTEMPTS_REACHED"
+        }
+      },
+      "dataset": {
+        "limit": 50,
+        "offset": 0,
+        "rows": [],
+        "total": 0
+      }
+    }
+  ],
+  "timeoutRun": {
+    "environment": "test",
+    "executionId": "exec-fb391cac-a816-4d53-8fcd-b3dd7d1656b8",
+    "rowId": "9910f9c6-5b14-43ad-97e7-cfec9c2af045",
+    "collection": "runtime_timeout_9615c79b6d034c7689372dc017975b55",
+    "timeoutSec": 1,
+    "maximumAttempts": 2
+  },
+  "executionDetail": {
+    "definition": {
+      "edges": [
+        {
+          "id": "e1",
+          "source": "src",
+          "target": "fil"
+        },
+        {
+          "id": "e2",
+          "source": "fil",
+          "target": "snk"
+        }
+      ],
+      "nodes": [
+        {
+          "activityType": "postgres.fetch",
+          "config": {
+            "columns": "id,name,active",
+            "connectionId": "70c89628-0034-4cbe-ad13-8855f03d15f0",
+            "cursorColumn": "id",
+            "cursorType": "number",
+            "syncMode": "cursor",
+            "table": "local_acceptance.runtime_browser_slow"
+          },
+          "id": "src",
+          "ingestion": {
+            "mode": "incremental",
+            "pageSize": 100
+          },
+          "label": "Local PostgreSQL",
+          "retry": {
+            "maximumAttempts": 2
+          },
+          "timeoutSec": 1,
+          "type": "source"
+        },
+        {
+          "activityType": "transform.filter",
+          "config": {
+            "predicate": "r.active === true"
+          },
+          "id": "fil",
+          "label": "Active records",
+          "retry": {
+            "maximumAttempts": 1
+          },
+          "timeoutSec": 30,
+          "type": "transform"
+        },
+        {
+          "activityType": "sink.records",
+          "config": {
+            "collection": "runtime_timeout_9615c79b6d034c7689372dc017975b55"
+          },
+          "id": "snk",
+          "label": "Managed records",
+          "retry": {
+            "maximumAttempts": 1
+          },
+          "timeoutSec": 30,
+          "type": "sink"
+        }
+      ]
+    },
+    "execution": {
+      "backfill_partition_id": null,
+      "build_id": null,
+      "cohestra_id": null,
+      "completed_at": "2026-09-25T17:35:39.611671+05:30",
+      "control_delivered_revision": 0,
+      "control_next_delivery_at": "2026-09-25T17:35:35.122707+05:30",
+      "control_revision": 0,
+      "control_state": "active",
+      "desired_state": null,
+      "engine_last_error": null,
+      "environment": "test",
+      "id": "exec-fb391cac-a816-4d53-8fcd-b3dd7d1656b8",
+      "name": "Runtime timeout 9615c79b",
+      "phase": "failed",
+      "pipeline_id": "9910f9c6-5b14-43ad-97e7-cfec9c2af045",
+      "retry_of": null,
+      "run_id": "01a0d874-e6d4-760a-9c83-efbe287f6ae3",
+      "started_at": "2026-09-25T17:35:35.122707+05:30",
+      "tenant_id": "7928020c-b2ac-4ab7-840f-7208a2816cc4",
+      "trace_id": "318dadc09fec444a913dbc8244ef5657",
+      "trigger_type": "manual",
+      "workflow_id": "exec-fb391cac-a816-4d53-8fcd-b3dd7d1656b8"
+    },
+    "nodeRuns": [],
+    "qualityResults": []
+  }
+}

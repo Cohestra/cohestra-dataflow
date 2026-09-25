@@ -1,0 +1,9 @@
+{
+  "head": "b9cfa170678715b39f3bd5aa383a0246ebc9aacb",
+  "files": {
+    "apps/workflow-go/internal/activities/activities.go": "36750cc64930f0e61c06021a57dd757bebe5046f081a1e4fedb4db9cd42b52fa",
+    "apps/workflow-go/internal/activities/record_counts_test.go": "d5fba2f9e3bc901e8d13b1e94aedcff19a1d914d42e94903cd15d0227a20dd06",
+    "apps/workflow-go/internal/api/routes_executions.go": "b08d8a0e1914f0badc996fdb102285edd296a56aa40fb444b47eb98b999a1dcd",
+    "apps/workflow-go/internal/api/routes_monitoring_test.go": "5c056a1887021af6c70598c9998d8b8b3a92748bdb7a751272894c87733f9ac4"
+  }
+}

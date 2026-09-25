@@ -1,0 +1,4 @@
+{
+  "httpStatus": 422,
+  "error": "could not refine pipeline: model response invalid after one repair: pipeline name is required"
+}

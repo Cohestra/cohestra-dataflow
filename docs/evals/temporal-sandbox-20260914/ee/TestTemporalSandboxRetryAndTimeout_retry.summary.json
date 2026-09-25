@@ -1,0 +1,19 @@
+{
+  "actualAttempts": [
+    1,
+    2,
+    3
+  ],
+  "authContextInjected": true,
+  "connectorBoundaryInjected": true,
+  "executionId": "exec-cd2f29b3-0a95-419c-99bc-4744026593af",
+  "gates": [
+    "S03"
+  ],
+  "historyEvents": 49,
+  "phase": "completed",
+  "realPostgres": true,
+  "realTemporal": true,
+  "test": "TestTemporalSandboxRetryAndTimeout/retry",
+  "testFailed": false
+}

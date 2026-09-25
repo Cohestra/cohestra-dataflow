@@ -1,0 +1,8 @@
+=== RUN   TestNodeCountsAppendPagesButReplaceConsolidatedOutput
+--- PASS: TestNodeCountsAppendPagesButReplaceConsolidatedOutput (0.09s)
+PASS
+ok  	github.com/dataflow-poc/workflow-go/internal/activities	3.481s
+=== RUN   TestMonitoringPipelineRunFields
+--- PASS: TestMonitoringPipelineRunFields (0.23s)
+PASS
+ok  	github.com/dataflow-poc/workflow-go/internal/api	4.515s

@@ -1,0 +1,17 @@
+{
+  "authContextInjected": true,
+  "connectorBoundaryInjected": true,
+  "executionId": "exec-b793384c-e039-416f-a1d7-ba40bc5428ea",
+  "gates": [
+    "S01"
+  ],
+  "goldenMatched": true,
+  "historyEvents": 85,
+  "phase": "completed",
+  "realPostgres": true,
+  "realTemporal": true,
+  "sinkCalls": 1,
+  "storedPayloads": 3,
+  "test": "TestTemporalSandboxStoredGoldenOutput",
+  "testFailed": false
+}

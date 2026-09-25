@@ -1,0 +1,23 @@
+{
+  "authContextInjected": true,
+  "connectorBoundaryInjected": true,
+  "executionId": "exec-662b2e3b-3b90-454a-afcd-edc415fca20e",
+  "gates": [
+    "S11",
+    "S13"
+  ],
+  "historyEvents": 121,
+  "pauseDeliveredRevision": 1,
+  "phase": "completed",
+  "realPostgres": true,
+  "realTemporal": true,
+  "restartMode": "graceful workflow-worker stop/start; activity worker remains running",
+  "resumeDeliveredRevision": 2,
+  "sameRunAfterRestart": true,
+  "sinkCalls": 1,
+  "sourcePages": 2,
+  "stickyCacheDisabled": true,
+  "test": "TestTemporalSandboxPausePagesAndRestartWorkflowWorker",
+  "testFailed": false,
+  "workflowWorkerRestarts": 1
+}

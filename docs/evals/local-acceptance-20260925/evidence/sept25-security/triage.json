@@ -1,0 +1,31 @@
+{
+  "reachableHistory": {
+    "status": "passed",
+    "commits": 177,
+    "leaks": 0
+  },
+  "goVulnerabilities": {
+    "status": "passed",
+    "calledVulnerabilities": 0,
+    "additionalNonCalledImportedPackageVulnerabilities": 1,
+    "additionalNonCalledRequiredModuleVulnerabilities": 1
+  },
+  "supplementalWorkingFiles": {
+    "rawExitCode": 1,
+    "scannerStatus": "failed",
+    "findingCount": 1,
+    "triage": "false positive",
+    "rule": "generic-api-key",
+    "file": "apps/workflow-go/internal/api/routes_ai.go",
+    "line": 300,
+    "evidence": "AI system instruction prose about refusing secret exposure and unsafe/private outbound URLs; no credential material.",
+    "codeChangedToSuppressFinding": false,
+    "allowlistChanged": false,
+    "finalFilesScanned": 21,
+    "finalRawExitCode": 1,
+    "finalFindingCount": 1,
+    "finalReport": "gitleaks-working-files-final.json",
+    "finalManifest": "working-files-final-manifest.json",
+    "unchangedKnownFindingOnly": true
+  }
+}

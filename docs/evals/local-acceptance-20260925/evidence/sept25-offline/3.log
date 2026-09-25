@@ -1,0 +1,8 @@
+
+> @dataflow/web@0.1.0 test
+> ts-node --compiler-options '{"module":"CommonJS"}' src/pages/runGraph.test.ts && ts-node --compiler-options '{"module":"CommonJS"}' src/components/analytics/analytics.test.ts && ts-node --compiler-options '{"module":"CommonJS"}' src/utils/pipelineConvert.test.ts && ts-node --compiler-options '{"module":"CommonJS"}' src/utils/pipelineProposal.test.ts && ts-node --compiler-options '{"module":"CommonJS"}' src/api.test.ts
+
+runGraph.test.ts OK
+pipelineConvert.test.ts OK
+pipelineProposal.test.ts OK
+api.test.ts OK

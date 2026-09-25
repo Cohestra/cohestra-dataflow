@@ -1,0 +1,1030 @@
+{
+  "startedAt": "2026-09-14T07:10:00.732970+00:00",
+  "status": "failed",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "source-revision.log",
+      "startedAt": "2026-09-14T07:10:00.733563+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:00.754484+00:00"
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain",
+        "--untracked-files=no"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "source-status.log",
+      "startedAt": "2026-09-14T07:10:00.754924+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:00.778305+00:00"
+    },
+    {
+      "argv": [
+        "curl",
+        "--fail",
+        "--location",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "180",
+        "--output",
+        "/tmp/cohestra-ts-rh5vxrtn/temporal.tar.gz",
+        "https://github.com/temporalio/cli/releases/download/v1.8.3/temporal_cli_1.8.3_darwin_arm64.tar.gz"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "download.log",
+      "startedAt": "2026-09-14T07:10:00.778762+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:19.439357+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-rh5vxrtn/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "--version"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "temporal-version.log",
+      "startedAt": "2026-09-14T07:10:19.759934+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:21.033851+00:00"
+    },
+    {
+      "argv": [
+        "pg_config",
+        "--bindir"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "pg-bindir.log",
+      "startedAt": "2026-09-14T07:10:21.034948+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:21.046461+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/postgres",
+        "--version"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "postgres-version.log",
+      "startedAt": "2026-09-14T07:10:21.047027+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:21.067737+00:00"
+    },
+    {
+      "argv": [
+        "go",
+        "version"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "go-version.log",
+      "startedAt": "2026-09-14T07:10:21.068227+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:21.581643+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/initdb",
+        "-D",
+        "/tmp/cohestra-ts-rh5vxrtn/pgdata",
+        "--username=dataflow",
+        "--auth-local=trust",
+        "--auth-host=trust",
+        "--no-locale",
+        "--encoding=UTF8"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "initdb.log",
+      "startedAt": "2026-09-14T07:10:21.582402+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.088855+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/postgres",
+        "-D",
+        "/tmp/cohestra-ts-rh5vxrtn/pgdata",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-k",
+        "/tmp/cohestra-ts-rh5vxrtn/sockets",
+        "-c",
+        "shared_buffers=32MB",
+        "-c",
+        "max_connections=30"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "postgres.log",
+      "startedAt": "2026-09-14T07:10:22.089473+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:25.229330+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/pg_isready",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "postgres"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "readiness/postgres-1.log",
+      "startedAt": "2026-09-14T07:10:22.091659+00:00",
+      "exitCode": 1,
+      "finishedAt": "2026-09-14T07:10:22.110742+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/pg_isready",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "postgres"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "readiness/postgres-2.log",
+      "startedAt": "2026-09-14T07:10:22.416782+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.457190+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/createdb",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "temporal_sandbox"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "createdb.log",
+      "startedAt": "2026-09-14T07:10:22.457883+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.589444+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/001_init.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/001_init.log",
+      "startedAt": "2026-09-14T07:10:22.590380+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.630809+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/002_auth.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/002_auth.log",
+      "startedAt": "2026-09-14T07:10:22.631296+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.672324+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/003_rls.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/003_rls.log",
+      "startedAt": "2026-09-14T07:10:22.672733+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.714031+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/004_oauth.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/004_oauth.log",
+      "startedAt": "2026-09-14T07:10:22.714443+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.755398+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/005_billing.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/005_billing.log",
+      "startedAt": "2026-09-14T07:10:22.755779+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.796185+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/006_dashboards.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/006_dashboards.log",
+      "startedAt": "2026-09-14T07:10:22.796542+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.837096+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/007_kms.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/007_kms.log",
+      "startedAt": "2026-09-14T07:10:22.837443+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.877631+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/008_environments.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/008_environments.log",
+      "startedAt": "2026-09-14T07:10:22.878013+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.918307+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/009_temporal_execution_identity.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/009_temporal_execution_identity.log",
+      "startedAt": "2026-09-14T07:10:22.918643+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.938947+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/010_connector_instances.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/010_connector_instances.log",
+      "startedAt": "2026-09-14T07:10:22.939292+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:22.977634+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/011_pipeline_alerts.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/011_pipeline_alerts.log",
+      "startedAt": "2026-09-14T07:10:22.978036+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.018457+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/012_execution_retries.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/012_execution_retries.log",
+      "startedAt": "2026-09-14T07:10:23.018841+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.055161+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/013_asset_materializations.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/013_asset_materializations.log",
+      "startedAt": "2026-09-14T07:10:23.055596+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.095988+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/014_data_quality.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/014_data_quality.log",
+      "startedAt": "2026-09-14T07:10:23.096390+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.136853+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/015_openlineage.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/015_openlineage.log",
+      "startedAt": "2026-09-14T07:10:23.137251+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.177850+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/016_backfills.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/016_backfills.log",
+      "startedAt": "2026-09-14T07:10:23.178216+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.214890+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/017_pipeline_rbac.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/017_pipeline_rbac.log",
+      "startedAt": "2026-09-14T07:10:23.215319+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.255681+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/018_oidc_sub.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/018_oidc_sub.log",
+      "startedAt": "2026-09-14T07:10:23.256089+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.296269+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/019_feature_entitlements.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/019_feature_entitlements.log",
+      "startedAt": "2026-09-14T07:10:23.296608+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.336841+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/019_password_auth.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/019_password_auth.log",
+      "startedAt": "2026-09-14T07:10:23.337213+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.356854+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/020_cross_run_dedupe.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/020_cross_run_dedupe.log",
+      "startedAt": "2026-09-14T07:10:23.357156+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.397262+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/021_engine_entitlements.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/021_engine_entitlements.log",
+      "startedAt": "2026-09-14T07:10:23.397673+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.436194+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/022_flink_execution_state.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/022_flink_execution_state.log",
+      "startedAt": "2026-09-14T07:10:23.436651+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.457055+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/023_lineage_payload.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/023_lineage_payload.log",
+      "startedAt": "2026-09-14T07:10:23.457397+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.477685+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/024_pipeline_list_indexes.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/024_pipeline_list_indexes.log",
+      "startedAt": "2026-09-14T07:10:23.478026+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.498388+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/025_retention_function.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/025_retention_function.log",
+      "startedAt": "2026-09-14T07:10:23.498715+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.519148+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/026_runtime_lineage.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/026_runtime_lineage.log",
+      "startedAt": "2026-09-14T07:10:23.519441+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.559731+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "58975",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/private/tmp/cohestra-sandbox-20260914/db/027_execution_controls.sql"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "migrations/027_execution_controls.log",
+      "startedAt": "2026-09-14T07:10:23.560129+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.596856+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-rh5vxrtn/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "server",
+        "start-dev",
+        "--ip",
+        "127.0.0.1",
+        "--port",
+        "58976",
+        "--namespace",
+        "test",
+        "--headless",
+        "--db-filename",
+        "/tmp/cohestra-ts-rh5vxrtn/temporal.sqlite",
+        "--log-level",
+        "warn"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "temporal.log",
+      "startedAt": "2026-09-14T07:10:23.597445+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:25.155131+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-rh5vxrtn/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "operator",
+        "cluster",
+        "health",
+        "--address",
+        "127.0.0.1:58976",
+        "--command-timeout",
+        "3s"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "readiness/temporal-1.log",
+      "startedAt": "2026-09-14T07:10:23.600170+00:00",
+      "exitCode": 1,
+      "finishedAt": "2026-09-14T07:10:23.639594+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-rh5vxrtn/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "operator",
+        "cluster",
+        "health",
+        "--address",
+        "127.0.0.1:58976",
+        "--command-timeout",
+        "3s"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "readiness/temporal-2.log",
+      "startedAt": "2026-09-14T07:10:23.940249+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:23.978733+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-rh5vxrtn/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "operator",
+        "namespace",
+        "describe",
+        "--namespace",
+        "test",
+        "--address",
+        "127.0.0.1:58976",
+        "--command-timeout",
+        "3s"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914",
+      "log": "readiness/namespace-1.log",
+      "startedAt": "2026-09-14T07:10:23.979227+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-14T07:10:24.018273+00:00"
+    },
+    {
+      "argv": [
+        "go",
+        "test",
+        "-race",
+        "-p",
+        "2",
+        "./internal/api",
+        "-run",
+        "^TestTemporalSandbox",
+        "-count=1",
+        "-timeout=6m",
+        "-json"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914/apps/workflow-go",
+      "log": "community/go-test.jsonl",
+      "startedAt": "2026-09-14T07:10:24.018756+00:00",
+      "exitCode": 1,
+      "finishedAt": "2026-09-14T07:10:24.059238+00:00"
+    },
+    {
+      "argv": [
+        "go",
+        "test",
+        "-race",
+        "-p",
+        "2",
+        "./internal/api",
+        "-run",
+        "^TestTemporalSandbox",
+        "-count=1",
+        "-timeout=6m",
+        "-json",
+        "-tags=ee"
+      ],
+      "cwd": "/private/tmp/cohestra-sandbox-20260914/apps/workflow-go",
+      "log": "ee/go-test.jsonl",
+      "startedAt": "2026-09-14T07:10:24.059823+00:00",
+      "exitCode": 1,
+      "finishedAt": "2026-09-14T07:10:24.100206+00:00"
+    }
+  ],
+  "editions": [
+    {
+      "edition": "community",
+      "exitCode": 1,
+      "tests": {
+        "TestTemporalSandboxInjectedFailure": "fail"
+      },
+      "leafTests": {
+        "TestTemporalSandboxInjectedFailure": "fail"
+      },
+      "valid": false
+    },
+    {
+      "edition": "ee",
+      "exitCode": 1,
+      "tests": {
+        "TestTemporalSandboxInjectedFailure": "fail"
+      },
+      "leafTests": {
+        "TestTemporalSandboxInjectedFailure": "fail"
+      },
+      "valid": false
+    }
+  ],
+  "versions": {
+    "temporal": "temporal version 1.8.3 (Server 1.31.2, UI 2.50.1)",
+    "postgres": "postgres (PostgreSQL) 17.10 (Homebrew)",
+    "go": "go version go1.25.5 darwin/arm64"
+  },
+  "runtimeDirectory": "/tmp/cohestra-ts-rh5vxrtn",
+  "sourceRevision": "631f105b5d76695b27226da8b444de88935df47a",
+  "trackedChanges": false,
+  "temporalBinarySource": {
+    "url": "https://github.com/temporalio/cli/releases/download/v1.8.3/temporal_cli_1.8.3_darwin_arm64.tar.gz",
+    "sha256": "77c5bef1753ddfcdcaced2a2d44207aeced1c776e7bcbf94520c7911bd0c4080"
+  },
+  "ports": {
+    "postgres": 58975,
+    "temporal": 58976
+  },
+  "migrations": [
+    "001_init.sql",
+    "002_auth.sql",
+    "003_rls.sql",
+    "004_oauth.sql",
+    "005_billing.sql",
+    "006_dashboards.sql",
+    "007_kms.sql",
+    "008_environments.sql",
+    "009_temporal_execution_identity.sql",
+    "010_connector_instances.sql",
+    "011_pipeline_alerts.sql",
+    "012_execution_retries.sql",
+    "013_asset_materializations.sql",
+    "014_data_quality.sql",
+    "015_openlineage.sql",
+    "016_backfills.sql",
+    "017_pipeline_rbac.sql",
+    "018_oidc_sub.sql",
+    "019_feature_entitlements.sql",
+    "019_password_auth.sql",
+    "020_cross_run_dedupe.sql",
+    "021_engine_entitlements.sql",
+    "022_flink_execution_state.sql",
+    "023_lineage_payload.sql",
+    "024_pipeline_list_indexes.sql",
+    "025_retention_function.sql",
+    "026_runtime_lineage.sql",
+    "027_execution_controls.sql"
+  ],
+  "error": "One or more editions failed, ran no tests, or skipped tests; inspect go-test.jsonl",
+  "cleanupErrors": [],
+  "finishedAt": "2026-09-14T07:10:25.311806+00:00"
+}

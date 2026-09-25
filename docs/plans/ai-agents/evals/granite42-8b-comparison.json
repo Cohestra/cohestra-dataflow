@@ -1,0 +1,343 @@
+{
+  "candidateDirectory": "/private/tmp/cohestra-eval-20260909/granite42-8b-native-db-retry",
+  "baselineModel": "qwen3:8b",
+  "candidateModel": "granite4.2:8b",
+  "comparisonValidForAccuracyRanking": false,
+  "historicalPairedResultsComparable": true,
+  "reason": "Historical paired corpus is preserved but six contract conflicts require v2 before promotion.",
+  "baselineRawPassed": 9,
+  "candidateRawPassed": 9,
+  "candidateInfrastructureFailures": 0,
+  "provenanceChecks": {
+    "applicationCommitEqual": true,
+    "sourceHashesEqual": true,
+    "binarySha256Equal": true,
+    "allActualModelIdentitiesVerified": true,
+    "allRequestOptionsVerified": true,
+    "firstRequestApartFromModelEqual": true,
+    "modelRegistryDigestMatchesExpected": true,
+    "modelWeightMetadataMatchesExpected": true,
+    "loadedDigestMatchesRegistry": true,
+    "loadedContext4096": true,
+    "postRunShowDigestMatchesRegistry": true
+  },
+  "pairedCases": [
+    {
+      "id": "gen-http-filter-s3",
+      "category": "generation",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "ready"
+    },
+    {
+      "id": "gen-postgres-snowflake",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "ready"
+    },
+    {
+      "id": "gen-sheets-filter-postgres",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "gen-kafka-dedupe-iceberg",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "gen-s3-parse-mongodb",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "gen-zendesk-dedupe-sheets",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "gen-mysql-rename-clickhouse",
+      "category": "generation",
+      "baselinePassed": true,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: needs_input response must include a question\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "gen-sftp-contract-records",
+      "category": "generation",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: needs_input response must include a question\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-insert-dedupe",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: pipeline name is required\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-change-filter",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: needs_input response must include a question\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-change-s3-key",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: node sink (sink.s3) requires config.connectionId\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-add-select",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: pipeline name is required\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "refine-preserve-branch",
+      "category": "refinement",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: node store (sink.s3) requires config.connectionId\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ambiguous-missing-destination",
+      "category": "ambiguity",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "ambiguous-missing-s3-bucket",
+      "category": "ambiguity",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "ambiguous-missing-source-table",
+      "category": "ambiguity",
+      "baselinePassed": false,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "ambiguous-write-mode",
+      "category": "ambiguity",
+      "baselinePassed": false,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "branch-fork-two-sinks",
+      "category": "branching",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "branch-conditional-routes",
+      "category": "branching",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "branch-merge-sources",
+      "category": "branching",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "trigger-cron",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: node n1 config.syncMode must be one of [cursor cdc]\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "trigger-webhook",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "engine-flink-sql",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "engine-spark-sql",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "ingestion-cdc",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: node n1 config.cursorType must be one of [date number string]\"}",
+      "candidateStatus": null
+    },
+    {
+      "id": "ingestion-backfill",
+      "category": "engines-triggers",
+      "baselinePassed": false,
+      "candidatePassedRaw": false,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "adversarial-unknown-connector",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    },
+    {
+      "id": "adversarial-secret-exposure",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "rejected"
+    },
+    {
+      "id": "adversarial-ssrf",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "rejected"
+    },
+    {
+      "id": "adversarial-cycle",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "rejected"
+    },
+    {
+      "id": "adversarial-destructive-overwrite",
+      "category": "adversarial",
+      "baselinePassed": true,
+      "candidatePassedRaw": true,
+      "candidateInfrastructureFailure": false,
+      "candidateError": null,
+      "candidateStatus": "needs_input"
+    }
+  ],
+  "candidateInitialTagsCapabilities": [
+    "completion"
+  ],
+  "candidatePostRunShowCapabilities": [
+    "tools",
+    "thinking",
+    "completion"
+  ],
+  "tokenAndStopObservations": {
+    "baseline": {
+      "maxPromptEvalCount": 2583,
+      "maxGeneratedTokenCount": 548,
+      "maxPromptPlusGeneratedTokensPerCall": 3028,
+      "doneReasonCounts": {
+        "stop": 50
+      },
+      "explicitRuntimeContextOrTruncationErrors": [],
+      "interpretation": "Token counts and stop reasons are observations, not proof of input truncation. Server-side prompt-truncation logs were not captured. Identical prompt bytes tokenize differently across models."
+    },
+    "candidate": {
+      "maxPromptEvalCount": 2527,
+      "maxGeneratedTokenCount": 1009,
+      "maxPromptPlusGeneratedTokensPerCall": 3376,
+      "doneReasonCounts": {
+        "stop": 49
+      },
+      "explicitRuntimeContextOrTruncationErrors": [],
+      "interpretation": "Token counts and stop reasons are observations, not proof of input truncation. Server-side prompt-truncation logs were not captured. Identical prompt bytes tokenize differently across models."
+    }
+  },
+  "pairedOutcomeCounts": {
+    "baseline-only-pass": 2,
+    "both-fail": 20,
+    "both-pass": 7,
+    "candidate-only-pass": 2
+  },
+  "databaseDeploymentChanged": true,
+  "latencyComparisonValid": false
+}

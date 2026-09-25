@@ -1,0 +1,1022 @@
+{
+  "startedAt": "2026-09-25T11:57:20.401597+00:00",
+  "status": "passed",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "source-revision.log",
+      "startedAt": "2026-09-25T11:57:20.402239+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:20.443708+00:00"
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain",
+        "--untracked-files=no"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "source-status.log",
+      "startedAt": "2026-09-25T11:57:20.444165+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:20.485653+00:00"
+    },
+    {
+      "argv": [
+        "curl",
+        "--fail",
+        "--location",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "180",
+        "--output",
+        "/tmp/cohestra-ts-or4vtz_w/temporal.tar.gz",
+        "https://github.com/temporalio/cli/releases/download/v1.8.3/temporal_cli_1.8.3_darwin_arm64.tar.gz"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "download.log",
+      "startedAt": "2026-09-25T11:57:20.486090+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:31.206864+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-or4vtz_w/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "--version"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "temporal-version.log",
+      "startedAt": "2026-09-25T11:57:31.730157+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:33.437751+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/postgres",
+        "--version"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "postgres-version.log",
+      "startedAt": "2026-09-25T11:57:33.440201+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:33.514823+00:00"
+    },
+    {
+      "argv": [
+        "go",
+        "version"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/apps/workflow-go",
+      "log": "go-version.log",
+      "startedAt": "2026-09-25T11:57:33.515268+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:33.586498+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/initdb",
+        "-D",
+        "/tmp/cohestra-ts-or4vtz_w/pgdata",
+        "--username=dataflow",
+        "--auth-local=trust",
+        "--auth-host=trust",
+        "--no-locale",
+        "--encoding=UTF8"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "initdb.log",
+      "startedAt": "2026-09-25T11:57:33.587335+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.249060+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/postgres",
+        "-D",
+        "/tmp/cohestra-ts-or4vtz_w/pgdata",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-k",
+        "/tmp/cohestra-ts-or4vtz_w/sockets",
+        "-c",
+        "shared_buffers=32MB",
+        "-c",
+        "max_connections=30"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "postgres.log",
+      "startedAt": "2026-09-25T11:57:34.249798+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T12:01:47.271182+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/pg_isready",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "postgres"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "readiness/postgres-1.log",
+      "startedAt": "2026-09-25T11:57:34.252133+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.432749+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/createdb",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "temporal_sandbox"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "createdb.log",
+      "startedAt": "2026-09-25T11:57:34.433259+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.557619+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/001_init.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/001_init.log",
+      "startedAt": "2026-09-25T11:57:34.559546+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.685758+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/002_auth.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/002_auth.log",
+      "startedAt": "2026-09-25T11:57:34.686369+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.757607+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/003_rls.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/003_rls.log",
+      "startedAt": "2026-09-25T11:57:34.758379+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.797998+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/004_oauth.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/004_oauth.log",
+      "startedAt": "2026-09-25T11:57:34.798433+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.837015+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/005_billing.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/005_billing.log",
+      "startedAt": "2026-09-25T11:57:34.837507+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.875843+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/006_dashboards.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/006_dashboards.log",
+      "startedAt": "2026-09-25T11:57:34.876317+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:34.949695+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/007_kms.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/007_kms.log",
+      "startedAt": "2026-09-25T11:57:34.951219+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.026363+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/008_environments.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/008_environments.log",
+      "startedAt": "2026-09-25T11:57:35.026891+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.061549+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/009_temporal_execution_identity.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/009_temporal_execution_identity.log",
+      "startedAt": "2026-09-25T11:57:35.062006+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.096771+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/010_connector_instances.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/010_connector_instances.log",
+      "startedAt": "2026-09-25T11:57:35.097387+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.135624+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/011_pipeline_alerts.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/011_pipeline_alerts.log",
+      "startedAt": "2026-09-25T11:57:35.136012+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.207361+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/012_execution_retries.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/012_execution_retries.log",
+      "startedAt": "2026-09-25T11:57:35.208391+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.250015+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/013_asset_materializations.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/013_asset_materializations.log",
+      "startedAt": "2026-09-25T11:57:35.250817+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.321321+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/014_data_quality.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/014_data_quality.log",
+      "startedAt": "2026-09-25T11:57:35.321873+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.394021+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/015_openlineage.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/015_openlineage.log",
+      "startedAt": "2026-09-25T11:57:35.394651+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.467044+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/016_backfills.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/016_backfills.log",
+      "startedAt": "2026-09-25T11:57:35.468545+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.506114+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/017_pipeline_rbac.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/017_pipeline_rbac.log",
+      "startedAt": "2026-09-25T11:57:35.506651+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.542808+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/018_oidc_sub.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/018_oidc_sub.log",
+      "startedAt": "2026-09-25T11:57:35.543265+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.579704+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/019_feature_entitlements.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/019_feature_entitlements.log",
+      "startedAt": "2026-09-25T11:57:35.580143+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.648608+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/019_password_auth.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/019_password_auth.log",
+      "startedAt": "2026-09-25T11:57:35.649245+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.721504+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/020_cross_run_dedupe.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/020_cross_run_dedupe.log",
+      "startedAt": "2026-09-25T11:57:35.722986+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.801203+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/021_engine_entitlements.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/021_engine_entitlements.log",
+      "startedAt": "2026-09-25T11:57:35.801955+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.839750+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/022_flink_execution_state.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/022_flink_execution_state.log",
+      "startedAt": "2026-09-25T11:57:35.840247+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.911817+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/023_lineage_payload.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/023_lineage_payload.log",
+      "startedAt": "2026-09-25T11:57:35.913138+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:35.992994+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/024_pipeline_list_indexes.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/024_pipeline_list_indexes.log",
+      "startedAt": "2026-09-25T11:57:35.993959+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:36.069112+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/025_retention_function.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/025_retention_function.log",
+      "startedAt": "2026-09-25T11:57:36.069686+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:36.108757+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/026_runtime_lineage.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/026_runtime_lineage.log",
+      "startedAt": "2026-09-25T11:57:36.109646+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:36.147726+00:00"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/Cellar/postgresql@17/17.10/bin/psql",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "61730",
+        "-U",
+        "dataflow",
+        "-d",
+        "temporal_sandbox",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/db/027_execution_controls.sql"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "migrations/027_execution_controls.log",
+      "startedAt": "2026-09-25T11:57:36.148207+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:36.185629+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-or4vtz_w/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "server",
+        "start-dev",
+        "--ip",
+        "127.0.0.1",
+        "--port",
+        "61731",
+        "--namespace",
+        "test",
+        "--headless",
+        "--db-filename",
+        "/tmp/cohestra-ts-or4vtz_w/temporal.sqlite",
+        "--log-level",
+        "warn"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "temporal.log",
+      "startedAt": "2026-09-25T11:57:36.186297+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T12:01:46.813160+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-or4vtz_w/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "operator",
+        "cluster",
+        "health",
+        "--address",
+        "127.0.0.1:61731",
+        "--command-timeout",
+        "3s"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "readiness/temporal-1.log",
+      "startedAt": "2026-09-25T11:57:36.190311+00:00",
+      "exitCode": 1,
+      "finishedAt": "2026-09-25T11:57:36.310441+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-or4vtz_w/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "operator",
+        "cluster",
+        "health",
+        "--address",
+        "127.0.0.1:61731",
+        "--command-timeout",
+        "3s"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "readiness/temporal-2.log",
+      "startedAt": "2026-09-25T11:57:36.614054+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:36.806740+00:00"
+    },
+    {
+      "argv": [
+        "/tmp/cohestra-ts-or4vtz_w/temporal",
+        "--disable-config-env",
+        "--disable-config-file",
+        "operator",
+        "namespace",
+        "describe",
+        "--namespace",
+        "test",
+        "--address",
+        "127.0.0.1:61731",
+        "--command-timeout",
+        "3s"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout",
+      "log": "readiness/namespace-1.log",
+      "startedAt": "2026-09-25T11:57:36.807601+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:57:36.937961+00:00"
+    },
+    {
+      "argv": [
+        "go",
+        "test",
+        "-race",
+        "-p",
+        "2",
+        "./internal/api",
+        "-run",
+        "^TestTemporalSandbox",
+        "-count=1",
+        "-timeout=6m",
+        "-json"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/apps/workflow-go",
+      "log": "community/go-test.jsonl",
+      "startedAt": "2026-09-25T11:57:36.939175+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T11:59:49.584949+00:00"
+    },
+    {
+      "argv": [
+        "go",
+        "test",
+        "-race",
+        "-p",
+        "2",
+        "./internal/api",
+        "-run",
+        "^TestTemporalSandbox",
+        "-count=1",
+        "-timeout=6m",
+        "-json",
+        "-tags=ee"
+      ],
+      "cwd": "/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout/apps/workflow-go",
+      "log": "ee/go-test.jsonl",
+      "startedAt": "2026-09-25T11:59:49.833870+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-09-25T12:01:45.463975+00:00"
+    }
+  ],
+  "editions": [
+    {
+      "edition": "community",
+      "exitCode": 0,
+      "tests": {
+        "TestTemporalSandboxStoredGoldenOutput": "pass",
+        "TestTemporalSandboxRetryAndTimeout": "pass",
+        "TestTemporalSandboxRetryAndTimeout/retry": "pass",
+        "TestTemporalSandboxRetryAndTimeout/timeout": "pass",
+        "TestTemporalSandboxPausePagesAndRestartWorkflowWorker": "pass",
+        "TestTemporalSandboxHeartbeatCancelPreventsSink": "pass",
+        "TestTemporalSandboxRejectsUnsupportedAgentAdmission": "pass"
+      },
+      "leafTests": {
+        "TestTemporalSandboxStoredGoldenOutput": "pass",
+        "TestTemporalSandboxRetryAndTimeout/retry": "pass",
+        "TestTemporalSandboxRetryAndTimeout/timeout": "pass",
+        "TestTemporalSandboxPausePagesAndRestartWorkflowWorker": "pass",
+        "TestTemporalSandboxHeartbeatCancelPreventsSink": "pass",
+        "TestTemporalSandboxRejectsUnsupportedAgentAdmission": "pass"
+      },
+      "valid": true
+    },
+    {
+      "edition": "ee",
+      "exitCode": 0,
+      "tests": {
+        "TestTemporalSandboxStoredGoldenOutput": "pass",
+        "TestTemporalSandboxRetryAndTimeout": "pass",
+        "TestTemporalSandboxRetryAndTimeout/retry": "pass",
+        "TestTemporalSandboxRetryAndTimeout/timeout": "pass",
+        "TestTemporalSandboxPausePagesAndRestartWorkflowWorker": "pass",
+        "TestTemporalSandboxHeartbeatCancelPreventsSink": "pass",
+        "TestTemporalSandboxRejectsUnsupportedAgentAdmission": "pass"
+      },
+      "leafTests": {
+        "TestTemporalSandboxStoredGoldenOutput": "pass",
+        "TestTemporalSandboxRetryAndTimeout/retry": "pass",
+        "TestTemporalSandboxRetryAndTimeout/timeout": "pass",
+        "TestTemporalSandboxPausePagesAndRestartWorkflowWorker": "pass",
+        "TestTemporalSandboxHeartbeatCancelPreventsSink": "pass",
+        "TestTemporalSandboxRejectsUnsupportedAgentAdmission": "pass"
+      },
+      "valid": true
+    }
+  ],
+  "versions": {
+    "temporal": "temporal version 1.8.3 (Server 1.31.2, UI 2.50.1)",
+    "postgres": "postgres (PostgreSQL) 17.10 (Homebrew)",
+    "go": "go version go1.26.8 darwin/arm64"
+  },
+  "runtimeDirectory": "/tmp/cohestra-ts-or4vtz_w",
+  "sourceRevision": "b9cfa170678715b39f3bd5aa383a0246ebc9aacb",
+  "trackedChanges": true,
+  "temporalBinarySource": {
+    "url": "https://github.com/temporalio/cli/releases/download/v1.8.3/temporal_cli_1.8.3_darwin_arm64.tar.gz",
+    "sha256": "77c5bef1753ddfcdcaced2a2d44207aeced1c776e7bcbf94520c7911bd0c4080"
+  },
+  "ports": {
+    "postgres": 61730,
+    "temporal": 61731
+  },
+  "migrations": [
+    "001_init.sql",
+    "002_auth.sql",
+    "003_rls.sql",
+    "004_oauth.sql",
+    "005_billing.sql",
+    "006_dashboards.sql",
+    "007_kms.sql",
+    "008_environments.sql",
+    "009_temporal_execution_identity.sql",
+    "010_connector_instances.sql",
+    "011_pipeline_alerts.sql",
+    "012_execution_retries.sql",
+    "013_asset_materializations.sql",
+    "014_data_quality.sql",
+    "015_openlineage.sql",
+    "016_backfills.sql",
+    "017_pipeline_rbac.sql",
+    "018_oidc_sub.sql",
+    "019_feature_entitlements.sql",
+    "019_password_auth.sql",
+    "020_cross_run_dedupe.sql",
+    "021_engine_entitlements.sql",
+    "022_flink_execution_state.sql",
+    "023_lineage_payload.sql",
+    "024_pipeline_list_indexes.sql",
+    "025_retention_function.sql",
+    "026_runtime_lineage.sql",
+    "027_execution_controls.sql"
+  ],
+  "cleanupErrors": [],
+  "finishedAt": "2026-09-25T12:01:47.606521+00:00"
+}

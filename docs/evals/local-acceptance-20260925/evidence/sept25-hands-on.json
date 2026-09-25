@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-25",
+  "browser": "Codex in-app browser (CUA)",
+  "completedRun": "exec-f8a8dcf0-249b-4370-8693-681aa3c5d474",
+  "checks": [
+    {
+      "name": "completed run graph after monitoring link",
+      "passed": true,
+      "observed": "source12/filter6/sink6; every node success"
+    },
+    {
+      "name": "monitoring last-run link and duration",
+      "passed": true,
+      "observed": "Browser controls b8d3ef completed; average duration10.2s"
+    },
+    {
+      "name": "saved owner metadata visible",
+      "passed": true,
+      "observed": "Browser execution acceptance owner Local acceptance, completed,1.3s"
+    },
+    {
+      "name": "terminal controls disabled",
+      "passed": true,
+      "observed": "completed run Pause/Resume/Cancel disabled"
+    }
+  ],
+  "limitations": [
+    "Pipeline health displayed unknown; no healthy/SLO assertion made."
+  ]
+}

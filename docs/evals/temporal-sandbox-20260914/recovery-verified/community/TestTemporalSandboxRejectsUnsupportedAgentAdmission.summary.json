@@ -1,0 +1,13 @@
+{
+  "authContextInjected": true,
+  "connectorBoundaryInjected": true,
+  "gates": [
+    "S01-admission"
+  ],
+  "historyEvents": 9,
+  "realPostgres": true,
+  "realTemporal": true,
+  "test": "TestTemporalSandboxRejectsUnsupportedAgentAdmission",
+  "testFailed": false,
+  "unsupportedAgentDeniedBeforeActivity": true
+}

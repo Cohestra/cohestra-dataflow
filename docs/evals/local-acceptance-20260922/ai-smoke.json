@@ -1,0 +1,60 @@
+{
+  "model": "qwen3:8b",
+  "scope": "one local generation smoke; not accuracy benchmark",
+  "passed": false,
+  "installedModels": [
+    "granite4.2:8b",
+    "llama3.1:8b",
+    "qwen3:8b",
+    "qwen2.5vl:7b"
+  ],
+  "response": {
+    "assumptions": [],
+    "definition": {
+      "edges": [
+        {
+          "id": "e1",
+          "source": "n1",
+          "target": "n2"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "n1",
+          "type": "source",
+          "activityType": "http.fetch",
+          "label": "Fetch users from JSONPlaceholder",
+          "config": {
+            "recordsPath": "/users",
+            "url": "https://jsonplaceholder.typicode.com/users"
+          }
+        },
+        {
+          "id": "n2",
+          "type": "sink",
+          "activityType": "sink.records",
+          "label": "Store users in local_ai_smoke collection",
+          "config": {
+            "collection": "local_ai_smoke"
+          }
+        }
+      ],
+      "suggestedName": "Fetch and Store Users",
+      "trigger": {
+        "type": "manual"
+      }
+    },
+    "mermaid": "flowchart LR\n  n1[\"Fetch users from JSONPlaceholder\"]\n  n2[\"Store users in local_ai_smoke collection\"]\n  n1 --> n2",
+    "metrics": {
+      "repairCount": 0
+    },
+    "questions": [],
+    "reason": "",
+    "status": "ready",
+    "warnings": []
+  },
+  "elapsedSeconds": 31.85,
+  "transportPassed": true,
+  "semanticPassed": false,
+  "semanticError": "http.fetch recordsPath is /users, but the supplied endpoint returns a top-level array; omit recordsPath or use empty string. fetchManifest/dig would produce a null record for /users. Generated pipeline was not executed."
+}

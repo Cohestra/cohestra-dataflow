@@ -1,0 +1,64 @@
+[
+  {
+    "command": [
+      "go",
+      "test",
+      "-race",
+      "./..."
+    ],
+    "exitCode": 0,
+    "log": "0.log"
+  },
+  {
+    "command": [
+      "go",
+      "test",
+      "-race",
+      "-tags",
+      "ee",
+      "./..."
+    ],
+    "exitCode": 0,
+    "log": "1.log"
+  },
+  {
+    "command": [
+      "go",
+      "vet",
+      "./..."
+    ],
+    "exitCode": 0,
+    "log": "2.log"
+  },
+  {
+    "command": [
+      "go",
+      "vet",
+      "-tags",
+      "ee",
+      "./..."
+    ],
+    "exitCode": 0,
+    "log": "3.log"
+  },
+  {
+    "command": [
+      "go",
+      "build",
+      "./cmd/..."
+    ],
+    "exitCode": 0,
+    "log": "4.log"
+  },
+  {
+    "command": [
+      "go",
+      "build",
+      "-tags",
+      "ee",
+      "./cmd/..."
+    ],
+    "exitCode": 0,
+    "log": "5.log"
+  }
+]

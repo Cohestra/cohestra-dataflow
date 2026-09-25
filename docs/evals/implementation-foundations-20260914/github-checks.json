@@ -1,0 +1,465 @@
+{
+  "checkedAt": "2026-09-13T21:39:45.835033+00:00",
+  "prs": [
+    {
+      "baseRefName": "main",
+      "headRefOid": "6c60721ed21f4638918e71c4d930279a4fa3832e",
+      "isDraft": true,
+      "number": 42,
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:30Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537282",
+          "name": "build",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:37:20Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537278",
+          "name": "tests",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:29Z",
+          "conclusion": "FAILURE",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537236",
+          "name": "security",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:33:41Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537308",
+          "name": "compose",
+          "startedAt": "2026-09-13T21:33:33Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:33:41Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537323",
+          "name": "helm",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:33:49Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537116",
+          "name": "terraform",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:35:05Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537385",
+          "name": "codeql (go)",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:41Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537371",
+          "name": "codeql (javascript-typescript)",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:33:38Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537474",
+          "name": "dependency-review",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:33:52Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537226",
+          "name": "iac-scan",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:36:27Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537312",
+          "name": "container-scan",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:36:25Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537353",
+          "name": "sbom",
+          "startedAt": "2026-09-13T21:33:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:33:30Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784181718/job/103796537852",
+          "name": "sign-images",
+          "startedAt": "2026-09-13T21:33:30Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:33Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/runs/103796674792",
+          "name": "CodeQL",
+          "startedAt": "2026-09-13T21:34:31Z",
+          "status": "COMPLETED",
+          "workflowName": ""
+        }
+      ],
+      "url": "https://github.com/Cohestra/cohestra-dataflow/pull/42"
+    },
+    {
+      "baseRefName": "main",
+      "headRefOid": "f04fad7391fb2722858110dec72b6f657f1d99cf",
+      "isDraft": true,
+      "number": 43,
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:35:54Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646085",
+          "name": "build",
+          "startedAt": "2026-09-13T21:34:55Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:35:12Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221035/job/103796646355",
+          "name": "metadata-round-trip",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "Canvas regression"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:27Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646254",
+          "name": "tests",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:35:18Z",
+          "conclusion": "FAILURE",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646045",
+          "name": "security",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:28Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646145",
+          "name": "compose",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:30Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646219",
+          "name": "helm",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:39Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646088",
+          "name": "terraform",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:36:07Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646125",
+          "name": "codeql (go)",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:35:24Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646155",
+          "name": "codeql (javascript-typescript)",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:29Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646296",
+          "name": "dependency-review",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:41Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646190",
+          "name": "iac-scan",
+          "startedAt": "2026-09-13T21:34:21Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:37:15Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646143",
+          "name": "container-scan",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:37:21Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646139",
+          "name": "sbom",
+          "startedAt": "2026-09-13T21:34:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:34:18Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784221009/job/103796646630",
+          "name": "sign-images",
+          "startedAt": "2026-09-13T21:34:18Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:35:19Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/runs/103796779619",
+          "name": "CodeQL",
+          "startedAt": "2026-09-13T21:35:16Z",
+          "status": "COMPLETED",
+          "workflowName": ""
+        }
+      ],
+      "url": "https://github.com/Cohestra/cohestra-dataflow/pull/43"
+    },
+    {
+      "baseRefName": "main",
+      "headRefOid": "31ce9c88fe9b0648269b97fbe1cba812ae055cdd",
+      "isDraft": true,
+      "number": 44,
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:39:09Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169437",
+          "name": "build",
+          "startedAt": "2026-09-13T21:38:11Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169420",
+          "name": "tests",
+          "startedAt": "2026-09-13T21:38:11Z",
+          "status": "IN_PROGRESS",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:51Z",
+          "conclusion": "FAILURE",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169482",
+          "name": "security",
+          "startedAt": "2026-09-13T21:38:12Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:20Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169421",
+          "name": "compose",
+          "startedAt": "2026-09-13T21:38:11Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:17Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169304",
+          "name": "helm",
+          "startedAt": "2026-09-13T21:38:11Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:32Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169462",
+          "name": "terraform",
+          "startedAt": "2026-09-13T21:38:11Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169378",
+          "name": "codeql (go)",
+          "startedAt": "2026-09-13T21:38:23Z",
+          "status": "IN_PROGRESS",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:39:21Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169583",
+          "name": "codeql (javascript-typescript)",
+          "startedAt": "2026-09-13T21:38:12Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:20Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169492",
+          "name": "dependency-review",
+          "startedAt": "2026-09-13T21:38:12Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:28Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169509",
+          "name": "iac-scan",
+          "startedAt": "2026-09-13T21:38:12Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169454",
+          "name": "container-scan",
+          "startedAt": "2026-09-13T21:38:11Z",
+          "status": "IN_PROGRESS",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169422",
+          "name": "sbom",
+          "startedAt": "2026-09-13T21:38:12Z",
+          "status": "IN_PROGRESS",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:38:09Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/actions/runs/34784415605/job/103797169931",
+          "name": "sign-images",
+          "startedAt": "2026-09-13T21:38:10Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-13T21:39:13Z",
+          "conclusion": "NEUTRAL",
+          "detailsUrl": "https://github.com/Cohestra/cohestra-dataflow/runs/103797301997",
+          "name": "CodeQL",
+          "startedAt": "2026-09-13T21:39:11Z",
+          "status": "COMPLETED",
+          "workflowName": ""
+        }
+      ],
+      "url": "https://github.com/Cohestra/cohestra-dataflow/pull/44"
+    }
+  ]
+}

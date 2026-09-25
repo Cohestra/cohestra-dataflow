@@ -1,0 +1,11 @@
+2026-09-14 07:13:22.743 UTC [2708] LOG:  starting PostgreSQL 16.15 (Ubuntu 16.15-1.pgdg24.04+2) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-09-14 07:13:22.743 UTC [2708] LOG:  listening on IPv4 address "127.0.0.1", port 57209
+2026-09-14 07:13:22.744 UTC [2708] LOG:  listening on Unix socket "/tmp/cohestra-ts-d37agac9/sockets/.s.PGSQL.57209"
+2026-09-14 07:13:22.746 UTC [2712] LOG:  database system was shut down at 2026-09-14 07:13:22 UTC
+2026-09-14 07:13:22.751 UTC [2708] LOG:  database system is ready to accept connections
+2026-09-14 07:16:56.629 UTC [2708] LOG:  received smart shutdown request
+2026-09-14 07:16:56.633 UTC [2708] LOG:  background worker "logical replication launcher" (PID 2715) exited with exit code 1
+2026-09-14 07:16:56.633 UTC [2710] LOG:  shutting down
+2026-09-14 07:16:56.634 UTC [2710] LOG:  checkpoint starting: shutdown immediate
+2026-09-14 07:16:56.651 UTC [2710] LOG:  checkpoint complete: wrote 1176 buffers (28.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.014 s, sync=0.003 s, total=0.018 s; sync files=516, longest=0.001 s, average=0.001 s; distance=6096 kB, estimate=6096 kB; lsn=0/1AE3828, redo lsn=0/1AE3828
+2026-09-14 07:16:56.658 UTC [2708] LOG:  database system is shut down

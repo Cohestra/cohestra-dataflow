@@ -1,0 +1,86 @@
+[
+  {
+    "path": "apps/web/src/components/canvas/ExecutionMonitor.tsx",
+    "sha256": "083dc7280bf6e4e129810f83e5554ccdc9f3d5f62df70c0535ea6d5039500e04"
+  },
+  {
+    "path": "apps/web/src/pages/PipelineCanvasPage.tsx",
+    "sha256": "3f026afe36c84dc1412e5e4a0827ff62599ca936de68afa39a194db25a164fa3"
+  },
+  {
+    "path": "apps/web/src/pages/RunsPage.tsx",
+    "sha256": "3d9a25dbd547ff6954e73e29ded2e15c3b519acc968a2efa9fb1364220363c9f"
+  },
+  {
+    "path": "apps/workflow-go/internal/activities/activities.go",
+    "sha256": "36750cc64930f0e61c06021a57dd757bebe5046f081a1e4fedb4db9cd42b52fa"
+  },
+  {
+    "path": "apps/workflow-go/internal/activities/record_counts_test.go",
+    "sha256": "d5fba2f9e3bc901e8d13b1e94aedcff19a1d914d42e94903cd15d0227a20dd06"
+  },
+  {
+    "path": "apps/workflow-go/internal/api/auth.go",
+    "sha256": "2e4e5f3f8d7b5e8a37d166d10d4a8b8056ae543ee66cfea5de316ed73c4b514b"
+  },
+  {
+    "path": "apps/workflow-go/internal/api/pipeline_access_test.go",
+    "sha256": "68981fef05f717dac1ebeedf1b771515af7b039262a958f18861beb7213f89f7"
+  },
+  {
+    "path": "apps/workflow-go/internal/api/routes_ai.go",
+    "sha256": "646ba45efd20a9135256309eb458dff6061b0f0ac8cab0012a782d41969dc8d6"
+  },
+  {
+    "path": "apps/workflow-go/internal/api/routes_ai_test.go",
+    "sha256": "ecb8bd05df6630624801f22b2a30b44954158066b4f2e9edcd71e14045adcdc6"
+  },
+  {
+    "path": "apps/workflow-go/internal/api/routes_executions.go",
+    "sha256": "b08d8a0e1914f0badc996fdb102285edd296a56aa40fb444b47eb98b999a1dcd"
+  },
+  {
+    "path": "apps/workflow-go/internal/api/routes_monitoring_test.go",
+    "sha256": "5c056a1887021af6c70598c9998d8b8b3a92748bdb7a751272894c87733f9ac4"
+  },
+  {
+    "path": "docs/LOCAL_ACCEPTANCE.md",
+    "sha256": "f889c2a15fb799d5133520c4ce3381fa0d9b8ad107d89e523bfc466208e419ea"
+  },
+  {
+    "path": "docs/LOCAL_ACCEPTANCE_RESULTS_20260925.md",
+    "sha256": "93f2a09bc71deee15f4c5166dfd1ba4a459e221c82c1d2455c2adede2fba4a58"
+  },
+  {
+    "path": "scripts/local-acceptance-controls.py",
+    "sha256": "21759b60ab3fe07e475cc9188a92ea3e82b1947ae041c239d84b3d21a7f7158f"
+  },
+  {
+    "path": "scripts/local-acceptance.sh",
+    "sha256": "dc0dc454b97de59c907073e14fa19d93145b0ac06150c16721b0da78c6dd8a61"
+  },
+  {
+    "path": "tests/local-acceptance/controls.config.ts",
+    "sha256": "00439ad0b053ee92d624db38bd3f8f59f83f7b4cfe22920362552d1017436622"
+  },
+  {
+    "path": "tests/local-acceptance/controls.spec.ts",
+    "sha256": "ac7b2c8ccabdb605694af15184802b2c7ddb9f5a358bde9538320364be2f2300"
+  },
+  {
+    "path": "tests/local-acceptance/review.config.ts",
+    "sha256": "adc802c84242c531bd9287cbda4ffaccec9be4c7cd1b5c2d9573ca7999435d70"
+  },
+  {
+    "path": "tests/local-acceptance/review.spec.ts",
+    "sha256": "c19acbe6294a70d7a068e7227f4125eb68dd2c6dea91550add5f9c7306903642"
+  },
+  {
+    "path": "tests/local-acceptance/runtime.config.ts",
+    "sha256": "078b3b67cf10491d4f4c1b5641d052f30edf9a8db925a69302fc75ace31bc8ee"
+  },
+  {
+    "path": "tests/local-acceptance/runtime.spec.ts",
+    "sha256": "7877f67c530c33c1126734a346e9a2e0e10be12511d90e5733a3c9da6428ab4b"
+  }
+]

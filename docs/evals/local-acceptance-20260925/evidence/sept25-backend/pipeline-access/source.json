@@ -1,0 +1,12 @@
+{
+  "files": [
+    {
+      "path": "apps/workflow-go/internal/api/auth.go",
+      "sha256": "2e4e5f3f8d7b5e8a37d166d10d4a8b8056ae543ee66cfea5de316ed73c4b514b"
+    },
+    {
+      "path": "apps/workflow-go/internal/api/pipeline_access_test.go",
+      "sha256": "68981fef05f717dac1ebeedf1b771515af7b039262a958f18861beb7213f89f7"
+    }
+  ]
+}

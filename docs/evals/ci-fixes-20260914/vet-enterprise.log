@@ -1,0 +1,3 @@
+COMMAND: rtk proxy go vet -tags ee ./...
+
+EXIT: 0

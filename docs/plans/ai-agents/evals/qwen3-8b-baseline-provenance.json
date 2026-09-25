@@ -1,0 +1,58 @@
+{
+  "commit": "857f36f51d9d58c05b32a4d2941448b1eeebbcbd",
+  "model": "qwen3:8b",
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "think": false
+  },
+  "sourceSha256": {
+    "apps/workflow-go/internal/api/routes_ai.go": "98c7bb7d9d94f53ead07085bb884116e3031396470a1c09b2795d7375bcbb03b",
+    "tests/ai-evals/run.py": "c1725589d46e994ea9c0fa3110f860dc423c9e6a56e2ca206e626ba142ae2678",
+    "tests/ai-evals/cases/v1.json": "4ddbe8f79afa41f2755145a46c5d96b16cea1e97d5cf1f029471ab7a2a3a482f",
+    "apps/workflow-go/internal/api/ai_grounding.go": "3c4954c1a03dbabd9006ad07ece8229cdd9c5033e2bb88fa67dc5986e8c0bd27",
+    "apps/workflow-go/internal/api/pipeline_validation.go": "d6e61f64e331db94c2474a6c9982c9bf07242d650eaae3d9ed8daf0cd108860d"
+  },
+  "method": "Go overlay adds fixture setup and HTTP server; unmodified main AI handlers and evaluator; coded catalog; 12 synthetic connector records; injected tenant; no auth or workflow execution.",
+  "ollamaVersion": {
+    "version": "0.30.10"
+  },
+  "ollamaTags": {
+    "models": [
+      {
+        "name": "qwen3:8b",
+        "model": "qwen3:8b",
+        "modified_at": "2026-08-05T02:00:42.201732157+05:30",
+        "size": 5225388164,
+        "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen3",
+          "families": [
+            "qwen3"
+          ],
+          "parameter_size": "8.2B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 40960,
+          "embedding_length": 4096
+        },
+        "capabilities": [
+          "completion",
+          "tools",
+          "thinking"
+        ]
+      }
+    ]
+  },
+  "checkoutHead": "857f36f51d9d58c05b32a4d2941448b1eeebbcbd",
+  "harnessBinarySha256": "813a5132dccec109d6e4ecbec45564204098f0666bc60fe9647415455101aa44",
+  "buildGoVersion": "go1.25.12 darwin/arm64",
+  "resourcesDuringRun": {
+    "source": "parent-agent read-only snapshot during baseline",
+    "ollama": "qwen3:8b 5.6GB 100%GPU context4096",
+    "swapUsageUsedMiB": 17567.81
+  },
+  "resourceCaveat": "Host already had substantial swap in use during this run; no pre-run snapshot was taken. Do not attribute swap to qwen3 or treat latency/stability as a promotion benchmark."
+}

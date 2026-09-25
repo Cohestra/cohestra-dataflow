@@ -1,0 +1,669 @@
+{
+  "status": "passed",
+  "realAPI": true,
+  "realTemporal": true,
+  "realPostgres": true,
+  "checks": [
+    {
+      "name": "isolated synthetic tenant granted finite 100-run fixture quota",
+      "passed": true,
+      "evidence": {
+        "tenantId": "7928020c-b2ac-4ab7-840f-7208a2816cc4",
+        "extraQuota": 100,
+        "fixtureOnly": true
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/pause returns 200",
+      "passed": true,
+      "evidence": {
+        "status": 200,
+        "body": {
+          "controlRevision": 1,
+          "controlState": "paused",
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/pause returns 200",
+      "passed": true,
+      "evidence": {
+        "status": 200,
+        "body": {
+          "controlRevision": 1,
+          "controlState": "paused",
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "duplicate owner pause preserves durable revision",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/pause returns 403",
+      "passed": true,
+      "evidence": {
+        "status": 403,
+        "body": {
+          "error": "pipeline access requires editor role",
+          "code": "ERR_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/pause returns 404",
+      "passed": true,
+      "evidence": {
+        "status": 404,
+        "body": {
+          "error": "not found",
+          "code": "ERR_NOT_FOUND"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/resume returns 403",
+      "passed": true,
+      "evidence": {
+        "status": 403,
+        "body": {
+          "error": "pipeline access requires editor role",
+          "code": "ERR_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/resume returns 404",
+      "passed": true,
+      "evidence": {
+        "status": 404,
+        "body": {
+          "error": "not found",
+          "code": "ERR_NOT_FOUND"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/cancel returns 403",
+      "passed": true,
+      "evidence": {
+        "status": 403,
+        "body": {
+          "error": "pipeline access requires editor role",
+          "code": "ERR_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/cancel returns 404",
+      "passed": true,
+      "evidence": {
+        "status": 404,
+        "body": {
+          "error": "not found",
+          "code": "ERR_NOT_FOUND"
+        }
+      }
+    },
+    {
+      "name": "pause holds after admitted page drains; no sink or cursor commit",
+      "passed": true,
+      "evidence": {
+        "phase": "running",
+        "state": "paused",
+        "revision": 1,
+        "sourceRecords": 6,
+        "sinkRuns": 0,
+        "cursors": 0,
+        "pauseAudits": 1
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/pause returns 200",
+      "passed": true,
+      "evidence": {
+        "status": 200,
+        "body": {
+          "controlRevision": 1,
+          "controlState": "paused",
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/resume returns 200",
+      "passed": true,
+      "evidence": {
+        "status": 200,
+        "body": {
+          "controlRevision": 2,
+          "controlState": "active",
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "resume completes all four real pages and commits cursor",
+      "passed": true,
+      "evidence": {
+        "phase": "completed",
+        "state": "active",
+        "revision": 2,
+        "sourceRecords": 12,
+        "sinkRuns": 1,
+        "cursors": 1,
+        "pauseAudits": 1
+      }
+    },
+    {
+      "name": "resumed output matches six odd IDs",
+      "passed": true,
+      "evidence": {
+        "limit": 50,
+        "offset": 0,
+        "rows": [
+          {
+            "_ingested_at": "2026-09-25 12:09:16",
+            "active": true,
+            "id": 9,
+            "name": "Record 9"
+          },
+          {
+            "_ingested_at": "2026-09-25 12:09:16",
+            "active": true,
+            "id": 3,
+            "name": "Record 3"
+          },
+          {
+            "_ingested_at": "2026-09-25 12:09:16",
+            "active": true,
+            "id": 5,
+            "name": "Record 5"
+          },
+          {
+            "_ingested_at": "2026-09-25 12:09:16",
+            "active": true,
+            "id": 11,
+            "name": "Record 11"
+          },
+          {
+            "_ingested_at": "2026-09-25 12:09:16",
+            "active": true,
+            "id": 7,
+            "name": "Record 7"
+          },
+          {
+            "_ingested_at": "2026-09-25 12:09:16",
+            "active": true,
+            "id": 1,
+            "name": "Record 1"
+          }
+        ],
+        "total": 6
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/pause returns 409",
+      "passed": true,
+      "evidence": {
+        "status": 409,
+        "body": {
+          "error": "terminal executions cannot be controlled"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/resume returns 409",
+      "passed": true,
+      "evidence": {
+        "status": 409,
+        "body": {
+          "error": "terminal executions cannot be controlled"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-5d928f03-d214-415f-9eef-3a2b074c5255/cancel returns 409",
+      "passed": true,
+      "evidence": {
+        "status": 409,
+        "body": {
+          "error": "terminal executions cannot be controlled"
+        }
+      }
+    },
+    {
+      "name": "POST /api/executions/exec-96412ebd-a8da-4be2-b91a-de47af7524f2/cancel returns 200",
+      "passed": true,
+      "evidence": {
+        "status": 200,
+        "body": {
+          "controlRevision": 1,
+          "controlState": "cancel_requested",
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "cancel prevents sink and cursor commit",
+      "passed": true,
+      "evidence": {
+        "phase": "cancelled",
+        "state": "cancel_requested",
+        "revision": 1,
+        "sourceRecords": 6,
+        "sinkRuns": 0,
+        "cursors": 0,
+        "pauseAudits": 0
+      }
+    },
+    {
+      "name": "cancelled output is empty",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "POST /api/executions/exec-96412ebd-a8da-4be2-b91a-de47af7524f2/resume returns 409",
+      "passed": true,
+      "evidence": {
+        "status": 409,
+        "body": {
+          "error": "terminal executions cannot be controlled"
+        }
+      }
+    },
+    {
+      "name": "POST /api/pipelines returns 400",
+      "passed": true,
+      "evidence": {
+        "status": 400,
+        "body": {
+          "error": "node agent: agent execution is not implemented",
+          "code": "ERR_INVALID_REQUEST"
+        }
+      }
+    },
+    {
+      "name": "valid reserved agent save denied for implementation gate",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "POST /api/pipelines/c41215e4-1903-4a3b-9502-d93cd1e9ef3c/run returns 400",
+      "passed": true,
+      "evidence": {
+        "status": 400,
+        "body": {
+          "error": "node agent: agent execution is not implemented",
+          "code": "ERR_INVALID_REQUEST"
+        }
+      }
+    },
+    {
+      "name": "stored reserved agent run denied by admission",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "POST /api/pipelines/c41215e4-1903-4a3b-9502-d93cd1e9ef3c/activate returns 400",
+      "passed": true,
+      "evidence": {
+        "status": 400,
+        "body": {
+          "error": "node agent: agent execution is not implemented",
+          "code": "ERR_INVALID_REQUEST"
+        }
+      }
+    },
+    {
+      "name": "stored reserved agent activate denied by admission",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "POST /api/pipelines returns 400",
+      "passed": true,
+      "evidence": {
+        "status": 400,
+        "body": {
+          "error": "node agent: agent execution is not implemented",
+          "code": "ERR_INVALID_REQUEST"
+        }
+      }
+    },
+    {
+      "name": "POST /api/pipelines/c41215e4-1903-4a3b-9502-d93cd1e9ef3c/activate returns 400",
+      "passed": true,
+      "evidence": {
+        "status": 400,
+        "body": {
+          "error": "node agent: agent execution is not implemented",
+          "code": "ERR_INVALID_REQUEST"
+        }
+      }
+    },
+    {
+      "name": "reserved cron activation leaves draft and no executions",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "reserved cron creates no Temporal schedule",
+      "passed": true,
+      "evidence": {
+        "exitCode": 1,
+        "output": "Error: workflow not found for ID: temporal-sys-scheduler:sched-e29d7c03-0331-4728-89b2-90a2bebe9532-test\n"
+      }
+    }
+  ],
+  "runs": [
+    {
+      "case": "pause-resume",
+      "executionId": "exec-5d928f03-d214-415f-9eef-3a2b074c5255",
+      "pipeline": {
+        "rowId": "1e6666b3-9842-4266-a574-2baaf80dcc98",
+        "version": 1,
+        "definition": {
+          "id": "7451f812-2759-4c84-b2ff-6aacaab5cee5",
+          "name": "Controls pause resume e3580f",
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "activityType": "postgres.fetch",
+              "label": "Slow local pages",
+              "config": {
+                "connectionId": "868582c9-b1fe-4ef6-8825-af4d63d216fc",
+                "table": "local_acceptance.control_slow",
+                "cursorColumn": "id",
+                "columns": "id,name,active",
+                "syncMode": "cursor",
+                "cursorType": "number"
+              },
+              "ingestion": {
+                "mode": "incremental",
+                "pageSize": 3
+              },
+              "timeoutSec": 30,
+              "retry": {
+                "maximumAttempts": 1
+              }
+            },
+            {
+              "id": "fil",
+              "type": "transform",
+              "activityType": "transform.filter",
+              "label": "Active rows",
+              "config": {
+                "predicate": "r.active === true"
+              },
+              "timeoutSec": 30,
+              "retry": {
+                "maximumAttempts": 1
+              }
+            },
+            {
+              "id": "snk",
+              "type": "sink",
+              "activityType": "sink.records",
+              "label": "Control output",
+              "config": {
+                "collection": "controls_abf3f4056f26"
+              },
+              "timeoutSec": 30,
+              "retry": {
+                "maximumAttempts": 1
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "a",
+              "source": "src",
+              "target": "fil"
+            },
+            {
+              "id": "b",
+              "source": "fil",
+              "target": "snk"
+            }
+          ]
+        },
+        "collection": "controls_abf3f4056f26"
+      }
+    },
+    {
+      "case": "cancel",
+      "executionId": "exec-96412ebd-a8da-4be2-b91a-de47af7524f2",
+      "pipeline": {
+        "rowId": "d12bb8c1-aa95-4be7-8f67-c99ab311cf21",
+        "version": 1,
+        "definition": {
+          "id": "e71eb25d-9a96-4ba2-b296-9aed9070db5c",
+          "name": "Controls cancel 09f796",
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "activityType": "postgres.fetch",
+              "label": "Slow local pages",
+              "config": {
+                "connectionId": "868582c9-b1fe-4ef6-8825-af4d63d216fc",
+                "table": "local_acceptance.control_slow",
+                "cursorColumn": "id",
+                "columns": "id,name,active",
+                "syncMode": "cursor",
+                "cursorType": "number"
+              },
+              "ingestion": {
+                "mode": "incremental",
+                "pageSize": 3
+              },
+              "timeoutSec": 30,
+              "retry": {
+                "maximumAttempts": 1
+              }
+            },
+            {
+              "id": "fil",
+              "type": "transform",
+              "activityType": "transform.filter",
+              "label": "Active rows",
+              "config": {
+                "predicate": "r.active === true"
+              },
+              "timeoutSec": 30,
+              "retry": {
+                "maximumAttempts": 1
+              }
+            },
+            {
+              "id": "snk",
+              "type": "sink",
+              "activityType": "sink.records",
+              "label": "Control output",
+              "config": {
+                "collection": "controls_15d0e6437582"
+              },
+              "timeoutSec": 30,
+              "retry": {
+                "maximumAttempts": 1
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "a",
+              "source": "src",
+              "target": "fil"
+            },
+            {
+              "id": "b",
+              "source": "fil",
+              "target": "snk"
+            }
+          ]
+        },
+        "collection": "controls_15d0e6437582"
+      }
+    }
+  ],
+  "uiPipeline": {
+    "rowId": "b6eaeedb-32e7-4ca8-beb2-dfac7231078f",
+    "version": 1,
+    "definition": {
+      "id": "ebcb2a5a-e2bb-4404-990b-9249f936f74e",
+      "name": "Browser controls b8d3ef",
+      "trigger": {
+        "type": "manual"
+      },
+      "nodes": [
+        {
+          "id": "src",
+          "type": "source",
+          "activityType": "postgres.fetch",
+          "label": "Slow local pages",
+          "config": {
+            "connectionId": "868582c9-b1fe-4ef6-8825-af4d63d216fc",
+            "table": "local_acceptance.control_slow",
+            "cursorColumn": "id",
+            "columns": "id,name,active",
+            "syncMode": "cursor",
+            "cursorType": "number"
+          },
+          "ingestion": {
+            "mode": "incremental",
+            "pageSize": 3
+          },
+          "timeoutSec": 30,
+          "retry": {
+            "maximumAttempts": 1
+          }
+        },
+        {
+          "id": "fil",
+          "type": "transform",
+          "activityType": "transform.filter",
+          "label": "Active rows",
+          "config": {
+            "predicate": "r.active === true"
+          },
+          "timeoutSec": 30,
+          "retry": {
+            "maximumAttempts": 1
+          }
+        },
+        {
+          "id": "snk",
+          "type": "sink",
+          "activityType": "sink.records",
+          "label": "Control output",
+          "config": {
+            "collection": "controls_00d7b446b5e9"
+          },
+          "timeoutSec": 30,
+          "retry": {
+            "maximumAttempts": 1
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "a",
+          "source": "src",
+          "target": "fil"
+        },
+        {
+          "id": "b",
+          "source": "fil",
+          "target": "snk"
+        }
+      ]
+    },
+    "collection": "controls_00d7b446b5e9"
+  },
+  "uiCancelPipeline": {
+    "rowId": "8afa28eb-a177-4150-a2b5-a6a0763c2123",
+    "version": 1,
+    "definition": {
+      "id": "940a2589-2080-445c-9cb7-c6580908d5a1",
+      "name": "Browser cancel acb254",
+      "trigger": {
+        "type": "manual"
+      },
+      "nodes": [
+        {
+          "id": "src",
+          "type": "source",
+          "activityType": "postgres.fetch",
+          "label": "Slow local pages",
+          "config": {
+            "connectionId": "868582c9-b1fe-4ef6-8825-af4d63d216fc",
+            "table": "local_acceptance.control_slow",
+            "cursorColumn": "id",
+            "columns": "id,name,active",
+            "syncMode": "cursor",
+            "cursorType": "number"
+          },
+          "ingestion": {
+            "mode": "incremental",
+            "pageSize": 3
+          },
+          "timeoutSec": 30,
+          "retry": {
+            "maximumAttempts": 1
+          }
+        },
+        {
+          "id": "fil",
+          "type": "transform",
+          "activityType": "transform.filter",
+          "label": "Active rows",
+          "config": {
+            "predicate": "r.active === true"
+          },
+          "timeoutSec": 30,
+          "retry": {
+            "maximumAttempts": 1
+          }
+        },
+        {
+          "id": "snk",
+          "type": "sink",
+          "activityType": "sink.records",
+          "label": "Control output",
+          "config": {
+            "collection": "controls_82a312208c64"
+          },
+          "timeoutSec": 30,
+          "retry": {
+            "maximumAttempts": 1
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "a",
+          "source": "src",
+          "target": "fil"
+        },
+        {
+          "id": "b",
+          "source": "fil",
+          "target": "snk"
+        }
+      ]
+    },
+    "collection": "controls_82a312208c64"
+  },
+  "uiEditorUserId": "61499938-acd2-41f0-b2f2-4ad33d20f4ab"
+}

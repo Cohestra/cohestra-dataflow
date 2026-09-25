@@ -1,0 +1,51 @@
+[
+  {
+    "command": [
+      "python3",
+      "tests/ai-evals/run.py",
+      "--self-test",
+      "--strict"
+    ],
+    "exitCode": 0,
+    "log": "0.log"
+  },
+  {
+    "command": [
+      "python3",
+      "scripts/temporal-sandbox.py",
+      "--self-test"
+    ],
+    "exitCode": 0,
+    "log": "1.log"
+  },
+  {
+    "command": [
+      "npm",
+      "-w",
+      "@dataflow/shared",
+      "test"
+    ],
+    "exitCode": 0,
+    "log": "2.log"
+  },
+  {
+    "command": [
+      "npm",
+      "-w",
+      "@dataflow/web",
+      "test"
+    ],
+    "exitCode": 0,
+    "log": "3.log"
+  },
+  {
+    "command": [
+      "npm",
+      "audit",
+      "--omit=dev",
+      "--audit-level=high"
+    ],
+    "exitCode": 0,
+    "log": "4.log"
+  }
+]

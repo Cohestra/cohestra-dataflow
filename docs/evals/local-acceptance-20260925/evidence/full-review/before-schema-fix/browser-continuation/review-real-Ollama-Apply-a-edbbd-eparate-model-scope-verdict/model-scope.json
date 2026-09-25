@@ -1,0 +1,264 @@
+{
+  "priorStrictFailureRetained": true,
+  "passed": false,
+  "requested": {
+    "concurrency": {
+      "maxParallelNodes": 2
+    },
+    "edges": [
+      {
+        "id": "e1",
+        "source": "src",
+        "target": "fil"
+      },
+      {
+        "id": "e2",
+        "source": "fil",
+        "target": "snk"
+      }
+    ],
+    "execution": {
+      "engine": "workflow"
+    },
+    "id": "79995ab5-d78f-4e30-9329-26f344bd1a0c",
+    "metadata": {
+      "domain": "Testing",
+      "owner": "Local acceptance",
+      "tags": [
+        "local",
+        "acceptance"
+      ]
+    },
+    "name": "Local review 44bd1a0c",
+    "nodes": [
+      {
+        "activityType": "http.fetch",
+        "config": {
+          "url": "https://example.com/records"
+        },
+        "id": "src",
+        "ingestion": {
+          "mode": "incremental",
+          "pageSize": 100
+        },
+        "label": "Local HTTP records",
+        "outputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "retry": {
+          "maximumAttempts": 1
+        },
+        "timeoutSec": 30,
+        "type": "source"
+      },
+      {
+        "activityType": "transform.filter",
+        "config": {
+          "predicate": "r.active === true"
+        },
+        "id": "fil",
+        "inputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "label": "Active records",
+        "outputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "retry": {
+          "maximumAttempts": 1
+        },
+        "timeoutSec": 30,
+        "type": "transform"
+      },
+      {
+        "activityType": "sink.records",
+        "config": {
+          "collection": "review_verified"
+        },
+        "id": "snk",
+        "inputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "label": "Managed records",
+        "retry": {
+          "maximumAttempts": 1
+        },
+        "timeoutSec": 30,
+        "type": "sink"
+      }
+    ],
+    "notifications": {
+      "connectionId": "2f3ac8f6-9221-42c6-b786-32f9ba7ac527",
+      "minimumSeverity": "warning"
+    },
+    "slo": {
+      "freshnessMinutes": 60,
+      "maxDurationMs": 30000,
+      "maxFailureRatePercent": 5
+    },
+    "tenantId": "7928020c-b2ac-4ab7-840f-7208a2816cc4",
+    "trigger": {
+      "type": "manual"
+    },
+    "version": 1
+  },
+  "actualReviewedDefinition": {
+    "concurrency": {
+      "maxParallelNodes": 2
+    },
+    "edges": [
+      {
+        "id": "e1",
+        "source": "src",
+        "target": "fil",
+        "condition": "true"
+      },
+      {
+        "id": "e2",
+        "source": "fil",
+        "target": "snk",
+        "condition": "true"
+      }
+    ],
+    "execution": {
+      "engine": "workflow"
+    },
+    "id": "79995ab5-d78f-4e30-9329-26f344bd1a0c",
+    "metadata": {
+      "domain": "Testing",
+      "owner": "Local acceptance",
+      "tags": [
+        "local",
+        "acceptance"
+      ]
+    },
+    "name": "Local review 44bd1a0c",
+    "nodes": [
+      {
+        "activityType": "http.fetch",
+        "config": {
+          "url": "https://example.com/records"
+        },
+        "id": "src",
+        "ingestion": {
+          "mode": "cdc",
+          "pageSize": 100
+        },
+        "label": "Local HTTP records",
+        "outputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "retry": {
+          "maximumAttempts": 1
+        },
+        "timeoutSec": 30,
+        "type": "source"
+      },
+      {
+        "activityType": "transform.filter",
+        "config": {
+          "predicate": "r.active === true"
+        },
+        "id": "fil",
+        "inputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "label": "Active records",
+        "outputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "retry": {
+          "maximumAttempts": 1
+        },
+        "timeoutSec": 30,
+        "type": "transform"
+      },
+      {
+        "activityType": "sink.records",
+        "config": {
+          "collection": "review_verified"
+        },
+        "id": "snk",
+        "inputAssets": [
+          {
+            "layer": "silver",
+            "name": "records",
+            "namespace": "acceptance",
+            "platform": "postgres",
+            "type": "table",
+            "urn": "postgres://local/acceptance.records"
+          }
+        ],
+        "label": "Managed records",
+        "retry": {
+          "maximumAttempts": 1
+        },
+        "timeoutSec": 30,
+        "type": "sink"
+      }
+    ],
+    "notifications": {
+      "connectionId": "2f3ac8f6-9221-42c6-b786-32f9ba7ac527",
+      "minimumSeverity": "warning"
+    },
+    "slo": {
+      "freshnessMinutes": 60,
+      "maxDurationMs": 30000,
+      "maxFailureRatePercent": 5
+    },
+    "tenantId": "7928020c-b2ac-4ab7-840f-7208a2816cc4",
+    "trigger": {
+      "type": "manual"
+    },
+    "version": 1
+  }
+}

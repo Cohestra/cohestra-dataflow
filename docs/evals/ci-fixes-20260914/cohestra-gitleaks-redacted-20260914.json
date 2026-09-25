@@ -1,0 +1,9 @@
+[
+  {
+    "RuleID": "generic-api-key",
+    "File": "docs/plans/ai-agents/FRONTEND_ARCHITECTURE.md",
+    "StartLine": 94,
+    "Commit": "eac5ff69ea6f8d36c0a79755f99102f52444f0ef",
+    "Fingerprint": "eac5ff69ea6f8d36c0a79755f99102f52444f0ef:docs/plans/ai-agents/FRONTEND_ARCHITECTURE.md:generic-api-key:94"
+  }
+]

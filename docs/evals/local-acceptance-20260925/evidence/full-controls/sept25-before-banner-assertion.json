@@ -1,0 +1,19 @@
+{
+  "passed": false,
+  "realAPI": true,
+  "runs": [
+    {
+      "executionId": "exec-359ab508-150f-4614-a601-31eb2746139a",
+      "rowId": "bc96ec42-e42d-4a0e-9c6d-2ce8a9372bb8"
+    },
+    {
+      "executionId": "exec-0bc928c8-fdc0-42c7-8726-eb803acd7fd8",
+      "rowId": "9803c349-3b2d-45b2-872f-cc8e2456c833"
+    }
+  ],
+  "viewer403Visible": true,
+  "completedControlsDisabled": true,
+  "reloadedMonitorVisible": false,
+  "reopenedPausedMonitorVisible": true,
+  "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#pipeline-action-status')\nExpected substring: \u001b[32m\"Run cancelled\"\u001b[39m\nReceived string:    \u001b[31m\"Loaded v1\"\u001b[39m\nTimeout: 15000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for locator('#pipeline-action-status')\u001b[22m\n\u001b[2m    34 × locator resolved to <span role=\"status\" class=\"sr-only\" aria-live=\"polite\" id=\"pipeline-action-status\">Loaded v1</span>\u001b[22m\n\u001b[2m       - unexpected value \"Loaded v1\"\u001b[22m\n"
+}
