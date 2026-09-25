@@ -31,7 +31,7 @@ Please read it before contributing.
 
 ## Dev setup
 
-Prerequisites: Docker + Compose v2, Go ≥ 1.25, Node ≥ 20, `npm`.
+Prerequisites: Docker + Compose v2, Go ≥ 1.26, Node ≥ 20, `npm`.
 
 ```bash
 # Clone and install JS deps
