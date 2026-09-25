@@ -8,12 +8,12 @@ export function ProposalChanges({ changes }: { changes: ProposalChange[] }) {
       {' '}Unlisted settings stay unchanged. Sensitive and unrecognized values are hidden.
     </p>
     <div className="max-h-72 space-y-2 overflow-y-auto">
-      {changes.map((change, index) => <details key={index} className="rounded border border-gray-200 p-2 dark:border-white/15">
+      {changes.map(change => <details key={change.key} className="rounded border border-gray-200 p-2 dark:border-white/15">
         <summary className="cursor-pointer break-words font-medium text-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 dark:text-white/85">
           {change.action}: {change.subject} · {change.fields.length} {change.fields.length === 1 ? 'field' : 'fields'}
         </summary>
         <ul className="mt-2 space-y-2" aria-label={`${change.subject} field changes`}>
-          {change.fields.map((field, fieldIndex) => <li key={fieldIndex} className="break-words text-gray-700 dark:text-white/75">
+          {change.fields.map(field => <li key={field.field} className="break-words text-gray-700 dark:text-white/75">
             <div className="font-medium">{field.action}: {field.field}</div>
             <div>Before: {field.before}</div>
             <div>After: {field.after}</div>

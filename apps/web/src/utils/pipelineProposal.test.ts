@@ -14,7 +14,7 @@ const base: PipelineDefinition = {
       outputAssets: [{ urn: 'private://SECRET_ASSET_OLD', name: 'orders', namespace: 'fixture', platform: 'postgres', type: 'table' }] },
     { id: 'sink', type: 'sink', activityType: 'sink.postgres', config: { table: 'orders', connectionId: 'PRIVATE_CONNECTION_OLD' } },
   ],
-  edges: [{ id: 'original-edge', source: 'source', target: 'sink', condition: 'PRIVATE_EXPRESSION_OLD' }],
+  edges: [{ id: 'original-edge', source: 'source', target: 'sink', condition: 'count > 0' }],
 };
 const proposal = {
   nodes: [
@@ -23,7 +23,7 @@ const proposal = {
         body: { customer: 'PRIVATE_CUSTOMER_NEW' }, table: 'reviewed_orders', password: 'SECRET_PASSWORD_NEW', arbitrary: 'PRIVATE_TEXT_NEW' } },
     { id: 'sink', type: 'sink' as const, activityType: 'sink.postgres', config: { table: 'reviewed_orders', connectionId: 'PRIVATE_CONNECTION_NEW' } },
   ],
-  edges: [{ id: 'generated', source: 'source', target: 'sink', condition: 'PRIVATE_EXPRESSION_NEW' }],
+  edges: [{ id: 'generated', source: 'source', target: 'sink', condition: "status == 'open'" }],
   name: 'Ignored rename', trigger: { type: 'event' as const, topic: 'ignored' },
   execution: { engine: 'spark-sql' as const, transformSql: 'SELECT PRIVATE_SQL' },
 };
@@ -34,7 +34,17 @@ assert.deepEqual(field(changes, 'Node source', 'config.table'), { field: 'config
 assert.deepEqual(field(changes, 'Node source', 'config.headers'), { field: 'config.headers', action: 'Changed', before: 'Hidden', after: 'Hidden' });
 assert.equal(field(changes, 'Pipeline settings', 'execution.engine')?.after, 'spark-sql');
 assert.equal(field(changes, 'Node sink', 'config.connectionId')?.after, 'Hidden');
-assert.equal(field(changes, 'Connection source → sink', 'condition')?.after, 'Text hidden');
+assert.equal(field(changes, 'Connection source → sink', 'condition')?.after, "status == 'open'", 'branch conditions are reviewable');
+const secretCondition = structuredClone(next);
+secretCondition.edges[0].condition = "headers.token == 'SECRET_CONDITION'";
+assert.equal(field(describeProposalChanges(base, secretCondition), 'Connection source → sink', 'condition')?.after, 'Text hidden');
+const scheduled = structuredClone(base);
+scheduled.trigger = { type: 'cron', schedule: '*/15 * * * *' };
+scheduled.metadata = { owner: 'data-platform', tags: ['orders', 'daily'] };
+const scheduleChanges = describeProposalChanges(base, scheduled);
+assert.equal(field(scheduleChanges, 'Pipeline settings', 'trigger.schedule')?.after, '*/15 * * * *');
+assert.equal(field(scheduleChanges, 'Pipeline settings', 'metadata.owner')?.after, 'data-platform');
+assert.equal(field(scheduleChanges, 'Pipeline settings', 'metadata.tags')?.after, 'orders, daily');
 const display = JSON.stringify(changes);
 assert.equal(/SECRET_|PRIVATE_|https:\/\//.test(display), false, 'review strings never contain raw credentials, bodies, SQL, URLs or arbitrary text');
 assert.equal(field(changes, 'Node source', 'timeoutSec'), undefined, 'omitted policies preserved by merge are not described as removals');
@@ -109,7 +119,7 @@ const reorderedJoin = mergeAiProposal(joinBase, {
 });
 const orderChanges = describeProposalChanges(joinBase, reorderedJoin);
 assert.deepEqual(orderChanges, [{
-  subject: 'Inputs to node joined', action: 'Changed', fields: [{
+  key: 'inputs:joined', subject: 'Inputs to node joined', action: 'Changed', fields: [{
     field: 'Source order', action: 'Changed', before: 'customers → orders', after: 'orders → customers',
   }],
 }]);
