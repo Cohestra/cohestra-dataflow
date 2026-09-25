@@ -42,6 +42,7 @@ export function definitionToMermaid(nodes: PipelineNode[], edges: PipelineEdge[]
 const ID = '[A-Za-z0-9_-]+';
 
 function defaultNodeType(activityType: string): NodeType {
+  if (activityType === 'agent.run') return 'agent';
   const head = activityType.split('.')[0];
   if (head === 'flow') return activityType.endsWith('merge') ? 'merge' : 'fork';
   if (head === 'transform') return 'transform';
@@ -88,7 +89,7 @@ export function mermaidToDefinition(src: string, catalog: CatalogEntry[]): Merma
     const labelText = (suffix ? rawLabel.slice(0, suffix.start) : rawLabel).trim();
 
     let entry = activityType ? byType.get(activityType) : undefined;
-    if (!entry) {
+    if (!entry && activityType !== 'agent.run') {
       // Fall back to fuzzy match on the human label.
       entry = byLabel.get(labelText.toLowerCase());
       if (entry) activityType = entry.activityType;

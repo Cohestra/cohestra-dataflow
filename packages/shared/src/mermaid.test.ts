@@ -80,6 +80,27 @@ check('conditional edges survive round-trip', () => {
   assert.strictEqual(parsed.edges[0]?.condition, 'r.ok');
 });
 
+check('reserved agent fixture survives wire and Mermaid structure round trips', () => {
+  const def = JSON.parse(readFileSync(join(__dirname, '../../../tests/contracts/agent-pipeline.json'), 'utf8')) as
+    { nodes: PipelineNode[]; edges: PipelineEdge[] };
+  const agent = def.nodes.find(n => n.type === 'agent')!;
+  assert.strictEqual(agent.activityType, 'agent.run');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(agent)), agent);
+  assert.deepStrictEqual(agent.config, {
+    agentId: 'cbb40a16-242b-4d78-87de-36a941635f48', agentVersion: 3,
+    inputBinding: { mode: 'batch', fields: ['ticketId', 'subject', 'body'], maxRecords: 100 },
+  });
+  const parsed = mermaidToDefinition(definitionToMermaid(def.nodes, def.edges), catalog);
+  const restored = parsed.nodes.find(n => n.id === agent.id)!;
+  assert.strictEqual(restored.type, 'agent');
+  assert.strictEqual(restored.activityType, 'agent.run');
+  assert.deepStrictEqual(restored.config, {}); // config stays out-of-band
+  assert.ok(parsed.warnings.some(w => w.includes(agent.id))); // no runnable catalog entry yet
+  const collidingLabel = mermaidToDefinition('flowchart LR\n a["Custom API (agent.run)"]', catalog);
+  assert.strictEqual(collidingLabel.nodes[0].activityType, 'agent.run');
+  assert.strictEqual(collidingLabel.nodes[0].type, 'agent');
+});
+
 // Labels and brackets are user/model input: parsing must stay linear-time.
 check('pathological labels and brackets parse quickly', () => {
   const started = Date.now();
