@@ -76,6 +76,7 @@ func TestAgentContractRejectsMalformedNodes(t *testing.T) {
 		value interface{}
 	}{
 		{"agentId", "agt_triage"}, {"agentId", nil}, {"agentId", 42},
+		{"agentId", "CBB40A16-242B-4D78-87DE-36A941635F48"}, {"agentId", "{cbb40a16-242b-4d78-87de-36a941635f48}"},
 		{"agentVersion", 0}, {"agentVersion", -1}, {"agentVersion", 1.5}, {"agentVersion", "3"}, {"agentVersion", nil}, {"agentVersion", 9007199254740992.0},
 		{"instructions", "secret instructions"}, {"model", "mutable-tag"}, {"credentials", map[string]interface{}{"token": "secret"}},
 		{"inputBinding", nil}, {"inputBinding", "batch"},

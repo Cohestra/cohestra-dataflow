@@ -28,6 +28,8 @@ func validatePipeline(def model.PipelineDefinition) error {
 	if err := model.ValidateNodePolicies(def); err != nil {
 		return err
 	}
+	// "agent" is a reserved wire type: ValidateAgentAdmission above still rejects
+	// every agent node until agent execution exists.
 	validTypes := map[string]bool{"source": true, "transform": true, "sink": true, "fork": true, "merge": true, "agent": true}
 	ids := map[string]bool{}
 	indegree := map[string]int{}
