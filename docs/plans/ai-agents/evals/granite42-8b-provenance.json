@@ -1,0 +1,93 @@
+{
+  "commit": "857f36f51d9d58c05b32a4d2941448b1eeebbcbd",
+  "checkoutHead": "9058f1b057f6b5642f26847cb32b87a5034e708e",
+  "harnessBinarySha256": "813a5132dccec109d6e4ecbec45564204098f0666bc60fe9647415455101aa44",
+  "buildGoVersion": "go1.25.12 darwin/arm64",
+  "model": "granite4.2:8b",
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "think": false
+  },
+  "sourceSha256": {
+    "apps/workflow-go/internal/api/routes_ai.go": "98c7bb7d9d94f53ead07085bb884116e3031396470a1c09b2795d7375bcbb03b",
+    "apps/workflow-go/internal/api/ai_grounding.go": "3c4954c1a03dbabd9006ad07ece8229cdd9c5033e2bb88fa67dc5986e8c0bd27",
+    "apps/workflow-go/internal/api/pipeline_validation.go": "d6e61f64e331db94c2474a6c9982c9bf07242d650eaae3d9ed8daf0cd108860d",
+    "tests/ai-evals/run.py": "c1725589d46e994ea9c0fa3110f860dc423c9e6a56e2ca206e626ba142ae2678",
+    "tests/ai-evals/cases/v1.json": "4ddbe8f79afa41f2755145a46c5d96b16cea1e97d5cf1f029471ab7a2a3a482f"
+  },
+  "method": "Go overlay adds fixture setup and HTTP server; unmodified main AI handlers and evaluator; coded catalog; 12 synthetic connector records; injected tenant; no auth or workflow execution.",
+  "resourcesBefore": {
+    "capturedAt": "2026-09-13T20:34:20Z",
+    "physicalMemoryBytes": "19327352832",
+    "swapUsage": "vm.swapusage: total = 12288.00M  used = 10983.62M  free = 1304.38M  (encrypted)",
+    "ollamaProcesses": {
+      "models": []
+    }
+  },
+  "ollamaVersion": {
+    "version": "0.30.10"
+  },
+  "ollamaTags": {
+    "models": [
+      {
+        "name": "granite4.2:8b",
+        "model": "granite4.2:8b",
+        "modified_at": "2026-09-14T01:54:55.731080129+05:30",
+        "size": 5347929757,
+        "digest": "f586c02fdecdf151b656207c339aa003997345774a41768bac1fd6d2fb85913b",
+        "details": {
+          "parent_model": "/Users/runner/.ollama/models/blobs/sha256-16a9369d0805f80b7377d25d87f937a90c05dc04ad79173a52001e42c9aab311",
+          "format": "gguf",
+          "family": "granite",
+          "families": [
+            "granite"
+          ],
+          "parameter_size": "8.8B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 131072,
+          "embedding_length": 4096
+        },
+        "capabilities": [
+          "completion"
+        ]
+      }
+    ]
+  },
+  "resourcesAfter": {
+    "capturedAt": "2026-09-13T20:57:21Z",
+    "physicalMemoryBytes": "19327352832",
+    "swapUsage": "vm.swapusage: total = 16384.00M  used = 15096.06M  free = 1287.94M  (encrypted)",
+    "ollamaProcesses": {
+      "models": [
+        {
+          "name": "granite4.2:8b",
+          "model": "granite4.2:8b",
+          "size": 5883853536,
+          "digest": "f586c02fdecdf151b656207c339aa003997345774a41768bac1fd6d2fb85913b",
+          "details": {
+            "parent_model": "",
+            "format": "gguf",
+            "family": "granite",
+            "families": [
+              "granite"
+            ],
+            "parameter_size": "8.8B",
+            "quantization_level": "Q4_K_M"
+          },
+          "expires_at": "2026-09-14T02:32:21.925117+05:30",
+          "size_vram": 5883853536,
+          "context_length": 4096
+        }
+      ]
+    }
+  },
+  "host": {
+    "memoryGiB": 18,
+    "memoryKind": "unified/system",
+    "availableDiskGiB": 64,
+    "ollamaVersion": "0.30.10",
+    "note": "Shared developer host; concurrent services were running, so latency is not production-representative."
+  }
+}
