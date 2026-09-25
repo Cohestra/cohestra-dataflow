@@ -10,6 +10,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +97,7 @@ def schema_valid(response: dict[str, Any], catalog: dict[str, Any]) -> bool:
     )
 
 
-def structural_valid(response: dict[str, Any], expected: dict[str, Any]) -> bool | None:
+def structural_valid(response: dict[str, Any], expected: dict[str, Any], diagnostics: dict[str, Any] | None = None) -> bool | None:
     definition = response.get("definition")
     if not isinstance(definition, dict):
         return None
@@ -139,14 +140,23 @@ def structural_valid(response: dict[str, Any], expected: dict[str, Any]) -> bool
     if max_in_degree < graph.get("minInDegree", 0):
         return False
     nodes_by_id = {node["id"]: node for node in nodes}
-    for path in graph.get("requiredPaths", []):
+    for path_index, path in enumerate(graph.get("requiredPaths", [])):
         candidates = {node["id"] for node in nodes if subset(path[0], node)}
-        for selector in path[1:]:
+        failed_hop = None if candidates else 0
+        for hop, selector in enumerate(path[1:], start=1):
+            if failed_hop is not None:
+                break
             candidates = {
                 target for source in candidates for target in outgoing[source]
                 if subset(selector, nodes_by_id[target])
             }
-        if not candidates:
+            if not candidates:
+                failed_hop = hop
+        if failed_hop is not None:
+            if diagnostics is not None:
+                # hop 0: no node matches the first selector; hop N: no direct edge
+                # reaches a node matching selector N from the previous matches.
+                diagnostics["requiredPathFailure"] = {"path": path_index, "hop": failed_hop, "selector": path[failed_hop]}
             return False
     conditional = sum(bool(edge.get("condition")) for edge in edges if isinstance(edge, dict))
     return conditional >= graph.get("minConditionalEdges", 0)
@@ -260,12 +270,13 @@ def nested_number(value: dict[str, Any], paths: list[tuple[str, ...]]) -> float 
 
 def score_case(case: dict[str, Any], response: dict[str, Any], latency_ms: float, catalog: dict[str, Any]) -> dict[str, Any]:
     expected = case.get("expect", {})
+    diagnostics: dict[str, Any] = {}
     result = {
         "id": case["id"],
         "category": case["category"],
         "responseStatus": response_status(response),
         "schemaValid": schema_valid(response, catalog),
-        "structuralValid": structural_valid(response, expected),
+        "structuralValid": structural_valid(response, expected, diagnostics),
         "activityAccuracy": activities_score(response, expected, catalog),
         "groundingAccuracy": grounding_score(response, expected, catalog),
         "preservationAccuracy": preservation_score(case, response),
@@ -281,6 +292,7 @@ def score_case(case: dict[str, Any], response: dict[str, Any], latency_ms: float
         if isinstance(value, (bool, int, float))
     ]
     result["passed"] = bool(scored) and all(float(value) == 1.0 for value in scored)
+    result.update(diagnostics)
     return result
 
 
@@ -403,7 +415,6 @@ def load_suite(path: Path) -> dict[str, Any]:
 
 
 def self_test(suite: dict[str, Any]) -> list[dict[str, Any]]:
-    from copy import deepcopy
     from io import BytesIO
     from unittest.mock import patch
 
@@ -504,6 +515,14 @@ def self_test(suite: dict[str, Any]) -> list[dict[str, Any]]:
         result = score_case(case, {"definition": definition}, 1.0, catalog)
         if result["passed"] != passed or result["structuralValid"] != passed:
             raise AssertionError(f"{label} self-test failed: {result}")
+    split_result = score_case(path_case, {"definition": split}, 1.0, catalog)
+    if split_result.get("requiredPathFailure") != {"path": 0, "hop": 2, "selector": path_case["expect"]["graph"]["requiredPaths"][0][2]}:
+        raise AssertionError(f"required-path diagnostic names the wrong hop: {split_result}")
+    identity_result = score_case(wrong_identity, {"definition": connected}, 1.0, catalog)
+    if identity_result.get("requiredPathFailure", {}).get("hop") != 0:
+        raise AssertionError(f"required-path diagnostic misses a first-selector failure: {identity_result}")
+    if "requiredPathFailure" in score_case(path_case, {"definition": connected}, 1.0, catalog):
+        raise AssertionError("passing required paths must not report a failure")
     for paths in [None, [], {}, [[]], [[{"id": "source"}]], [["source", "sink"]],
                   [[{}, {"id": "sink"}]], [[{"id": ""}, {"id": "sink"}]],
                   [[{"activityType": "sink.teleport"}, {"id": "sink"}]],
