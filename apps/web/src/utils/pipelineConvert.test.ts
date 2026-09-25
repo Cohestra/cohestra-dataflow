@@ -107,4 +107,16 @@ const edgeChanges = applyGraphEdit(full, { nodes: full.nodes, edges: [
 assert.deepEqual(edgeChanges.edges.map(edge => edge.id), ['stable-edge-2', 'stable-edge-1'], 'edge reorder/condition edits retain stable identities');
 assert.equal(pipelineFingerprint({ ...full, version: 99, metadata: { tags: ['one', 'two'], domain: 'support', owner: 'owner' } }), pipelineFingerprint(full));
 assert.notEqual(pipelineFingerprint(edited), pipelineFingerprint(full), 'semantic edits make a proposal stale');
+// Planner output cannot erase preserved policies/bindings with null, undefined or [].
+const blanked = applyGraphEdit(full, { nodes: [{ ...full.nodes[0], config: { url: 'https://example.test/v2' },
+  retry: null as any, ingestion: undefined, timeoutSec: null as any, outputAssets: [] }], edges: [] }, 'ai');
+assert.deepEqual(blanked.nodes[0].retry, full.nodes[0].retry, 'null retry keeps the saved policy');
+assert.deepEqual(blanked.nodes[0].ingestion, full.nodes[0].ingestion, 'undefined ingestion keeps the saved policy');
+assert.equal(blanked.nodes[0].timeoutSec, full.nodes[0].timeoutSec);
+assert.deepEqual(blanked.nodes[0].outputAssets, full.nodes[0].outputAssets, 'empty list keeps asset bindings');
+assert.deepEqual(blanked.nodes[0].config, { url: 'https://example.test/v2' }, 'planner still owns config');
+// A cleared branch condition is not persisted as an empty string.
+const cleared = definitionToFlow(full, {});
+cleared.edges[0].data.condition = '';
+assert.equal('condition' in wire(flowToDefinition(cleared.nodes, cleared.edges, meta(full), full)).edges[0], false);
 console.log('pipelineConvert.test.ts OK');
