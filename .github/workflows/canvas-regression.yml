@@ -2,8 +2,20 @@ name: Canvas regression
 
 on:
   pull_request:
+    paths:
+      - apps/web/**
+      - packages/shared/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/canvas-regression.yml
   push:
     branches: [main]
+    paths:
+      - apps/web/**
+      - packages/shared/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/canvas-regression.yml
 
 permissions:
   contents: read
