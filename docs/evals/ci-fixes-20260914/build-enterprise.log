@@ -1,3 +1,0 @@
-COMMAND: rtk proxy go build -tags ee ./cmd/...
-
-EXIT: 0

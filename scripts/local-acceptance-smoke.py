@@ -16,7 +16,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / ".artifacts/local-acceptance"
 BASE = "http://127.0.0.1:14000"
-PROJECT = "cohestra-acceptance-20260922"
+PROJECT = os.environ.get("COHESTRA_ACCEPTANCE_PROJECT", "cohestra-acceptance-20260922")
 SENSITIVE = []
 RESULT = {"status": "running", "api": BASE, "project": PROJECT,
           "credentialsFile": str(ARTIFACTS / "credentials.json"),
@@ -92,7 +92,7 @@ def authenticate(filename, suffix):
 def main():
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     os.chmod(ARTIFACTS, 0o700)
-    ignored = subprocess.run(["rtk", "git", "check-ignore", "-q", ".artifacts/local-acceptance/credentials.json"],
+    ignored = subprocess.run(["git", "check-ignore", "-q", ".artifacts/local-acceptance/credentials.json"],
                              cwd=ROOT, capture_output=True)
     if ignored.returncode:
         raise RuntimeError("Ignore /.artifacts/ before generating local credentials")
@@ -108,7 +108,7 @@ INSERT INTO local_acceptance.source_records VALUES
 COMMIT;
 """
         seeded = subprocess.run([
-            "rtk", "proxy", "docker", "compose", "-p", PROJECT,
+            "docker", "compose", "-p", PROJECT,
             "-f", "docker-compose.yml", "-f", "docker-compose.acceptance.yml",
             "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-U", "dataflow", "-d", "dataflow"
         ], cwd=ROOT, input=sql, text=True, capture_output=True, timeout=30)

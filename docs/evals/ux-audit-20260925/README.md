@@ -37,6 +37,6 @@ Two agents independently located the source mechanisms for the reproduced UX fin
 
 ## Evidence
 
-Screenshots are hosted in the GitHub issue bodies and retained alongside this report. `attachments.json` maps local names to stable GitHub attachment URLs; `issues-verified.json` records publication checks. Private account files, trace archives, tokens and credential values were not uploaded. Connector credentials were not saved or changed.
+Screenshots, reproduction steps and acceptance checks are in the linked GitHub issues (#51–58); they are not duplicated in the repository. Private account files, trace archives, tokens and credential values were not uploaded. Connector credentials were not saved or changed.
 
-![Disabled actions still show Loaded v1 after the only sink is removed](invalid-draft-stale-loaded.png)
+The stale Loaded v1 status after removing the only sink is shown in [issue 54](https://github.com/Cohestra/cohestra-dataflow/issues/54).

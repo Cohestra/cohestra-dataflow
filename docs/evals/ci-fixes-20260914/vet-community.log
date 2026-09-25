@@ -1,3 +1,0 @@
-COMMAND: rtk proxy go vet ./...
-
-EXIT: 0

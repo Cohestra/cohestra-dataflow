@@ -1,8 +1,0 @@
-
-Running 1 test using 1 worker
-
-(node:49294) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-  ✓  1 apps/web/tests/pipeline-metadata.spec.ts:4:5 › canvas save, AI Apply/Undo and Mermaid edits preserve execution metadata (2.6s)
-
-  1 passed (3.7s)

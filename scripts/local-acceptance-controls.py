@@ -16,7 +16,7 @@ OUT = ROOT / ".artifacts/local-acceptance/full-controls"
 spec = importlib.util.spec_from_file_location("smoke", ROOT / "scripts/local-acceptance-smoke.py")
 smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
-COMPOSE = ["rtk", "proxy", "docker", "compose", "-p", "cohestra-acceptance-20260922", "-f", "docker-compose.yml", "-f", "docker-compose.acceptance.yml"]
+COMPOSE = ["docker", "compose", "-p", os.environ.get("COHESTRA_ACCEPTANCE_PROJECT", "cohestra-acceptance-20260922"), "-f", "docker-compose.yml", "-f", "docker-compose.acceptance.yml"]
 RESULT = {"status": "running", "realAPI": True, "realTemporal": True, "realPostgres": True, "checks": [], "runs": []}
 
 

@@ -10,13 +10,15 @@ and retaining its output; skipped or unavailable scenarios remain NOT RUN.
 
 The local setup uses native enterprise Go API/activity/workflow workers and the
 built React app served by Vite preview. Infrastructure runs in the isolated
-Docker Compose project `cohestra-acceptance-20260922`: PostgreSQL, Redis,
+Docker Compose project `cohestra-acceptance-20260922` (override with
+`COHESTRA_ACCEPTANCE_PROJECT` to run a second stack; set `ACCEPTANCE_OLLAMA_URL`
+and `ACCEPTANCE_OLLAMA_MODEL` to use a different model server): PostgreSQL, Redis,
 ClickHouse, a real Temporal development server with persistent SQLite, and
 Temporal UI. Separate workers serve the `test` and `prod` namespaces of this
 local project; neither namespace refers to a remote deployment.
 
 The combined checkout is:
-`/Users/aryaman.sinha/Downloads/dataflow-poc/.local-acceptance/checkout`,
+a separate local checkout (`.local-acceptance/checkout` inside the workspace),
 branch `codex/local-acceptance-20260922`. It combines PR48 (including its backend
 stack), PR45 (including frontend) and PR42, with CI fixes already present.
 No remote branch was merged or deployed. Docker Desktop and Chrome must be
@@ -25,14 +27,14 @@ available. The installed Go toolchain and locked npm dependencies are used.
 From that checkout root, keep the foreground supervisor terminal open:
 
 ```sh
-rtk proxy ./scripts/local-acceptance.sh up
+./scripts/local-acceptance.sh up
 ```
 
 `up` builds the native applications and frontend before starting them. To reuse
 the existing builds after stopping:
 
 ```sh
-rtk proxy ./scripts/local-acceptance.sh start
+./scripts/local-acceptance.sh start
 ```
 
 Use another terminal for the following commands. `stop` stops applications and
@@ -41,15 +43,15 @@ Both preserve its volumes and records. Do not add `--volumes` when retaining
 the test environment.
 
 ```sh
-rtk proxy ./scripts/local-acceptance.sh status
-rtk proxy ./scripts/local-acceptance.sh smoke
-rtk proxy ./scripts/local-acceptance.sh browser
-rtk proxy ./scripts/local-acceptance.sh controls
-rtk proxy ./scripts/local-acceptance.sh review
-rtk proxy ./scripts/local-acceptance.sh runtime
-rtk proxy ./scripts/local-acceptance.sh responsive
-rtk proxy ./scripts/local-acceptance.sh stop
-rtk proxy ./scripts/local-acceptance.sh down
+./scripts/local-acceptance.sh status
+./scripts/local-acceptance.sh smoke
+./scripts/local-acceptance.sh browser
+./scripts/local-acceptance.sh controls
+./scripts/local-acceptance.sh review
+./scripts/local-acceptance.sh runtime
+./scripts/local-acceptance.sh responsive
+./scripts/local-acceptance.sh stop
+./scripts/local-acceptance.sh down
 ```
 
 | Service | Local endpoint |
@@ -99,27 +101,26 @@ and browser acceptance have now also **PASSED** (see the results ledger).
 
 ### Offline checks and builds
 
-Run from the checkout root after installing its locked npm dependencies. Commands
-below retain the repository's RTK convention; `rtk proxy` passes the command through.
+Run from the checkout root after installing its locked npm dependencies.
 
 ```sh
-rtk proxy npm ci
-rtk proxy python3 tests/ai-evals/run.py --self-test --strict
-rtk proxy python3 scripts/temporal-sandbox.py --self-test
-rtk proxy npm -w @dataflow/shared test
-rtk proxy npm -w @dataflow/web test
-rtk proxy npm run build
+npm ci
+python3 tests/ai-evals/run.py --self-test --strict
+python3 scripts/temporal-sandbox.py --self-test
+npm -w @dataflow/shared test
+npm -w @dataflow/web test
+npm run build
 ```
 
 Run from `apps/workflow-go`:
 
 ```sh
-rtk proxy go test -race ./...
-rtk proxy go test -race -tags ee ./...
-rtk proxy go vet ./...
-rtk proxy go vet -tags ee ./...
-rtk proxy go build ./cmd/...
-rtk proxy go build -tags ee ./cmd/...
+go test -race ./...
+go test -race -tags ee ./...
+go vet ./...
+go vet -tags ee ./...
+go build ./cmd/...
+go build -tags ee ./cmd/...
 ```
 
 General Go success is insufficient for integration acceptance: the DB tests skip
@@ -128,12 +129,12 @@ both sandbox Temporal variables. Inspect output for skipped tests.
 
 ### Browser regression
 
-Chrome must be available (`rtk proxy npx playwright install --with-deps chrome`
+Chrome must be available (`npx playwright install --with-deps chrome`
 is the CI installation command). From the checkout root:
 
 ```sh
-rtk proxy npm -w @dataflow/shared run build
-rtk proxy npm -w @dataflow/web run test:e2e -- tests/pipeline-metadata.spec.ts --workers=1
+npm -w @dataflow/shared run build
+npm -w @dataflow/web run test:e2e -- tests/pipeline-metadata.spec.ts --workers=1
 ```
 
 Playwright starts its own Vite server at `127.0.0.1:3101` and refuses to reuse an
@@ -147,8 +148,8 @@ numbered `db/*.sql` migrations applied in order, using `psql -v ON_ERROR_STOP=1`
 Never point these checks at personal or production data. From `apps/workflow-go`:
 
 ```sh
-rtk proxy go test -race ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v
-rtk proxy go test -race -tags ee ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v
+go test -race ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v
+go test -race -tags ee ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v
 ```
 
 Pass requires both editions and no skipped matching test. The API suite has four
@@ -161,7 +162,7 @@ six `TestControl...` tests plus agent admission. See
 From the checkout root, choose a new/empty evidence directory:
 
 ```sh
-rtk proxy python3 scripts/temporal-sandbox.py --artifacts /tmp/cohestra-local-acceptance-evidence
+python3 scripts/temporal-sandbox.py --artifacts /tmp/cohestra-local-acceptance-evidence
 ```
 
 The runner provisions isolated services, applies migrations, runs both editions
@@ -193,13 +194,13 @@ errors. See `docs/TEMPORAL_SANDBOX.md` for prerequisites and bounded timeouts.
 From the checkout root, run the production dependency gate:
 
 ```sh
-rtk proxy npm audit --omit=dev --audit-level=high
+npm audit --omit=dev --audit-level=high
 ```
 
 From `apps/workflow-go`, run the pinned Go vulnerability scanner:
 
 ```sh
-rtk proxy go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
 ```
 
 Use the pinned Gitleaks 8.30.1 reachable-history command in
@@ -259,9 +260,9 @@ enterprise engine workflows retain their prior control responsiveness.
 
 ## Results ledger — 2026-09-22
 
-Evidence lives under `.artifacts/local-acceptance/`; sanitized copies are in the
-original workspace `docs/evals/local-acceptance-20260922/`. Private credentials,
-keys, session traces and full native logs are excluded from those copies.
+Evidence lives under the git-ignored `.artifacts/local-acceptance/` and is not
+committed. Private credentials, keys, session traces and full native logs never
+leave that directory.
 
 | Gate | Result | Evidence |
 | --- | --- | --- |

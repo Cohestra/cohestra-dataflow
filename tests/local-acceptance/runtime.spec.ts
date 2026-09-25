@@ -7,7 +7,8 @@ import { execFileSync } from 'node:child_process';
 const root = resolve(__dirname, '../..');
 const artifacts = resolve(root, '.artifacts/local-acceptance');
 const out = resolve(artifacts, 'sept25-runtime-browser');
-const compose = ['proxy', 'docker', 'compose', '-p', 'cohestra-acceptance-20260922', '-f', 'docker-compose.yml', '-f', 'docker-compose.acceptance.yml'];
+const project = process.env.COHESTRA_ACCEPTANCE_PROJECT ?? 'cohestra-acceptance-20260922';
+const compose = ['compose', '-p', project, '-f', 'docker-compose.yml', '-f', 'docker-compose.acceptance.yml'];
 
 test('drag preserves metadata and UI Run honors explicit timeout and retry', async ({ page }, testInfo) => {
   mkdirSync(out, { recursive: true });
@@ -62,7 +63,7 @@ test('drag preserves metadata and UI Run honors explicit timeout and retry', asy
     await page.screenshot({ path: testInfo.outputPath('drag-reopened.png'), fullPage: true });
     save();
 
-    execFileSync('rtk', [...compose, 'exec', '-T', 'postgres', 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'dataflow', '-d', 'dataflow'], {
+    execFileSync('docker', [...compose, 'exec', '-T', 'postgres', 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'dataflow', '-d', 'dataflow'], {
       cwd: root, encoding: 'utf8', timeout: 30_000,
       input: "CREATE SCHEMA IF NOT EXISTS local_acceptance; CREATE OR REPLACE VIEW local_acceptance.runtime_browser_slow AS SELECT g AS id, ('Delayed ' || g || pg_sleep(3)::text) AS name, true AS active FROM generate_series(1,2) g;"
     });
@@ -92,7 +93,7 @@ test('drag preserves metadata and UI Run honors explicit timeout and retry', asy
     for (const title of ['Pause', 'Resume', 'Cancel']) await expect(page.getByTitle(title, { exact: true })).toBeDisabled();
     const detail = await (await admin.get(`/api/executions/${running}`, { headers })).json();
     evidence.executionDetail = detail;
-    const history = JSON.parse(execFileSync('rtk', [...compose, 'exec', '-T', 'temporal', 'temporal', 'workflow', 'show', '--namespace', 'test', '--workflow-id', detail.execution.workflow_id, '--output', 'json'], { cwd: root, encoding: 'utf8', timeout: 30_000 }));
+    const history = JSON.parse(execFileSync('docker', [...compose, 'exec', '-T', 'temporal', 'temporal', 'workflow', 'show', '--namespace', 'test', '--workflow-id', detail.execution.workflow_id, '--output', 'json'], { cwd: root, encoding: 'utf8', timeout: 30_000 }));
     writeFileSync(resolve(out, 'timeout-history.json'), JSON.stringify(history, null, 2), { mode: 0o600 });
     const events = history.events;
     const scheduled = events.find((e: any) => e.activityTaskScheduledEventAttributes?.activityType?.name === 'fetchSourcePage');

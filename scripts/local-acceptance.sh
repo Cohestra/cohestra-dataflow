@@ -2,7 +2,9 @@
 # Local-only acceptance environment. Never points at an existing deployment.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-compose=(docker compose -p cohestra-acceptance-20260922 -f docker-compose.yml -f docker-compose.acceptance.yml)
+# Override to run a second isolated stack from another checkout.
+project="${COHESTRA_ACCEPTANCE_PROJECT:-cohestra-acceptance-20260922}"
+compose=(docker compose -p "$project" -f docker-compose.yml -f docker-compose.acceptance.yml)
 case "${1:-status}" in
   up|start)
     if [[ "${1}" == up ]]; then

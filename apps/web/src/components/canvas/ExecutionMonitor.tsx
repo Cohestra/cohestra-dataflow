@@ -15,8 +15,12 @@ export function ExecutionMonitor({ executionId, onNodeStatus, onPhase }: {
   phaseRef.current = onPhase;
   const cbRef = useRef(onNodeStatus);
   cbRef.current = onNodeStatus;
+  const currentExecution = useRef(executionId);
+  currentExecution.current = executionId;
 
   useEffect(() => {
+    // A new run starts with no status and no carried-over control feedback.
+    setStatus(null); setBusy(false); setError(''); setNotice(''); setCancelRequested(false);
     if (!executionId) return;
     let active = true;
     const t = setInterval(async () => {
@@ -24,6 +28,7 @@ export function ExecutionMonitor({ executionId, onNodeStatus, onPhase }: {
         const s = await api.executionStatus(executionId);
         if (!active) return;
         setStatus(s);
+        if (['completed', 'failed', 'cancelled'].includes(s.phase)) setNotice('');
         phaseRef.current?.(s.phase);
         if (s.nodeResults) cbRef.current(s.nodeResults);
         if (s.nodeRuns) cbRef.current(Object.fromEntries(
@@ -39,11 +44,13 @@ export function ExecutionMonitor({ executionId, onNodeStatus, onPhase }: {
   const disabled = busy || terminal || !status || cancelRequested;
   const signal = async (action: 'pause' | 'resume' | 'cancel') => {
     setBusy(true); setError(''); setNotice('');
+    const target = executionId;
     try {
-      await api.signal(executionId, action);
+      await api.signal(target, action);
+      if (currentExecution.current !== target) return; // the monitor moved to another run
       setNotice(`${action === 'pause' ? 'Pause' : action === 'resume' ? 'Resume' : 'Cancellation'} requested`);
       if (action === 'cancel') setCancelRequested(true);
-    } catch (error: any) { setError(`Control failed: ${error.message}`); }
+    } catch (error: any) { if (currentExecution.current === target) setError(`Control failed: ${error.message}`); }
     finally { setBusy(false); }
   };
   const phaseColor = status?.phase === 'failed' ? 'text-rose-500' : status?.phase === 'completed' ? 'text-emerald-500' : 'text-amber-500';

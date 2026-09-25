@@ -1,3 +1,0 @@
-COMMAND: rtk proxy go build ./cmd/...
-
-EXIT: 0

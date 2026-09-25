@@ -38,8 +38,8 @@ services:
     ports: !override ["127.0.0.1:14000:4000"]
     environment:
       APP_URL: http://localhost:13002
-      OLLAMA_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: qwen3:8b
+      OLLAMA_URL: ${ACCEPTANCE_OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${ACCEPTANCE_OLLAMA_MODEL:-qwen3:8b}
       SMTP_HOST: ""
       SMTP_USER: ""
       SMTP_PASS: ""

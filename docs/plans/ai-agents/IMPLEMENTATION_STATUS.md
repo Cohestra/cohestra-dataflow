@@ -1,6 +1,6 @@
 # Implementation status — 2026-09-14
 
-The user approved the plan and parallel implementation using orchestrate-agents.
+Maintainers accepted the plan in review of #38–#40; implementation proceeded as parallel stacked PRs (#42–#48).
 The implementation waves deliver bounded B1/F1/CI foundations; they do not complete
 the full agent product. LangGraph and cross-run memory remain deferred.
 
@@ -31,8 +31,7 @@ conflicts; combined commit `4684383b28443a881d533b75baceb43580d1cfc4` is local o
   model/workflow/connector/API packages pass. This is not a real API/DB/Temporal
   end-to-end sandbox claim.
 
-[Evidence and dated GitHub check snapshot](../../evals/implementation-foundations-20260914/)
-contain logs and machine-readable results. The reachable-history security scan
+The dated logs and machine-readable results from this wave were local; raw run output is not committed (the CI workflows upload equivalent artifacts). The reachable-history security scan
 remains failing (one reported finding on #43), as it also failed on the main
 baseline. Other remote checks may still be pending in this snapshot. No history
 rewrite, credential rotation or scan exception was performed.
@@ -81,7 +80,7 @@ merge needed only a changelog resolution; both workflow version guards remain.
 
 ### Evidence and acceptance limits
 
-[Second-wave evidence](../../evals/implementation-controls-20260914/) contains
+Second-wave evidence (raw run output is not committed (the CI workflows upload equivalent artifacts)) covered
 full combined community/enterprise race tests, both vet modes and service builds,
 shared/web tests, frontend build, Chrome regression, offline evaluator, PostgreSQL
 logs, and dated GitHub results. All local checks passed. Database tests used an
@@ -142,8 +141,8 @@ HTTP cross-tenant control is denied.
 The default download/failure path also ran with deliberately failing test
 subprocesses: both editions failed, evidence remained, service ports closed,
 and the temporary directory was removed. Seven result-parser regressions pass.
-[Evidence](../../evals/temporal-sandbox-20260914/) records source revisions, commands,
-versions, histories and cleanup results. Linux/PostgreSQL16 CI run
+The `Temporal sandbox` workflow uploads source revisions, commands, versions,
+histories and cleanup results as a run artifact. Linux/PostgreSQL16 CI run
 [34816809471](https://github.com/Cohestra/cohestra-dataflow/actions/runs/34816809471)
 initially failed the community worker-restart status query: its HTTP deadline
 coincided with expiry of a task still leased to the old worker. The history
@@ -180,7 +179,7 @@ application edits remain preserved.
 - Gitleaks falsely detected ordinary cost-state prose; exempted only its exact historical fingerprint and an identical copy in an explanatory comment. The comment is now paraphrased. Fully redacted diagnostics remain enabled. Final committed reachable-history scan passes; new-commit detection verified.
 - Go scan uncovered vulnerabilities behind the failed secret gate. Upgraded Go and Docker builder to 1.26.8, x/crypto to 0.56.0, and synchronized vendor. Local govulncheck, community/enterprise race tests, vet and service builds pass.
 - Integration workflow is disabled in GitHub because its Compose smoke pipeline reads the public JSONPlaceholder API. Source now has only a manual trigger. Keep disabled until this change is merged; then it may be enabled for deliberate manual runs. Isolated PostgreSQL, Temporal, and browser checks stay enabled.
-- Final verification: all 17 latest workflows across PR #49 and the 10 existing PRs succeeded. Older duplicate/superseded runs were cancelled; no final-head workflow failed. Integration remains `disabled_manually`. Evidence and exact branch heads: `docs/evals/ci-fixes-20260914/`.
+- Final verification: all 17 latest workflows across PR #49 and the 10 existing PRs succeeded. Older duplicate/superseded runs were cancelled; no final-head workflow failed. Integration remains `disabled_manually`.
 
 
 ## Local acceptance — 2026-09-22
@@ -194,8 +193,8 @@ Offline, both-edition Go/DB/Temporal, real pipeline, tenant isolation, real brow
 save/reopen and stop/restart persistence checks passed. Local Qwen3:8b generation
 returned a proposal but failed semantic review (invented recordsPath); no model
 promotion. Manual UI coverage and deferred agent runtime remain explicitly open.
-Plan, exact evidence and startup/cleanup commands: `docs/evals/local-acceptance-20260922/TEST_PLAN.md`.
-Private login credentials: `.local-acceptance/checkout/.artifacts/local-acceptance/credentials.json`.
+Startup/cleanup commands: [LOCAL_ACCEPTANCE.md](../../LOCAL_ACCEPTANCE.md).
+Local login credentials are generated under the git-ignored `.artifacts/local-acceptance/`.
 
 
 ## Local acceptance completion — 2026-09-25
@@ -213,7 +212,7 @@ Initial controls failure under concurrent load and a non-secret scanner
 false positive remain recorded. Deferred agent runtime and LangGraph remain
 out of scope. No remote push, merge, model promotion or deployment.
 
-Report and sanitized evidence: `docs/evals/local-acceptance-20260925/`.
+Report: [LOCAL_ACCEPTANCE_RESULTS_20260925.md](../../LOCAL_ACCEPTANCE_RESULTS_20260925.md).
 The local application remains at http://localhost:13002; startup/stop and
 repeatable checks are in the saved local acceptance plan.
 
@@ -225,4 +224,4 @@ with screenshots, reproducible steps and acceptance checks. P1: unsaved edits
 are silently lost on navigation; keyboard node activation cannot open settings.
 P2: field labels, validation feedback, cancelled status, version duplicates,
 status contrast and real AI failure recovery. Product source unchanged.
-Audit and issue links: `docs/evals/ux-audit-20260925/README.md`.
+Audit and issue links: [ux-audit-20260925](../../evals/ux-audit-20260925/README.md).

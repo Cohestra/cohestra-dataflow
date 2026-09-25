@@ -87,7 +87,7 @@ def serve():
     code = 1
     try:
         config = subprocess.run([
-            "docker", "compose", "-p", "cohestra-acceptance-20260922", "-f", "docker-compose.yml",
+            "docker", "compose", "-p", os.environ.get("COHESTRA_ACCEPTANCE_PROJECT", "cohestra-acceptance-20260922"), "-f", "docker-compose.yml",
             "-f", "docker-compose.acceptance.yml", "--profile", "container-app", "config", "--format", "json"
         ], cwd=ROOT, env=BASE_ENV, capture_output=True, text=True, timeout=20)
         if config.returncode:
@@ -101,7 +101,8 @@ def serve():
             DATABASE_URL="postgres://dataflow:dataflow@127.0.0.1:15433/dataflow?sslmode=disable",
             APP_DATABASE_URL="postgres://dataflow_app:dataflow_app@127.0.0.1:15433/dataflow?sslmode=disable",
             REDIS_URL="redis://127.0.0.1:16379", TEMPORAL_ADDRESS="127.0.0.1:17233",
-            CLICKHOUSE_URL="http://127.0.0.1:18123", OLLAMA_URL="http://127.0.0.1:11434", OLLAMA_MODEL="qwen3:8b",
+            CLICKHOUSE_URL="http://127.0.0.1:18123", OLLAMA_URL=os.environ.get("ACCEPTANCE_OLLAMA_URL", "http://127.0.0.1:11434"),
+            OLLAMA_MODEL=os.environ.get("ACCEPTANCE_OLLAMA_MODEL", "qwen3:8b"),
             API_PORT="14000", API_HOST="127.0.0.1", APP_URL="http://localhost:13002",
             CONNECTORS_DIR=str(ROOT / "connectors/manifests"), WORKER_PRIVATE_KEY_PATH=str(ROOT / "secrets/worker-keypair.pem"),
             COHESTRA_URL="http://127.0.0.1:1", SMTP_HOST="127.0.0.1", SMTP_PORT="1",
