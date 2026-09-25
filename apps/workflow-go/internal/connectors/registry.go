@@ -2,6 +2,7 @@ package connectors
 
 import (
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,9 +27,16 @@ func Load(dirs ...string) *Registry {
 				continue
 			}
 			var manifest model.ConnectorManifest
-			if json.Unmarshal(body, &manifest) == nil && manifest.ActivityType != "" && manifest.Label != "" && manifest.Kind == "source" && manifest.URL != "" {
-				r.Manifests[manifest.ActivityType] = manifest
+			if json.Unmarshal(body, &manifest) != nil || manifest.ActivityType == "" || manifest.Label == "" || manifest.URL == "" {
+				continue
 			}
+			if manifest.Kind != "source" {
+				// Manifests only implement record fetching. Saved pipelines that use this
+				// activity type will fail at dispatch until a coded handler exists.
+				slog.Warn("skipping unsupported connector manifest", "file", entry.Name(), "activityType", manifest.ActivityType, "kind", manifest.Kind)
+				continue
+			}
+			r.Manifests[manifest.ActivityType] = manifest
 		}
 	}
 	return r
