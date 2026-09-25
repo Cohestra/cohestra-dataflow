@@ -101,5 +101,16 @@ check('reserved agent fixture survives wire and Mermaid structure round trips', 
   assert.strictEqual(collidingLabel.nodes[0].type, 'agent');
 });
 
+// Labels and brackets are user/model input: parsing must stay linear-time.
+check('pathological labels and brackets parse quickly', () => {
+  const started = Date.now();
+  const parsed = mermaidToDefinition(`a["${'('.repeat(50_000)}x"]\n${'['.repeat(50_000)}\na --> b`, catalog);
+  assert.ok(Date.now() - started < 1000, 'parse took too long');
+  assert.deepStrictEqual(parsed.edges.map(e => [e.source, e.target]), [['a', 'b']]);
+  const labelled = mermaidToDefinition('n["Fetch (a (b) (http.fetch) "]', catalog).nodes[0];
+  assert.strictEqual(labelled.activityType, 'http.fetch');
+  assert.strictEqual(labelled.label, 'Fetch (a (b)');
+});
+
 if (failures) { console.error(`\n${failures} test(s) failed`); process.exit(1); }
 console.log('\nall mermaid round-trip tests passed');
