@@ -8,6 +8,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- Restore granted editor access under tenant row-level security; use canonical ingestion modes in AI schemas.
+- Count source pages once and show consistent run controls, completion times and monitoring totals.
+- Keep Save reachable on narrow screens while the AI panel is open.
 - AI pipeline proposals now show a keyboard-accessible before/after change review from the same merged definition used by Apply, with sensitive configuration values hidden.
 - Preserve pipeline concurrency, node policies and asset bindings across canvas load/save, AI Apply/Undo and Mermaid structural edits; block AI proposals based on an older draft.
 - CI secret scanning exempts one exact historical documentation false positive; the external-service smoke workflow is manual-only.

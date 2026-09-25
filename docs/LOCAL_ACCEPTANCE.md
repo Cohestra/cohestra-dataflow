@@ -47,6 +47,7 @@ rtk proxy ./scripts/local-acceptance.sh browser
 rtk proxy ./scripts/local-acceptance.sh controls
 rtk proxy ./scripts/local-acceptance.sh review
 rtk proxy ./scripts/local-acceptance.sh runtime
+rtk proxy ./scripts/local-acceptance.sh responsive
 rtk proxy ./scripts/local-acceptance.sh stop
 rtk proxy ./scripts/local-acceptance.sh down
 ```
@@ -293,3 +294,10 @@ For repeatable golden output use `smoke` again: it creates a fresh pipeline and
 collection, while reusing the two private local accounts. Rerunning the same
 cursor-based pipeline in the UI does not reset its source cursor. The browser
 saved version remains a draft for further editing.
+
+## Published review package
+
+[Integration review and evidence](evals/README.md) includes the plans, dated test results,
+publication manifest, and GitHub UX issue links. Raw private runtime artifacts remain
+ignored. `responsive` runs desktop/mobile metadata and narrow keyboard review checks
+against the running local web app with mocked APIs; it does not evaluate the model.
