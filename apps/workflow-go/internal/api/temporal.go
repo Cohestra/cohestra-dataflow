@@ -115,11 +115,11 @@ func (s *Server) fireExecution(ctx context.Context, def model.PipelineDefinition
 }
 
 func (s *Server) syncSchedule(ctx context.Context, def model.PipelineDefinition, pipelineRowID string, environment model.Environment) error {
-	if err := model.ValidateNodePolicies(def); err != nil {
-		return err
-	}
 	if def.Trigger.Type != "cron" {
 		return nil
+	}
+	if err := model.ValidateNodePolicies(def); err != nil {
+		return err
 	}
 	temporalClient := s.Temporal[string(environment)]
 	id := fmt.Sprintf("sched-%s-%s", def.ID, environment)
