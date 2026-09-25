@@ -64,6 +64,10 @@ func (c *executionController) waitActive(ctx workflow.Context) error {
 }
 
 func (c *executionController) watch(ctx workflow.Context) {
+	// Histories from before v1 failed the run on any watcher read error. New runs
+	// keep the last known control state through a transient database outage:
+	// every business activity still re-reads control and fails closed on admission.
+	nonfatalRefresh := workflow.GetVersion(ctx, "control-watch-nonfatal-refresh-v1", workflow.DefaultVersion, 1) != workflow.DefaultVersion
 	pause := workflow.GetSignalChannel(ctx, "pause")
 	resume := workflow.GetSignalChannel(ctx, "resume")
 	cancel := workflow.GetSignalChannel(ctx, "cancel")
@@ -85,6 +89,10 @@ func (c *executionController) watch(ctx workflow.Context) {
 			if ctx.Err() != nil {
 				return
 			}
+			if nonfatalRefresh {
+				workflow.GetLogger(ctx).Warn("execution control refresh failed; keeping last known state", "error", err)
+				continue
+			}
 			c.failure = err
 			c.cancelBusiness()
 			return
@@ -105,6 +113,11 @@ func executeNodeActivity(ctx workflow.Context, name string, args map[string]inte
 	}
 	args["controlRequired"] = true
 	options := workflow.GetActivityOptions(ctx)
+	// The blocked-attempt arithmetic below needs a finite budget. ValidateNodePolicies
+	// rejects 0 (Temporal's "unlimited") and the workflow default is 5.
+	if options.RetryPolicy == nil || options.RetryPolicy.MaximumAttempts < 1 {
+		return fmt.Errorf("controlled activity %s requires a finite retry budget", name)
+	}
 	remaining := options.RetryPolicy.MaximumAttempts
 	for {
 		if err := c.waitActive(ctx); err != nil {

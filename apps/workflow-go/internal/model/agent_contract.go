@@ -42,8 +42,9 @@ func ValidateAgentNodes(def PipelineDefinition) error {
 		if err := decoder.Decode(&config); err != nil {
 			return fmt.Errorf("node %s invalid agent config: %w", node.ID, err)
 		}
-		if _, err := uuid.Parse(config.AgentID); err != nil || len(config.AgentID) != 36 {
-			return fmt.Errorf("node %s agentId must be a UUID", node.ID)
+		// Canonical lowercase form only, so one agent has one spelling in stored definitions.
+		if _, err := uuid.Parse(config.AgentID); err != nil || len(config.AgentID) != 36 || config.AgentID != strings.ToLower(config.AgentID) {
+			return fmt.Errorf("node %s agentId must be a canonical lowercase UUID", node.ID)
 		}
 		// JSON numbers cross TypeScript's number boundary before reaching Go.
 		if config.AgentVersion <= 0 || config.AgentVersion > 9007199254740991 {

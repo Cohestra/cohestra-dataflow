@@ -41,7 +41,23 @@ jobs:
           done
       - name: Verify durable controls with real transactions and RLS
         working-directory: apps/workflow-go
-        run: go test -race ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v
-      - name: Verify enterprise controls
-        working-directory: apps/workflow-go
-        run: go test -race -tags ee ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v
+        env:
+          # A -run filter that matches nothing, or a database test that skips,
+          # must not pass silently. Every name here has to report PASS.
+          REQUIRED_TESTS: >-
+            TestAgentAdmissionRejectsStoredDefinitionsBeforeWrites
+            TestAgentAdmissionRejectsBeforeAnyActivity
+            TestControlAPITransactionsPermissionsAndTerminality
+            TestControlDispatcherRecoveryAndRevisionCAS
+            TestControlDispatcherStopsOnMissingWorkflow
+            TestControlActivityAdmissionAndFinalization
+            TestControlFirstResumeWakesLegacyHistory
+            TestControlWatcherSurvivesTransientReadFailure
+        run: |
+          set -o pipefail
+          for tags in "" ee; do
+            go test -race -tags "$tags" ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v | tee "/tmp/controls-${tags:-community}.log"
+            for name in $REQUIRED_TESTS; do
+              grep -q -- "--- PASS: $name " "/tmp/controls-${tags:-community}.log" || { echo "::error::$name did not pass (${tags:-community})"; exit 1; }
+            done
+          done

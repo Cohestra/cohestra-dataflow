@@ -17,6 +17,7 @@ import (
 	"github.com/dataflow-poc/workflow-go/internal/dispatchers"
 	"github.com/dataflow-poc/workflow-go/internal/model"
 	"github.com/google/uuid"
+	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/sdk/testsuite"
 )
 
@@ -215,6 +216,32 @@ func TestControlDispatcherRecoveryAndRevisionCAS(t *testing.T) {
 	}
 	if delivered != 3 {
 		t.Fatalf("latest revision not delivered: %d", delivered)
+	}
+}
+
+func TestControlDispatcherStopsOnMissingWorkflow(t *testing.T) {
+	f := newControlFixture(t)
+	ctx := context.Background()
+	owner := model.TenantContext{TenantID: f.tenant, UserID: f.user, Role: "owner"}
+	f.request(t, owner, "cancel", 200)
+	calls := 0
+	gone := fixtureSignaler(func(context.Context, string, string, string, interface{}) error {
+		calls++
+		return serviceerror.NewNotFound("workflow execution already completed")
+	})
+	if err := dispatchers.DispatchExecutionControls(ctx, f.db, gone, "test"); err != nil {
+		t.Fatalf("missing workflow is not a delivery error: %v", err)
+	}
+	var delivered, revision int64
+	var phase string
+	if err := f.db.Pool.QueryRow(ctx, `SELECT control_delivered_revision,control_revision,phase FROM executions WHERE id=$1 AND tenant_id=$2`, f.execution, f.tenant).Scan(&delivered, &revision, &phase); err != nil {
+		t.Fatal(err)
+	}
+	if delivered != revision || phase != "running" {
+		t.Fatalf("delivered=%d revision=%d phase=%s; want intent closed and phase untouched", delivered, revision, phase)
+	}
+	if err := dispatchers.DispatchExecutionControls(ctx, f.db, gone, "test"); err != nil || calls != 1 {
+		t.Fatalf("undeliverable intent retried: calls=%d err=%v", calls, err)
 	}
 }
 

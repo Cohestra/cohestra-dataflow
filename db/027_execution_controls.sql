@@ -10,7 +10,7 @@ ALTER TABLE executions
 
 UPDATE executions SET control_state='paused' WHERE phase='paused';
 
-CREATE INDEX executions_pending_control ON executions (environment, control_next_delivery_at, tenant_id, id)
+CREATE INDEX IF NOT EXISTS executions_pending_control ON executions (environment, control_next_delivery_at, tenant_id, id)
   WHERE control_delivered_revision < control_revision
     AND phase NOT IN ('completed', 'failed', 'cancelled');
 -- Existing execution RLS remains in force. No independent outbox can outlive its execution.

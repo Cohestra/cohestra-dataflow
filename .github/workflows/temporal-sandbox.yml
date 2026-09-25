@@ -34,8 +34,16 @@ jobs:
           import subprocess
           base = os.environ['BASE_SHA']
           forced = os.environ['EVENT_NAME'] == 'workflow_dispatch' or not base or set(base) == {'0'}
-          paths = [] if forced else subprocess.check_output(
-              ['git', 'diff', '--name-only', base, os.environ['HEAD_SHA']], text=True).splitlines()
+          paths = []
+          if not forced:
+              # Pull requests compare against the merge base, so changes merged to the
+              # base branch after this branch forked do not count as this PR's changes.
+              span = f"{base}...{os.environ['HEAD_SHA']}" if os.environ['EVENT_NAME'] == 'pull_request' else f"{base}..{os.environ['HEAD_SHA']}"
+              try:
+                  paths = subprocess.check_output(['git', 'diff', '--name-only', span], text=True).splitlines()
+              except subprocess.CalledProcessError:
+                  # e.g. a force-push rewrote the previous head: run rather than skip.
+                  forced = True
           relevant = forced or any(path.startswith(('apps/workflow-go/', 'db/', 'tests/contracts/')) or path in (
               'scripts/temporal-sandbox.py', '.github/workflows/temporal-sandbox.yml') for path in paths)
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
@@ -53,8 +61,12 @@ jobs:
       - name: Install native PostgreSQL 16
         if: steps.scope.outputs.run == 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-16
+          if [ -x /usr/lib/postgresql/16/bin/initdb ]; then
+            echo "PostgreSQL 16 already installed on the runner"
+          else
+            sudo apt-get update
+            sudo apt-get install -y postgresql-16
+          fi
       - name: Run community and enterprise sandbox
         if: steps.scope.outputs.run == 'true'
         env:
