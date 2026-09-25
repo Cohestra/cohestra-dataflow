@@ -32,6 +32,15 @@ func DynamicDAGWorkflow(ctx workflow.Context, input model.WorkflowInput) (model.
 		input.Trigger.FiredAt = workflow.Now(ctx).UTC().Format(time.RFC3339Nano)
 	}
 
+	// Existing histories retain the original global options, including any
+	// previously ignored node settings. Validate new runs before any activity.
+	nodePolicies := workflow.GetVersion(ctx, "node-activity-policy-v1", workflow.DefaultVersion, 1) != workflow.DefaultVersion
+	if nodePolicies {
+		if err := model.ValidateNodePolicies(input.Definition); err != nil {
+			return model.ExecutionStatus{}, temporal.NewNonRetryableApplicationError(err.Error(), "InvalidNodePolicy", err)
+		}
+	}
+
 	activityOptions := workflow.ActivityOptions{
 		TaskQueue:           "dynamic-activities-" + string(input.Environment),
 		StartToCloseTimeout: 10 * time.Minute,
@@ -125,6 +134,9 @@ func DynamicDAGWorkflow(ctx workflow.Context, input model.WorkflowInput) (model.
 				node := node
 				future, settable := workflow.NewFuture(ctx)
 				workflow.Go(ctx, func(ctx workflow.Context) {
+					if nodePolicies {
+						ctx = withNodeActivityOptions(ctx, node)
+					}
 					result, runErr := runNode(ctx, input, node, plan.Incoming, state.Results)
 					if runErr != nil {
 						settable.SetError(runErr)
@@ -196,6 +208,25 @@ func DynamicDAGWorkflow(ctx workflow.Context, input model.WorkflowInput) (model.
 		StartedAt:   startedAt,
 		CompletedAt: workflow.Now(ctx).UTC().Format(time.RFC3339Nano),
 	}, nil
+}
+
+// withNodeActivityOptions scopes overrides to this node's activities (including
+// every source page). Execution bookkeeping keeps the workflow defaults.
+func withNodeActivityOptions(ctx workflow.Context, node model.Node) workflow.Context {
+	options := workflow.GetActivityOptions(ctx)
+	if node.TimeoutSec != nil {
+		options.StartToCloseTimeout = time.Duration(*node.TimeoutSec) * time.Second
+		if options.HeartbeatTimeout > options.StartToCloseTimeout {
+			options.HeartbeatTimeout = options.StartToCloseTimeout
+		}
+	}
+	if node.Retry != nil && node.Retry.MaximumAttempts != nil {
+		// Activity options share a policy pointer; never mutate parallel siblings.
+		policy := *options.RetryPolicy
+		policy.MaximumAttempts = int32(*node.Retry.MaximumAttempts)
+		options.RetryPolicy = &policy
+	}
+	return workflow.WithActivityOptions(ctx, options)
 }
 
 func runNode(

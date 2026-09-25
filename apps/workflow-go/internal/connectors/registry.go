@@ -2,6 +2,7 @@ package connectors
 
 import (
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,9 +27,16 @@ func Load(dirs ...string) *Registry {
 				continue
 			}
 			var manifest model.ConnectorManifest
-			if json.Unmarshal(body, &manifest) == nil && manifest.ActivityType != "" && manifest.Label != "" && (manifest.Kind == "source" || manifest.Kind == "sink") && manifest.URL != "" {
-				r.Manifests[manifest.ActivityType] = manifest
+			if json.Unmarshal(body, &manifest) != nil || manifest.ActivityType == "" || manifest.Label == "" || manifest.URL == "" {
+				continue
 			}
+			if manifest.Kind != "source" {
+				// Manifests only implement record fetching. Saved pipelines that use this
+				// activity type will fail at dispatch until a coded handler exists.
+				slog.Warn("skipping unsupported connector manifest", "file", entry.Name(), "activityType", manifest.ActivityType, "kind", manifest.Kind)
+				continue
+			}
+			r.Manifests[manifest.ActivityType] = manifest
 		}
 	}
 	return r
@@ -36,23 +44,19 @@ func Load(dirs ...string) *Registry {
 func (r *Registry) Catalog() []model.CatalogEntry {
 	out := make([]model.CatalogEntry, 0, len(r.Manifests))
 	for _, m := range r.Manifests {
-		nodeType := "source"
-		if m.Kind == "sink" {
-			nodeType = "sink"
+		// Manifest execution implements fetching records only; writes require a coded handler.
+		if m.Kind != "source" {
+			continue
 		}
 		color := m.Color
 		if color == "" {
-			if nodeType == "sink" {
-				color = "#639922"
-			} else {
-				color = "#1D9E75"
-			}
+			color = "#1D9E75"
 		}
-		ingestion := nodeType == "source"
+		ingestion := true
 		if m.SupportsIngestion != nil {
 			ingestion = *m.SupportsIngestion
 		}
-		out = append(out, model.CatalogEntry{ActivityType: m.ActivityType, NodeType: nodeType, Label: m.Label, Color: color, SupportsIngestion: ingestion, Fields: m.Fields})
+		out = append(out, model.CatalogEntry{ActivityType: m.ActivityType, NodeType: "source", Label: m.Label, Color: color, SupportsIngestion: ingestion, Fields: m.Fields})
 	}
 	return out
 }
