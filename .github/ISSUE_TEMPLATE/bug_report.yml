@@ -46,7 +46,7 @@ body:
       placeholder: |
         - OS: macOS 15.2 arm64
         - Docker Compose: v2.27.1
-        - Go: 1.25
+        - Go: 1.26.8
         - Node: 22.x
         - Browser (if UI): Chrome 126
     validations:
