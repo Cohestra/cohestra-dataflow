@@ -49,6 +49,29 @@ function defaultNodeType(activityType: string): NodeType {
   return 'source';
 }
 
+// Linear-time equivalent of /\(([^)]+)\)\s*$/: the trailing "(activityType)".
+// Regexes here run on user/model-supplied Mermaid and must not backtrack.
+function activityTypeSuffix(label: string): { start: number; activityType: string } | null {
+  const end = label.trimEnd().length - 1;
+  if (end < 0 || label[end] !== ')') return null;
+  const start = label.indexOf('(', label.lastIndexOf(')', end - 1) + 1);
+  if (start < 0 || start >= end - 1) return null;
+  return { start, activityType: label.slice(start + 1, end) };
+}
+
+// Linear-time equivalent of src.replace(/\[[^\]]*\]/g, '').
+function stripBracketLabels(src: string): string {
+  let out = '';
+  let i = 0;
+  for (;;) {
+    const open = src.indexOf('[', i);
+    const close = open < 0 ? -1 : src.indexOf(']', open + 1);
+    if (close < 0) return out + src.slice(i);
+    out += src.slice(i, open);
+    i = close + 1;
+  }
+}
+
 export function mermaidToDefinition(src: string, catalog: CatalogEntry[]): MermaidParseResult {
   const warnings: string[] = [];
   const byType = new Map(catalog.map(c => [c.activityType, c]));
@@ -60,9 +83,9 @@ export function mermaidToDefinition(src: string, catalog: CatalogEntry[]): Merma
   let m: RegExpExecArray | null;
   while ((m = declRe.exec(src))) {
     const [, id, rawLabel] = m;
-    const atMatch = rawLabel.match(/\(([^)]+)\)\s*$/);
-    let activityType = atMatch?.[1]?.trim() ?? '';
-    const labelText = rawLabel.replace(/\(([^)]+)\)\s*$/, '').trim();
+    const suffix = activityTypeSuffix(rawLabel);
+    let activityType = suffix?.activityType.trim() ?? '';
+    const labelText = (suffix ? rawLabel.slice(0, suffix.start) : rawLabel).trim();
 
     let entry = activityType ? byType.get(activityType) : undefined;
     if (!entry) {
@@ -83,7 +106,7 @@ export function mermaidToDefinition(src: string, catalog: CatalogEntry[]): Merma
   }
 
   // Pass 2 — edges. Strip bracket labels first so only ids + arrows remain.
-  const stripped = src.replace(/\[[^\]]*\]/g, '');
+  const stripped = stripBracketLabels(src);
   const edges: PipelineEdge[] = [];
   let edgeN = 0;
   const ensureNode = (id: string) => {
