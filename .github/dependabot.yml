@@ -1,0 +1,15 @@
+# Security updates only (open-pull-requests-limit: 0 disables routine version
+# updates). Groups keep the OpenTelemetry core and contrib modules moving
+# together, since contrib releases are built against a specific core version.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /apps/workflow-go
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      opentelemetry:
+        applies-to: security-updates
+        patterns:
+          - "go.opentelemetry.io/*"
