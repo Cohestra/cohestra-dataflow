@@ -80,6 +80,10 @@ func DynamicDAGWorkflow(ctx workflow.Context, input model.WorkflowInput) (model.
 		input.ExecutionPrepared = true
 	}
 
+	if workflow.GetVersion(ctx, "durable-execution-controls-v1", workflow.DefaultVersion, 1) != workflow.DefaultVersion {
+		return controlledDAGWorkflow(ctx, input, nodePolicies)
+	}
+
 	plan, err := buildPlan(input.Definition.Nodes, input.Definition.Edges)
 	if err != nil {
 		return model.ExecutionStatus{}, err
@@ -260,11 +264,11 @@ func runNode(
 		}
 		upstream := results[edge.Source]
 		var allowed bool
-		err := workflow.ExecuteActivity(ctx, "evalEdgeCondition", map[string]interface{}{
+		err := executeNodeActivity(ctx, "evalEdgeCondition", map[string]interface{}{
 			"condition":    edge.Condition,
 			"inputRef":     upstream.OutputRef,
 			"encryptedDek": input.EncryptedDEK,
-		}).Get(ctx, &allowed)
+		}, &allowed)
 		if err != nil {
 			return failed(node.ID, err), nil
 		}
@@ -285,7 +289,7 @@ func runNode(
 	}
 	if node.Type == "merge" {
 		var result model.NodeResult
-		err := workflow.ExecuteActivity(ctx, "mergeRefs", map[string]interface{}{
+		err := executeNodeActivity(ctx, "mergeRefs", map[string]interface{}{
 			"inputRefs":    refs,
 			"strategy":     defaultString(node.MergeStrategy, "concat"),
 			"joinKey":      node.JoinKey,
@@ -293,7 +297,7 @@ func runNode(
 			"executionId":  input.ExecutionID,
 			"nodeId":       node.ID,
 			"encryptedDek": input.EncryptedDEK,
-		}).Get(ctx, &result)
+		}, &result)
 		if err != nil {
 			return failed(node.ID, err), nil
 		}
@@ -314,7 +318,7 @@ func runNode(
 	}
 
 	var result model.NodeResult
-	err := workflow.ExecuteActivity(ctx, "dispatchNode", map[string]interface{}{
+	err := executeNodeActivity(ctx, "dispatchNode", map[string]interface{}{
 		"activityType":    node.ActivityType,
 		"config":          node.Config,
 		"inputRef":        inputRef,
@@ -323,7 +327,7 @@ func runNode(
 		"nodeId":          node.ID,
 		"pipelineVersion": input.Definition.Version,
 		"encryptedDek":    input.EncryptedDEK,
-	}).Get(ctx, &result)
+	}, &result)
 	if err != nil {
 		return failed(node.ID, err), nil
 	}
@@ -342,7 +346,7 @@ func runSource(ctx workflow.Context, input model.WorkflowInput, node model.Node)
 			RecordCount int                    `json:"recordCount"`
 			Checkpoint  map[string]interface{} `json:"checkpoint,omitempty"`
 		}
-		err := workflow.ExecuteActivity(ctx, "fetchSourcePage", map[string]interface{}{
+		err := executeNodeActivity(ctx, "fetchSourcePage", map[string]interface{}{
 			"activityType": node.ActivityType,
 			"config":       node.Config,
 			"ingestion":    node.Ingestion,
@@ -352,7 +356,7 @@ func runSource(ctx workflow.Context, input model.WorkflowInput, node model.Node)
 			"executionId":  input.ExecutionID,
 			"nodeId":       node.ID,
 			"encryptedDek": input.EncryptedDEK,
-		}).Get(ctx, &page)
+		}, &page)
 		if err != nil {
 			return failed(node.ID, err), nil
 		}
@@ -376,11 +380,11 @@ func runSource(ctx workflow.Context, input model.WorkflowInput, node model.Node)
 		outputRef = refs[0]
 	} else if len(refs) > 1 {
 		var merged model.NodeResult
-		if err := workflow.ExecuteActivity(ctx, "mergeRefs", map[string]interface{}{
+		if err := executeNodeActivity(ctx, "mergeRefs", map[string]interface{}{
 			"inputRefs": refs, "strategy": "concat", "tenantId": input.TenantID,
 			"executionId": input.ExecutionID, "nodeId": node.ID,
 			"encryptedDek": input.EncryptedDEK,
-		}).Get(ctx, &merged); err != nil {
+		}, &merged); err != nil {
 			return failed(node.ID, err), nil
 		}
 		outputRef = merged.OutputRef

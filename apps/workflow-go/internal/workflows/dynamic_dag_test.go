@@ -9,6 +9,7 @@ import (
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 func TestReplayV128History(t *testing.T) {
@@ -22,6 +23,7 @@ func TestReplayV128History(t *testing.T) {
 func TestSourcePagesAreMergedBeforeDownstream(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
+	env.OnGetVersion("durable-execution-controls-v1", workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 	env.RegisterActivityWithOptions(func(context.Context, map[string]interface{}) (map[string]interface{}, error) { return nil, nil }, activity.RegisterOptions{Name: "fetchSourcePage"})
 	env.RegisterActivityWithOptions(func(context.Context, map[string]interface{}) (model.NodeResult, error) {
 		return model.NodeResult{}, nil
@@ -86,6 +88,7 @@ func TestBuildPlanCreatesParallelLevels(t *testing.T) {
 func TestDedupeKeysCommitOnlyAfterWorkflowSuccess(t *testing.T) {
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
+	env.OnGetVersion("durable-execution-controls-v1", workflow.DefaultVersion, workflow.Version(1)).Return(workflow.DefaultVersion)
 	env.RegisterActivityWithOptions(func(context.Context, map[string]interface{}) (model.NodeResult, error) {
 		return model.NodeResult{}, nil
 	}, activity.RegisterOptions{Name: "dispatchNode"})
@@ -100,9 +103,11 @@ func TestDedupeKeysCommitOnlyAfterWorkflowSuccess(t *testing.T) {
 	env.OnActivity("markExecution", mock.Anything, mock.Anything).Return(nil).Once()
 	env.ExecuteWorkflow(DynamicDAGWorkflow, model.WorkflowInput{
 		Definition: model.PipelineDefinition{ID: "pipeline", Nodes: []model.Node{{ID: "dedupe", Type: "transform", ActivityType: "transform.dedupe", Config: map[string]interface{}{}}}},
-		TenantID: "tenant", ExecutionID: "exec", Trigger: model.TriggerInput{Type: "manual"},
+		TenantID:   "tenant", ExecutionID: "exec", Trigger: model.TriggerInput{Type: "manual"},
 	})
-	if err := env.GetWorkflowError(); err != nil { t.Fatal(err) }
+	if err := env.GetWorkflowError(); err != nil {
+		t.Fatal(err)
+	}
 	env.AssertExpectations(t)
 }
 
