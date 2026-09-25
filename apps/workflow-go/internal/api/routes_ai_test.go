@@ -361,3 +361,24 @@ func TestAIRequestBounds(t *testing.T) {
 		t.Fatalf("aggregate context error = %#v", contextErr)
 	}
 }
+
+func TestRefineKeepsCurrentNameWhenModelOmitsIt(t *testing.T) {
+	server, requests := fakeOllama(t, `{
+		"status":"ready","suggestedName":"","questions":[],"assumptions":[],"warnings":[],
+		"trigger":{"type":"manual"},"nodes":[{"id":"n1","label":"Orders API","activityType":"http.fetch","config":{"url":"https://example.test/orders"}},{"id":"n2","label":"Store","activityType":"sink.records","config":{"collection":"archive"}}],
+		"edges":[{"source":"n1","target":"n2"}]
+	}`)
+	defer server.Close()
+	t.Setenv("OLLAMA_URL", server.URL)
+
+	result, err := (&Server{HTTP: server.Client()}).buildNamedPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "Change the sink collection to archive", "Orders sync")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["status"] != aiPipelineReady || result["definition"].(map[string]interface{})["suggestedName"] != "Orders sync" {
+		t.Fatalf("result = %#v", result)
+	}
+	if len(*requests) != 1 {
+		t.Fatalf("requests = %d, want 1 (no repair for a blank name)", len(*requests))
+	}
+}

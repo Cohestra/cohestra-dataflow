@@ -215,6 +215,10 @@ func (s *Server) pipelineList(w http.ResponseWriter, r *http.Request) error {
 	case "draft":
 		where = append(where, "NOT (p.status='active' AND p.environment IN ('prod','test'))")
 	}
+	if key := q.Get("key"); key != "" {
+		args = append(args, key)
+		where = append(where, fmt.Sprintf("p.pipeline_key=$%d", len(args)))
+	}
 	if trigger := q.Get("trigger"); trigger != "" {
 		args = append(args, trigger)
 		where = append(where, fmt.Sprintf("p.definition->'trigger'->>'type'=$%d", len(args)))
@@ -232,7 +236,25 @@ func (s *Server) pipelineList(w http.ResponseWriter, r *http.Request) error {
 		where = append(where, fmt.Sprintf("(p.created_at,p.id)<($%d::timestamptz,$%d)", len(args)-1, len(args)))
 	}
 
-	query := `SELECT p.id,p.pipeline_key,p.version,p.name,p.status,p.environment,p.promoted_from_version,p.created_at,p.definition->'trigger'->>'type' AS trigger_type,lr.phase AS last_run_phase,lr.started_at AS last_run_at,lr.id AS last_run_id FROM pipelines p LEFT JOIN LATERAL (SELECT phase,started_at,id FROM executions WHERE pipeline_id=p.id ORDER BY started_at DESC LIMIT 1) lr ON true`
+	// last_run_phase is the effective phase: a durable pause/cancel request
+	// on a live execution is reported before Temporal acknowledges it.
+	lastRun := `SELECT CASE WHEN e.phase NOT IN ('completed','failed','cancelled') AND e.control_state='paused' THEN 'paused'
+    WHEN e.phase NOT IN ('completed','failed','cancelled') AND e.control_state='cancel_requested' THEN 'cancelling'
+    ELSE e.phase END AS phase,e.started_at,e.id,v.version FROM executions e JOIN pipelines v ON v.id=e.pipeline_id`
+	from := `pipelines p LEFT JOIN LATERAL (` + lastRun + ` WHERE e.pipeline_id=p.id ORDER BY e.started_at DESC LIMIT 1) lr ON true`
+	extra := ""
+	if q.Get("view") == "current" {
+		// One row per logical pipeline/environment: its latest saved version.
+		// Stage reflects any active version; last run spans every version.
+		from = `(SELECT c.id,c.pipeline_key,c.version,c.name,c.environment,c.promoted_from_version,c.created_at,c.definition,
+    CASE WHEN av.version IS NOT NULL THEN 'active' ELSE c.status END AS status,av.version AS active_version,vc.n AS version_count
+    FROM (SELECT DISTINCT ON (pipeline_key,environment) * FROM pipelines ORDER BY pipeline_key,environment,version DESC) c
+    LEFT JOIN LATERAL (SELECT version FROM pipelines a WHERE a.pipeline_key=c.pipeline_key AND a.environment=c.environment AND a.status='active' ORDER BY version DESC LIMIT 1) av ON true
+    LEFT JOIN LATERAL (SELECT count(*)::int AS n FROM pipelines a WHERE a.pipeline_key=c.pipeline_key AND a.environment=c.environment) vc ON true) p
+    LEFT JOIN LATERAL (` + lastRun + ` WHERE v.pipeline_key=p.pipeline_key AND v.environment=p.environment ORDER BY e.started_at DESC LIMIT 1) lr ON true`
+		extra = ",p.active_version,p.version_count"
+	}
+	query := `SELECT p.id,p.pipeline_key,p.version,p.name,p.status,p.environment,p.promoted_from_version,p.created_at,p.definition->'trigger'->>'type' AS trigger_type,lr.phase AS last_run_phase,lr.started_at AS last_run_at,lr.id AS last_run_id,lr.version AS last_run_version` + extra + ` FROM ` + from
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
 	}

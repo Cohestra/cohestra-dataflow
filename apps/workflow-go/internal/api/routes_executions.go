@@ -42,6 +42,7 @@ func (s *Server) executionList(w http.ResponseWriter, r *http.Request) error {
 	}
 	add("e.pipeline_id", q.Get("pipeline"))
 	add("e.environment", q.Get("env"))
+	add("p.pipeline_key", q.Get("pipelineKey"))
 	phase := q.Get("phase")
 	if phase == "" {
 		phase = q.Get("status")
@@ -74,7 +75,7 @@ func (s *Server) executionList(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, value.StartedAt, value.ID)
 		where = append(where, fmt.Sprintf("(e.started_at,e.id)<($%d::timestamptz,$%d)", len(args)-1, len(args)))
 	}
-	query := `SELECT e.*,p.name FROM executions e JOIN pipelines p ON p.id=e.pipeline_id`
+	query := `SELECT e.*,p.name,p.version AS pipeline_version FROM executions e JOIN pipelines p ON p.id=e.pipeline_id`
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
 	}
