@@ -11,9 +11,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - CI secret scanning exempts one exact historical documentation false positive; the external-service smoke workflow is manual-only.
 - Upgrade Go to 1.26.8 and the vendored SSH dependency to x/crypto 0.56.0 to clear reachable vulnerability findings.
 
+### Changed
+- Per-node `timeoutSec` and `retry.maximumAttempts` are now validated: `0`, negative and overflowing values are rejected on save, manual/webhook/backfill runs, activation and promotion. Previously `0` was silently ignored, so an existing pipeline saved with `0` must be re-saved without that field. Temporal schedules created before this release embed the old definition; their next run fails with `InvalidNodePolicy` if it carries such a value. Re-activate the pipeline to refresh its schedule.
+- Connector manifests with a kind other than `source` are skipped at startup (logged as `skipping unsupported connector manifest`). Saved pipelines that reference such a manifest sink fail at dispatch until a coded handler exists.
+
 ### Added
 - Isolated real Temporal/PostgreSQL sandbox with golden data output, retry/timeout, control delivery, cancellation, and workflow-worker restart acceptance in both editions
 - Durable execution pause/resume/cancel intent with atomic audit, retryable worker delivery, responsive workflow controls, and tenant-scoped activity admission
+- Execution pause/resume/cancel now require owner, pipeline creator, or pipeline editor/admin access (viewers get 403, others 404); see `docs/EXECUTION_CONTROLS.md` for rollout of migration 027
 - Reserved agent node wire contract with immutable version binding, bounded batch input validation, and fail-closed admission until the agent runtime is implemented
 - AI pipeline builder — natural-language-to-Mermaid via local Ollama or cloud
 - React Flow canvas with live Mermaid sync

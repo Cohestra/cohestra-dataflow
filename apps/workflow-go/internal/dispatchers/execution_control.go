@@ -2,10 +2,13 @@ package dispatchers
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/dataflow-poc/workflow-go/internal/database"
 	"github.com/dataflow-poc/workflow-go/internal/model"
+	"go.temporal.io/api/serviceerror"
 )
 
 type controlSignaler interface {
@@ -49,6 +52,14 @@ func DispatchExecutionControls(ctx context.Context, db *database.DB, signaler co
 		callCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		err = signaler.SignalWorkflow(callCtx, p.workflowID, p.runID, signal, model.ExecutionControl{State: p.state, Revision: p.revision})
 		cancel()
+		var notFound *serviceerror.NotFound
+		if errors.As(err, &notFound) {
+			// The workflow no longer exists (terminated, reset or retention-expired
+			// outside the app). Retrying cannot deliver; stop, but leave its phase
+			// for reconciliation rather than guessing how it ended.
+			slog.Warn("execution control target not found; marking intent undeliverable", "executionId", p.id, "workflowId", p.workflowID, "revision", p.revision)
+			err = nil
+		}
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -73,6 +84,10 @@ func DispatchExecutionControls(ctx context.Context, db *database.DB, signaler co
 }
 
 func (g *Group) StartExecutionControls(db *database.DB, signaler controlSignaler, namespace string) {
+	// Deliveries select executions whose environment equals this worker's namespace.
+	if namespace != string(model.EnvironmentTest) && namespace != string(model.EnvironmentProd) {
+		slog.Warn("execution control delivery is idle: TEMPORAL_NAMESPACE is not an execution environment", "namespace", namespace)
+	}
 	g.run(g.ctx, 2*time.Second, func(ctx context.Context) error {
 		callCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 		defer cancel()

@@ -80,7 +80,7 @@ export interface PipelineNode {
 
 // Reserved wire contract; production admission stays disabled until AgentWorkflow exists.
 export interface AgentNodeConfig extends Record<string, unknown> {
-  agentId: string; // UUID of an immutable published agent version
+  agentId: string; // canonical lowercase UUID of an immutable published agent
   agentVersion: number; // positive integer
   inputBinding: { mode: 'batch'; fields: string[]; maxRecords: number }; // 1..100
 }
