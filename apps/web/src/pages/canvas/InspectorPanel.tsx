@@ -34,7 +34,13 @@ export function InspectorPanel({
     if (open && focusOnOpen) body.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus();
   }, [open, focusOnOpen, selected?.id]);
   return (
-    <aside aria-label="Inspector" onKeyDown={event => { if (open && event.key === 'Escape') onClose(); }}
+    <aside aria-label="Inspector" onKeyDown={event => {
+      // Escape closes the panel only when nothing inside consumed it: a control
+      // that handled it, or a textarea (Mermaid source, notes) keeps the panel open.
+      if (!open || event.key !== 'Escape' || event.defaultPrevented) return;
+      if (event.target instanceof HTMLTextAreaElement) return;
+      onClose();
+    }}
       className={`flex flex-col flex-none overflow-hidden border-l border-gray-200 dark:border-white/[0.08] bg-white/97 dark:bg-[#0d1018]/94 backdrop-blur-xl transition-[width] duration-200 ease-in-out ${
         open ? 'w-[360px]' : 'w-0'
       }`}

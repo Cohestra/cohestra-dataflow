@@ -219,6 +219,10 @@ func (s *Server) pipelineList(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, key)
 		where = append(where, fmt.Sprintf("p.pipeline_key=$%d", len(args)))
 	}
+	if env := q.Get("env"); env != "" {
+		args = append(args, env)
+		where = append(where, fmt.Sprintf("p.environment=$%d", len(args)))
+	}
 	if trigger := q.Get("trigger"); trigger != "" {
 		args = append(args, trigger)
 		where = append(where, fmt.Sprintf("p.definition->'trigger'->>'type'=$%d", len(args)))

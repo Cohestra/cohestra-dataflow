@@ -36,6 +36,7 @@ type PipelineListParams = {
   stage?: string;
   trigger?: string;
   key?: string;
+  env?: string;
   view?: 'current';
 };
 

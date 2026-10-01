@@ -120,6 +120,13 @@ func TestPipelineCurrentViewTargetsActiveVersionAndEffectivePhase(t *testing.T) 
 	if row["last_run_phase"] != "paused" {
 		t.Fatalf("pipeline list phase=%v, want paused", row["last_run_phase"])
 	}
+	// Version history filters by environment server-side.
+	if versions := get(s.pipelineList, "/api/pipelines?key="+f.pipeline+"&env=test")["rows"].([]interface{}); len(versions) != 3 {
+		t.Fatalf("test-environment versions=%d, want 3", len(versions))
+	}
+	if versions := get(s.pipelineList, "/api/pipelines?key="+f.pipeline+"&env=prod")["rows"].([]interface{}); len(versions) != 0 {
+		t.Fatalf("prod versions=%d, want 0", len(versions))
+	}
 	items := get(s.executionList, "/api/executions?paged=1&pipelineKey="+f.pipeline+"&env=test")["items"].([]interface{})
 	if len(items) != 1 || items[0].(map[string]interface{})["effective_phase"] != "paused" {
 		t.Fatalf("execution list must report the same effective phase: %v", items)

@@ -5,11 +5,12 @@ import { Play, Rocket, Save } from 'lucide-react';
 // Kept as one component because the buttons' disabled state and the status
 // text are derived from the same graphReady/hasUnsavedChanges pair.
 export function PipelineActionBar({
-  msg, graphReady, firstValidationError, hasUnsavedChanges, isDirty,
+  msg, msgIsError, graphReady, firstValidationError, hasUnsavedChanges, isDirty,
   execution, setExecution, features,
   savedRowId, save, activate, run,
 }: {
   msg: string;
+  msgIsError: boolean;
   graphReady: boolean;
   firstValidationError?: string;
   hasUnsavedChanges: boolean;
@@ -24,7 +25,7 @@ export function PipelineActionBar({
 }) {
   // Current state outranks history: a validation error, then unsaved edits,
   // beat an earlier "Loaded/Saved" message. A failure message still shows.
-  const failed = /fail/i.test(msg);
+  const failed = msgIsError && Boolean(msg);
   const problem = !graphReady ? firstValidationError : undefined;
   const statusText = problem
     ?? (failed ? msg : undefined)

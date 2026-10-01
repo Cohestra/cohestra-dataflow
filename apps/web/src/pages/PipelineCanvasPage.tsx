@@ -66,7 +66,14 @@ export default function PipelineCanvasPage() {
   const [savedRowId, setSavedRowId] = useState<string | null>(null);
   const [pipelineStage, setPipelineStage] = useState<Stage>('draft');
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
+  // Status text plus an explicit error flag; the action bar ranks errors above
+  // unsaved-changes notices. Plain setMsg(text) is informational.
+  const [status, setStatus] = useState({ text: '', error: false });
+  const msg = status.text;
+  const setMsg = useCallback((next: string | ((current: string) => string), error = false) => setStatus(current => {
+    const text = typeof next === 'function' ? next(current.text) : next;
+    return typeof next === 'function' && text === current.text ? current : { text, error };
+  }), []);
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
 
   const graphValidationErrors = useMemo(() => validatePipeline(
@@ -142,7 +149,7 @@ export default function PipelineCanvasPage() {
 
   useEffect(() => {
     const err = pipelinesQuery.error ?? lineageQuery.error;
-    if (err) setMsg(`Load failed: ${err}`);
+    if (err) setMsg(`Load failed: ${err}`, true);
   }, [pipelinesQuery.error, lineageQuery.error]);
 
   // positions: keep these node placements (by ID) instead of the default layout.
@@ -205,7 +212,7 @@ export default function PipelineCanvasPage() {
         setSavedRowId(row.id);
         setPipelineStage(deriveStage(row.status, row.environment));
         if (openBackfill) { setShowLifecycle(true); openDrawer('lifecycle'); }
-      }).catch((e: any) => { if (!cancelled) setMsg(`Load failed: ${e.message}`); });
+      }).catch((e: any) => { if (!cancelled) setMsg(`Load failed: ${e.message}`, true); });
     }
     return () => { cancelled = true; };
   }, [location.search, location.state, byType]);
@@ -331,7 +338,7 @@ export default function PipelineCanvasPage() {
       def.nodes.map(n => ({ id: n.id, type: n.type, label: n.label })),
       def.edges,
     );
-    if (errs.length) { setMsg(errs[0].message); return false; }
+    if (errs.length) { setMsg(errs[0].message, true); return false; }
     return true;
   };
 
@@ -346,7 +353,7 @@ export default function PipelineCanvasPage() {
       setPipelineStage(deriveStage('inactive', 'test'));
       setMsg(`Saved v${r.version}`);
       return true;
-    } catch (e: any) { setMsg(`Save failed: ${e.message}`); return false; }
+    } catch (e: any) { setMsg(`Save failed: ${e.message}`, true); return false; }
   };
 
   const activate = async () => {
@@ -370,8 +377,8 @@ export default function PipelineCanvasPage() {
         try {
           const r = await api.promote(savedRowId, true);
           setPipelineStage('production'); setMsg(`Promoted with contract override · v${r.version}`);
-        } catch (override: any) { setMsg(`Promote failed: ${override.message}`); }
-      } else setMsg(`Promote failed: ${e.message}`);
+        } catch (override: any) { setMsg(`Promote failed: ${override.message}`, true); }
+      } else setMsg(`Promote failed: ${e.message}`, true);
     }
   };
 
@@ -383,7 +390,7 @@ export default function PipelineCanvasPage() {
       const r = await api.run(savedRowId);
       setExecutionId(r.executionId);
       setMsg('Running…');
-    } catch (e: any) { setMsg(`Run failed: ${e.message}`); }
+    } catch (e: any) { setMsg(`Run failed: ${e.message}`, true); }
   };
 
   const onNodeStatus = (results: Record<string, any>) =>
@@ -564,7 +571,7 @@ export default function PipelineCanvasPage() {
         />
 
         <PipelineActionBar
-          msg={msg} graphReady={graphReady} firstValidationError={graphValidationErrors[0]?.message}
+          msg={msg} msgIsError={status.error} graphReady={graphReady} firstValidationError={graphValidationErrors[0]?.message}
           hasUnsavedChanges={hasUnsavedChanges} isDirty={isDirty}
           execution={execution} setExecution={setExecution} features={features}
           savedRowId={savedRowId} save={save} activate={activate} run={run}
@@ -604,7 +611,7 @@ export default function PipelineCanvasPage() {
           <ExecutionMonitor key={executionId} executionId={executionId} onNodeStatus={onNodeStatus}
             onPhase={phase => {
               if (['completed', 'failed', 'cancelled'].includes(phase)) {
-                setMsg(current => current === 'Running…' ? `Run ${phase}` : current);
+                setMsg(current => current === 'Running…' ? `Run ${phase}` : current, phase === 'failed');
               }
             }} />
         </div>

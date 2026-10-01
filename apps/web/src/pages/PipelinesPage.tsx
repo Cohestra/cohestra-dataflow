@@ -162,8 +162,9 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
       // Show the same effective phase (paused/cancelling) as the list row.
       .then((d: Execution[]) => setRuns(d.map(run => ({ ...run, phase: run.effective_phase ?? run.phase }))))
       .catch(() => {});
-    api.listPipelines({ key: pipeline.pipeline_key, limit: '50' })
-      .then(page => setVersions(page.rows.filter((row: Pipeline) => row.environment === pipeline.environment)))
+    // Every saved version in this environment, following pagination.
+    api.listAllPipelines({ key: pipeline.pipeline_key, env: pipeline.environment })
+      .then((rows: Pipeline[]) => setVersions(rows))
       .catch(() => {});
   }, [pipeline.id]);
 
