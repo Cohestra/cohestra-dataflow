@@ -72,3 +72,63 @@ func TestMonitoringPipelineRunFields(t *testing.T) {
 		t.Fatalf("unrun pipeline fields=%v", p)
 	}
 }
+
+func TestPipelineCurrentViewTargetsActiveVersionAndEffectivePhase(t *testing.T) {
+	f := newControlFixture(t)
+	ctx := context.Background()
+	exec := func(sql string, args ...interface{}) {
+		t.Helper()
+		if _, err := f.db.Pool.Exec(ctx, sql, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// v1 (fixture, draft) → v2 active → v3 newer unactivated draft, all in test.
+	var active, draft string
+	if err := f.db.Pool.QueryRow(ctx, `INSERT INTO pipelines(pipeline_key,version,tenant_id,name,definition,status,created_by,created_at)
+    VALUES($1,2,$2,'control fixture','{}','active',$3,now()-interval '1 minute') RETURNING id`, f.pipeline, f.tenant, f.user).Scan(&active); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.db.Pool.QueryRow(ctx, `INSERT INTO pipelines(pipeline_key,version,tenant_id,name,definition,created_by)
+    VALUES($1,3,$2,'control fixture','{}',$3) RETURNING id`, f.pipeline, f.tenant, f.user).Scan(&draft); err != nil {
+		t.Fatal(err)
+	}
+	exec(`UPDATE executions SET control_state='paused',control_revision=1 WHERE id=$1`, f.execution)
+
+	s := &Server{DB: f.app}
+	actor := model.TenantContext{TenantID: f.tenant, UserID: f.user, Role: "owner"}
+	get := func(handler func(http.ResponseWriter, *http.Request) error, path string) map[string]interface{} {
+		t.Helper()
+		response := httptest.NewRecorder()
+		handle(handler)(response, withTenant(httptest.NewRequest(http.MethodGet, path, nil), actor))
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s status=%d body=%s", path, response.Code, response.Body.String())
+		}
+		var body map[string]interface{}
+		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		return body
+	}
+	rows := get(s.pipelineList, "/api/pipelines?view=current")["rows"].([]interface{})
+	if len(rows) != 1 {
+		t.Fatalf("view=current rows=%v", rows)
+	}
+	row := rows[0].(map[string]interface{})
+	if row["id"] != draft || row["active_id"] != active || row["active_version"] != float64(2) || row["version_count"] != float64(3) || row["status"] != "active" {
+		t.Fatalf("current row must point Edit at v3 and Run at active v2: %v", row)
+	}
+	if row["last_run_phase"] != "paused" {
+		t.Fatalf("pipeline list phase=%v, want paused", row["last_run_phase"])
+	}
+	// Version history filters by environment server-side.
+	if versions := get(s.pipelineList, "/api/pipelines?key="+f.pipeline+"&env=test")["rows"].([]interface{}); len(versions) != 3 {
+		t.Fatalf("test-environment versions=%d, want 3", len(versions))
+	}
+	if versions := get(s.pipelineList, "/api/pipelines?key="+f.pipeline+"&env=prod")["rows"].([]interface{}); len(versions) != 0 {
+		t.Fatalf("prod versions=%d, want 0", len(versions))
+	}
+	items := get(s.executionList, "/api/executions?paged=1&pipelineKey="+f.pipeline+"&env=test")["items"].([]interface{})
+	if len(items) != 1 || items[0].(map[string]interface{})["effective_phase"] != "paused" {
+		t.Fatalf("execution list must report the same effective phase: %v", items)
+	}
+}

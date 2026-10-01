@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useBlocker, useLocation, useNavigate, useSearchParams } from 'react-router';
 import {
   addEdge, useNodesState, useEdgesState,
   type Node, type Connection, type ReactFlowInstance,
@@ -28,6 +28,7 @@ import { AiBuilderPanel } from './canvas/AiBuilderPanel';
 import { InspectorPanel } from './canvas/InspectorPanel';
 import { OutputDrawer, type BottomTab } from './canvas/OutputDrawer';
 import { EmptyCanvasState } from './canvas/EmptyCanvasState';
+import { UnsavedChangesDialog } from './canvas/UnsavedChangesDialog';
 
 let nid = 0;
 
@@ -50,6 +51,8 @@ export default function PipelineCanvasPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selected, setSelected] = useState<Node | null>(null);
+  // Node to refocus when a keyboard-opened inspector closes.
+  const inspectorReturnFocus = useRef<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<any | null>(null);
   const [flow, setFlow] = useState<ReactFlowInstance | null>(null);
 
@@ -63,7 +66,14 @@ export default function PipelineCanvasPage() {
   const [savedRowId, setSavedRowId] = useState<string | null>(null);
   const [pipelineStage, setPipelineStage] = useState<Stage>('draft');
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
+  // Status text plus an explicit error flag; the action bar ranks errors above
+  // unsaved-changes notices. Plain setMsg(text) is informational.
+  const [status, setStatus] = useState({ text: '', error: false });
+  const msg = status.text;
+  const setMsg = useCallback((next: string | ((current: string) => string), error = false) => setStatus(current => {
+    const text = typeof next === 'function' ? next(current.text) : next;
+    return typeof next === 'function' && text === current.text ? current : { text, error };
+  }), []);
   const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null);
 
   const graphValidationErrors = useMemo(() => validatePipeline(
@@ -139,7 +149,7 @@ export default function PipelineCanvasPage() {
 
   useEffect(() => {
     const err = pipelinesQuery.error ?? lineageQuery.error;
-    if (err) setMsg(`Load failed: ${err}`);
+    if (err) setMsg(`Load failed: ${err}`, true);
   }, [pipelinesQuery.error, lineageQuery.error]);
 
   // positions: keep these node placements (by ID) instead of the default layout.
@@ -202,7 +212,7 @@ export default function PipelineCanvasPage() {
         setSavedRowId(row.id);
         setPipelineStage(deriveStage(row.status, row.environment));
         if (openBackfill) { setShowLifecycle(true); openDrawer('lifecycle'); }
-      }).catch((e: any) => { if (!cancelled) setMsg(`Load failed: ${e.message}`); });
+      }).catch((e: any) => { if (!cancelled) setMsg(`Load failed: ${e.message}`, true); });
     }
     return () => { cancelled = true; };
   }, [location.search, location.state, byType]);
@@ -303,6 +313,18 @@ export default function PipelineCanvasPage() {
   const definitionFingerprint = pipelineFingerprint(buildDefinition());
   const aiProposalStale = aiProposal !== null && aiProposalFingerprint !== definitionFingerprint;
   const hasUnsavedChanges = savedRowId !== null && savedFingerprint !== definitionFingerprint;
+  // A never-saved draft is unsaved work once it has nodes.
+  const isDirty = savedRowId !== null ? hasUnsavedChanges : nodes.length > 0;
+
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => isDirty &&
+    (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search));
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isDirty]);
 
   useEffect(() => {
     if (!cleanAfterHydration.current) return;
@@ -316,12 +338,12 @@ export default function PipelineCanvasPage() {
       def.nodes.map(n => ({ id: n.id, type: n.type, label: n.label })),
       def.edges,
     );
-    if (errs.length) { setMsg(errs[0].message); return false; }
+    if (errs.length) { setMsg(errs[0].message, true); return false; }
     return true;
   };
 
-  const save = async () => {
-    if (!validate()) return;
+  const save = async (): Promise<boolean> => {
+    if (!validate()) return false;
     const definition = buildDefinition();
     try {
       const r = await api.savePipeline(definition);
@@ -330,7 +352,8 @@ export default function PipelineCanvasPage() {
       setSavedFingerprint(pipelineFingerprint({ ...definition, id: r.pipelineKey }));
       setPipelineStage(deriveStage('inactive', 'test'));
       setMsg(`Saved v${r.version}`);
-    } catch (e: any) { setMsg(`Save failed: ${e.message}`); }
+      return true;
+    } catch (e: any) { setMsg(`Save failed: ${e.message}`, true); return false; }
   };
 
   const activate = async () => {
@@ -354,8 +377,8 @@ export default function PipelineCanvasPage() {
         try {
           const r = await api.promote(savedRowId, true);
           setPipelineStage('production'); setMsg(`Promoted with contract override · v${r.version}`);
-        } catch (override: any) { setMsg(`Promote failed: ${override.message}`); }
-      } else setMsg(`Promote failed: ${e.message}`);
+        } catch (override: any) { setMsg(`Promote failed: ${override.message}`, true); }
+      } else setMsg(`Promote failed: ${e.message}`, true);
     }
   };
 
@@ -367,7 +390,7 @@ export default function PipelineCanvasPage() {
       const r = await api.run(savedRowId);
       setExecutionId(r.executionId);
       setMsg('Running…');
-    } catch (e: any) { setMsg(`Run failed: ${e.message}`); }
+    } catch (e: any) { setMsg(`Run failed: ${e.message}`, true); }
   };
 
   const onNodeStatus = (results: Record<string, any>) =>
@@ -401,7 +424,8 @@ export default function PipelineCanvasPage() {
     const currentMermaid = hasExisting
       ? definitionToMermaid(currentDefinition.nodes, currentDefinition.edges)
       : '';
-    setMsg(hasExisting ? 'Refining pipeline…' : 'Generating pipeline…');
+    const pending = hasExisting ? 'Refining pipeline…' : 'Generating pipeline…';
+    setMsg(pending);
 
     const result = hasExisting
       ? await aiRefine(currentDefinition, aiPrompt, currentMermaid, aiMessages)
@@ -421,6 +445,9 @@ export default function PipelineCanvasPage() {
       setMsg(result.status === 'ready'
         ? 'AI proposal ready — review before applying'
         : result.status === 'needs_input' ? 'AI needs more information' : 'AI could not create a safe proposal');
+    } else {
+      // The AI panel shows the recovery copy; don't leave a stale in-progress status.
+      setMsg(current => current === pending ? '' : current);
     }
   };
 
@@ -504,7 +531,8 @@ export default function PipelineCanvasPage() {
           onConnect={onConnect}
           onConnectStart={(_, params) => { connectSource.current = params.nodeId; connected.current = false; }}
           onConnectEnd={finishConnection}
-          onNodeClick={(_, n) => { setSelected(n); setSelectedEdge(null); setShowMermaid(false); }}
+          onNodeClick={(_, n) => { inspectorReturnFocus.current = null; setSelected(n); setSelectedEdge(null); setShowMermaid(false); }}
+          onNodeActivate={n => { inspectorReturnFocus.current = n.id; setSelected(n); setSelectedEdge(null); setShowMermaid(false); }}
           onEdgeClick={(_, ed) => { setSelectedEdge(ed); setSelected(null); setShowMermaid(false); }}
           onPaneClick={() => { setActiveCat(null); setWorkspacePanel(null); setShowLifecycle(false); setContextAdd(null); }}
           dark={dark} byType={byType} drawerOpen={drawerOpen} drawerOffset={drawerOffset}
@@ -543,8 +571,8 @@ export default function PipelineCanvasPage() {
         />
 
         <PipelineActionBar
-          msg={msg} graphReady={graphReady} firstValidationError={graphValidationErrors[0]?.message}
-          hasUnsavedChanges={hasUnsavedChanges}
+          msg={msg} msgIsError={status.error} graphReady={graphReady} firstValidationError={graphValidationErrors[0]?.message}
+          hasUnsavedChanges={hasUnsavedChanges} isDirty={isDirty}
           execution={execution} setExecution={setExecution} features={features}
           savedRowId={savedRowId} save={save} activate={activate} run={run}
         />
@@ -560,7 +588,13 @@ export default function PipelineCanvasPage() {
 
       <InspectorPanel
         open={rightPanelOpen} showMermaid={showMermaid} selected={selectedNode} selectedEdge={selectedEdge}
-        onClose={() => { setShowMermaid(false); setSelected(null); setSelectedEdge(null); }}
+        focusOnOpen={inspectorReturnFocus.current !== null}
+        onClose={() => {
+          setShowMermaid(false); setSelected(null); setSelectedEdge(null);
+          const id = inspectorReturnFocus.current;
+          inspectorReturnFocus.current = null;
+          if (id) requestAnimationFrame(() => canvasRef.current?.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)?.focus());
+        }}
         mermaidDraft={mermaidDraft} setMermaidDraft={setMermaidDraft}
         mermaidValid={mermaidValid} setMermaidValid={setMermaidValid} applyMermaid={applyMermaid}
         onEdgeConditionChange={(id, condition) => {
@@ -577,7 +611,7 @@ export default function PipelineCanvasPage() {
           <ExecutionMonitor key={executionId} executionId={executionId} onNodeStatus={onNodeStatus}
             onPhase={phase => {
               if (['completed', 'failed', 'cancelled'].includes(phase)) {
-                setMsg(current => current === 'Running…' ? `Run ${phase}` : current);
+                setMsg(current => current === 'Running…' ? `Run ${phase}` : current, phase === 'failed');
               }
             }} />
         </div>
@@ -593,6 +627,15 @@ export default function PipelineCanvasPage() {
         mermaidDraft={mermaidDraft} setMermaidDraft={setMermaidDraft}
         mermaidValid={mermaidValid} setMermaidValid={setMermaidValid} applyMermaid={applyMermaid}
       />
+
+      {blocker.state === 'blocked' && (
+        <UnsavedChangesDialog
+          canSave={graphReady} reason={graphValidationErrors[0]?.message}
+          onStay={() => blocker.reset()}
+          onDiscard={() => blocker.proceed()}
+          onSave={async () => { if (await save()) blocker.proceed(); else blocker.reset(); }}
+        />
+      )}
 
       {!nodes.length && !activeCat && !showAI && (
         <EmptyCanvasState

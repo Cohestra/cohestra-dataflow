@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router';
+import { createBrowserRouter, createRoutesFromElements, Navigate, Outlet, Route, RouterProvider } from 'react-router';
 import { AuthProvider } from './context/AuthContext';
 import { CatalogProvider } from './context/CatalogContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -28,38 +28,40 @@ function RouteFallback() {
   return <div role="status" aria-live="polite" className="flex min-h-screen items-center justify-center bg-white text-sm text-gray-500 dark:bg-[#080a10] dark:text-white/50">Loading page…</div>;
 }
 
+// Data router (not <BrowserRouter>) so pages can use useBlocker — the canvas
+// guards unsaved drafts against in-app navigation and browser back.
+const router = createBrowserRouter(createRoutesFromElements(
+  <Route element={<AuthProvider><RouteErrorBoundary><Suspense fallback={<RouteFallback />}><Outlet /></Suspense></RouteErrorBoundary></AuthProvider>}>
+    <Route path="/login" element={<LoginPage />} />
+    <Route path="/accept-invite" element={<AcceptInvitePage />} />
+
+    {/* Canvas page: full-viewport, no AppShell chrome */}
+    <Route element={<ProtectedRoute><FeatureProvider><CatalogProvider><Outlet /></CatalogProvider></FeatureProvider></ProtectedRoute>}>
+      <Route index element={<PipelineCanvasPage />} />
+    </Route>
+
+    <Route element={<ProtectedRoute><FeatureProvider><CatalogProvider><AppShell /></CatalogProvider></FeatureProvider></ProtectedRoute>}>
+      <Route path="ai-builder" element={<Navigate to="/?ai=1" replace />} />
+      <Route path="pipelines" element={<PipelinesPage />} />
+      <Route path="lifecycle" element={<LifecyclePage />} />
+      <Route path="runs" element={<RunsPage />} />
+      <Route path="runs/:id" element={<RunDetailPage />} />
+      <Route path="lineage" element={<LineagePage />} />
+      <Route path="monitoring" element={<MonitoringPage />} />
+      <Route path="connectors" element={<ConnectorsPage />} />
+      <Route path="billing" element={<BillingPage />} />
+      <Route path="analytics" element={<AnalyticsPage />} />
+      <Route path="team" element={<TeamPage />} />
+      <Route path="settings" element={<SettingsPage />} />
+      <Route path="profile" element={<ProfilePage />} />
+    </Route>
+  </Route>,
+));
+
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <RouteErrorBoundary><Suspense fallback={<RouteFallback />}><Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/accept-invite" element={<AcceptInvitePage />} />
-
-            {/* Canvas page: full-viewport, no AppShell chrome */}
-            <Route element={<ProtectedRoute><FeatureProvider><CatalogProvider><Outlet /></CatalogProvider></FeatureProvider></ProtectedRoute>}>
-              <Route index element={<PipelineCanvasPage />} />
-            </Route>
-
-            <Route element={<ProtectedRoute><FeatureProvider><CatalogProvider><AppShell /></CatalogProvider></FeatureProvider></ProtectedRoute>}>
-              <Route path="ai-builder" element={<Navigate to="/?ai=1" replace />} />
-              <Route path="pipelines" element={<PipelinesPage />} />
-              <Route path="lifecycle" element={<LifecyclePage />} />
-              <Route path="runs" element={<RunsPage />} />
-              <Route path="runs/:id" element={<RunDetailPage />} />
-              <Route path="lineage" element={<LineagePage />} />
-              <Route path="monitoring" element={<MonitoringPage />} />
-              <Route path="connectors" element={<ConnectorsPage />} />
-              <Route path="billing" element={<BillingPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="team" element={<TeamPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-            </Route>
-          </Routes></Suspense></RouteErrorBoundary>
-        </AuthProvider>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 }

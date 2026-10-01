@@ -10,7 +10,7 @@ import ReactFlow, {
 export function PipelineFlowCanvas({
   nodes, edges, nodeTypes, onInit,
   onNodesChange, onEdgesChange, onConnect, onConnectStart, onConnectEnd,
-  onNodeClick, onEdgeClick, onPaneClick,
+  onNodeClick, onNodeActivate, onEdgeClick, onPaneClick,
   dark, byType, drawerOpen, drawerOffset,
 }: {
   nodes: Node[];
@@ -23,6 +23,7 @@ export function PipelineFlowCanvas({
   onConnectStart: (event: any, params: any) => void;
   onConnectEnd: (event: MouseEvent | TouchEvent) => void;
   onNodeClick: (event: any, node: Node) => void;
+  onNodeActivate: (node: Node) => void;
   onEdgeClick: (event: any, edge: Edge) => void;
   onPaneClick: () => void;
   dark: boolean;
@@ -39,6 +40,17 @@ export function PipelineFlowCanvas({
       onConnectStart={onConnectStart}
       onConnectEnd={onConnectEnd}
       onNodeClick={onNodeClick}
+      // React Flow's own Enter/Space handler only toggles graph selection;
+      // bridge keyboard activation of a focused node to the inspector.
+      onKeyDown={event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const target = event.target as HTMLElement;
+        if (!target.classList.contains('react-flow__node')) return;
+        const node = nodes.find(n => n.id === target.dataset.id);
+        if (!node) return;
+        event.preventDefault();
+        onNodeActivate(node);
+      }}
       onEdgeClick={onEdgeClick}
       onPaneClick={onPaneClick}
       fitView

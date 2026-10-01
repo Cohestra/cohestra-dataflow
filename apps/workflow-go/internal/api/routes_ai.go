@@ -207,7 +207,11 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return badRequest(ErrInvalidRequest, err.Error())
 	}
-	result, err := s.buildPipeline(r, modelPrompt)
+	currentName := ""
+	if current, ok := body.Definition.(map[string]interface{}); ok {
+		currentName, _ = current["name"].(string)
+	}
+	result, err := s.buildNamedPipeline(r, modelPrompt, strings.TrimSpace(currentName))
 	if err != nil {
 		return &HTTPError{Status: http.StatusUnprocessableEntity, Message: "could not refine pipeline: " + err.Error()}
 	}
@@ -215,6 +219,13 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 func (s *Server) buildPipeline(r *http.Request, prompt string) (map[string]interface{}, error) {
+	return s.buildNamedPipeline(r, prompt, "")
+}
+
+// buildNamedPipeline uses currentName when the model leaves suggestedName
+// blank: a refinement preserves the existing name, so an empty name is not
+// grounds for a repair round-trip.
+func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string) (map[string]interface{}, error) {
 	catalog := append([]model.CatalogEntry{}, codedCatalog...)
 	if s.Connectors != nil {
 		catalog = append(catalog, s.Connectors.Catalog()...)
@@ -335,6 +346,9 @@ func (s *Server) buildPipeline(r *http.Request, prompt string) (map[string]inter
 			return strings.TrimSpace(string(raw))
 		}
 		def := model.PipelineDefinition{Name: output.SuggestedName, Trigger: output.Trigger, Execution: output.Execution}
+		if strings.TrimSpace(def.Name) == "" {
+			def.Name = currentName
+		}
 		nodeIDSet := map[string]string{}
 		for _, node := range output.Nodes {
 			nodeID := rawToString(node.ID)
