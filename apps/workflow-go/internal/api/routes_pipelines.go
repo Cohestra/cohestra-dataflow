@@ -238,21 +238,21 @@ func (s *Server) pipelineList(w http.ResponseWriter, r *http.Request) error {
 
 	// last_run_phase is the effective phase: a durable pause/cancel request
 	// on a live execution is reported before Temporal acknowledges it.
-	lastRun := `SELECT CASE WHEN e.phase NOT IN ('completed','failed','cancelled') AND e.control_state='paused' THEN 'paused'
-    WHEN e.phase NOT IN ('completed','failed','cancelled') AND e.control_state='cancel_requested' THEN 'cancelling'
-    ELSE e.phase END AS phase,e.started_at,e.id,v.version FROM executions e JOIN pipelines v ON v.id=e.pipeline_id`
+	lastRun := `SELECT ` + effectivePhaseSQL("e") + ` AS phase,e.started_at,e.id,v.version FROM executions e JOIN pipelines v ON v.id=e.pipeline_id`
 	from := `pipelines p LEFT JOIN LATERAL (` + lastRun + ` WHERE e.pipeline_id=p.id ORDER BY e.started_at DESC LIMIT 1) lr ON true`
 	extra := ""
 	if q.Get("view") == "current" {
 		// One row per logical pipeline/environment: its latest saved version.
 		// Stage reflects any active version; last run spans every version.
+		// active_id lets Run/Backfill target the active version rather than a
+		// newer unactivated draft (at most one active row per key/environment).
 		from = `(SELECT c.id,c.pipeline_key,c.version,c.name,c.environment,c.promoted_from_version,c.created_at,c.definition,
-    CASE WHEN av.version IS NOT NULL THEN 'active' ELSE c.status END AS status,av.version AS active_version,vc.n AS version_count
+    CASE WHEN av.version IS NOT NULL THEN 'active' ELSE c.status END AS status,av.id AS active_id,av.version AS active_version,vc.n AS version_count
     FROM (SELECT DISTINCT ON (pipeline_key,environment) * FROM pipelines ORDER BY pipeline_key,environment,version DESC) c
-    LEFT JOIN LATERAL (SELECT version FROM pipelines a WHERE a.pipeline_key=c.pipeline_key AND a.environment=c.environment AND a.status='active' ORDER BY version DESC LIMIT 1) av ON true
+    LEFT JOIN LATERAL (SELECT id,version FROM pipelines a WHERE a.pipeline_key=c.pipeline_key AND a.environment=c.environment AND a.status='active' ORDER BY version DESC LIMIT 1) av ON true
     LEFT JOIN LATERAL (SELECT count(*)::int AS n FROM pipelines a WHERE a.pipeline_key=c.pipeline_key AND a.environment=c.environment) vc ON true) p
     LEFT JOIN LATERAL (` + lastRun + ` WHERE v.pipeline_key=p.pipeline_key AND v.environment=p.environment ORDER BY e.started_at DESC LIMIT 1) lr ON true`
-		extra = ",p.active_version,p.version_count"
+		extra = ",p.active_id,p.active_version,p.version_count"
 	}
 	query := `SELECT p.id,p.pipeline_key,p.version,p.name,p.status,p.environment,p.promoted_from_version,p.created_at,p.definition->'trigger'->>'type' AS trigger_type,lr.phase AS last_run_phase,lr.started_at AS last_run_at,lr.id AS last_run_id,lr.version AS last_run_version` + extra + ` FROM ` + from
 	if len(where) > 0 {

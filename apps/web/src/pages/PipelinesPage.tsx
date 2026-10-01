@@ -28,6 +28,7 @@ interface Pipeline {
   last_run_id: string | null;
   last_run_version: number | null;
   // view=current rows only: one row per logical pipeline/environment.
+  active_id?: string | null;
   active_version?: number | null;
   version_count?: number;
 }
@@ -40,6 +41,7 @@ interface Execution {
   error?: string;
   record_count?: number;
   pipeline_version?: number;
+  effective_phase?: string;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -151,11 +153,14 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
   const nodes = pipelineNodes(definition);
 
   const [versions, setVersions] = useState<Pipeline[]>([]);
+  const runTargetId = pipeline.active_id ?? pipeline.id;
+  const runVersion = pipeline.active_id ? pipeline.active_version : pipeline.version;
 
   // Runs and versions span every saved version of this pipeline/environment.
   useEffect(() => {
     api.listExecutions({ pipelineKey: pipeline.pipeline_key, env: pipeline.environment, limit: '30' })
-      .then((d: Execution[]) => setRuns(d))
+      // Show the same effective phase (paused/cancelling) as the list row.
+      .then((d: Execution[]) => setRuns(d.map(run => ({ ...run, phase: run.effective_phase ?? run.phase }))))
       .catch(() => {});
     api.listPipelines({ key: pipeline.pipeline_key, limit: '50' })
       .then(page => setVersions(page.rows.filter((row: Pipeline) => row.environment === pipeline.environment)))
@@ -199,11 +204,13 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
         </div>
         <div className="flex gap-1.5 mt-3">
           {[
-            { label: 'Edit', icon: <ChevronRight size={12}/>, action: () => navigate('/', { state: { pipelineId: pipeline.id } }) },
-            { label: 'Run now',  icon: <Play size={11}/>,         action: () => api.run(pipeline.id).catch(() => {}) },
-            { label: 'Backfill', icon: <RotateCcw size={11}/>,    action: () => navigate('/lifecycle', { state: { openBackfillId: pipeline.id } }) },
-          ].map(({ label, icon, action }) => (
-            <button key={label} onClick={action}
+            // Edit opens the latest saved version; Run and Backfill act on the
+            // active version, never on a newer unactivated draft.
+            { key: 'edit', label: 'Edit', icon: <ChevronRight size={12}/>, action: () => navigate('/', { state: { pipelineId: pipeline.id } }) },
+            { key: 'run', label: `Run v${runVersion}`, icon: <Play size={11}/>, action: () => api.run(runTargetId).catch(() => {}) },
+            { key: 'backfill', label: `Backfill v${runVersion}`, icon: <RotateCcw size={11}/>, action: () => navigate('/lifecycle', { state: { openBackfillId: runTargetId } }) },
+          ].map(({ key, label, icon, action }) => (
+            <button key={key} onClick={action}
               className="flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11px] font-medium transition-all
                 bg-gray-100 border border-gray-200 text-gray-600 hover:bg-gray-200 hover:text-gray-900
                 dark:bg-white/[0.045] dark:border-white/[0.08] dark:text-white/65

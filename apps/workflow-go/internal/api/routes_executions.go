@@ -30,6 +30,14 @@ func (s *Server) registerExecutions(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/executions/{id}", handle(s.executionGet))
 }
 
+// effectivePhaseSQL reports a durable pause/cancel request on a live execution
+// before Temporal acknowledges it, so lists agree with the control buttons.
+func effectivePhaseSQL(alias string) string {
+	return `CASE WHEN ` + alias + `.phase NOT IN ('completed','failed','cancelled') AND ` + alias + `.control_state='paused' THEN 'paused'
+    WHEN ` + alias + `.phase NOT IN ('completed','failed','cancelled') AND ` + alias + `.control_state='cancel_requested' THEN 'cancelling'
+    ELSE ` + alias + `.phase END`
+}
+
 func (s *Server) executionList(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	where := []string{}
@@ -75,7 +83,7 @@ func (s *Server) executionList(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, value.StartedAt, value.ID)
 		where = append(where, fmt.Sprintf("(e.started_at,e.id)<($%d::timestamptz,$%d)", len(args)-1, len(args)))
 	}
-	query := `SELECT e.*,p.name,p.version AS pipeline_version FROM executions e JOIN pipelines p ON p.id=e.pipeline_id`
+	query := `SELECT e.*,` + effectivePhaseSQL("e") + ` AS effective_phase,p.name,p.version AS pipeline_version FROM executions e JOIN pipelines p ON p.id=e.pipeline_id`
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
 	}
