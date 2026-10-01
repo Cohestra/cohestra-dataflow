@@ -72,7 +72,7 @@ export default function SettingsPage() {
         <div className="glass-card divide-y divide-gray-100 dark:divide-white/[0.06] overflow-hidden">
           {[
             { label: 'Version', value: 'v0.1.0-dev' },
-            { label: 'License', value: 'Apache 2.0' },
+            { label: 'License', value: 'AGPL-3.0' },
             { label: 'Runtime', value: 'Go + Temporal' },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between px-5 py-3 text-[13px]">

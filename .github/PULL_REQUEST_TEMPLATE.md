@@ -26,7 +26,8 @@
 
 By submitting this PR I certify that my contribution is made under the terms
 of the [Developer Certificate of Origin](https://developercertificate.org/)
-and the [Apache 2.0 license](../LICENSE).
+and the [GNU AGPL-3.0](../LICENSE) (or the [Elastic License 2.0](../apps/workflow-go/ee/LICENSE)
+for changes under `apps/workflow-go/ee/`).
 
 <!-- Add `Signed-off-by: Your Name <you@example.com>` to each commit, or check the box: -->
 - [ ] I have signed off all commits in this PR (`git commit -s`)
