@@ -153,7 +153,8 @@ A good connector PR includes:
 ## Developer Certificate of Origin
 
 All commits must be signed off to certify you wrote the contribution or have
-the right to submit it under the Apache 2.0 license. Add this to every commit:
+the right to submit it under the project license (see [License](#license)).
+Add this to every commit:
 
 ```
 Signed-off-by: Your Name <you@example.com>
@@ -170,5 +171,8 @@ Full DCO text: <https://developercertificate.org/>
 ## License
 
 By contributing you agree your contributions are licensed under the
-[Apache 2.0 license](LICENSE). Copyright remains with the original authors
+[GNU AGPL-3.0](LICENSE), with one exception: contributions to
+`apps/workflow-go/ee/` are licensed under the
+[Elastic License 2.0](apps/workflow-go/ee/LICENSE), matching that directory.
+See [NOTICE](NOTICE). Copyright remains with the original authors
 ("DataFlow Contributors").
