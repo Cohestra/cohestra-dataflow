@@ -54,6 +54,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: http://ollama:11434
 - name: OLLAMA_MODEL
   value: {{ .Values.ollamaModel | quote }}
+- name: OLLAMA_NUM_CTX
+  value: {{ .Values.ollama.numCtx | quote }}
+- name: AI_FEW_SHOT
+  value: {{ .Values.ollama.fewShot | quote }}
 - name: COHESTRA_URL
   value: {{ .Values.cohestraURL | quote }}
 - name: COHESTRA_FLINK_IMAGE

@@ -357,9 +357,7 @@ spec:
             - {name: home, mountPath: /home/ollama}
             - {name: data, mountPath: /home/ollama/.ollama}
             - {name: tmp, mountPath: /tmp}
-          resources:
-            requests: {cpu: 500m, memory: 1Gi}
-            limits: {cpu: "4", memory: 4Gi}
+          resources: {{ toJson .Values.ollama.resources }}
       volumes:
         - name: data
           persistentVolumeClaim: {claimName: ollama-data}
