@@ -1,0 +1,13 @@
+# Opt-in override: point the API at an Ollama running on the host instead of
+# the in-stack `ollama` service (e.g. when container egress can't pull models).
+#
+#   OLLAMA_MODEL=qwen3:8b docker compose -f docker-compose.yml \
+#     -f docker-compose.host-ollama.example.yml up -d
+#
+# Or copy it to docker-compose.override.yml (gitignored) to apply it to every
+# `docker compose` command on your machine.
+services:
+  api:
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
