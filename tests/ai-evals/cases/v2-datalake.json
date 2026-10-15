@@ -1,0 +1,1434 @@
+{
+  "version": "2.0.0-datalake",
+  "description": "Lakehouse/medallion generation, multi-turn chat, G11-safe refinement and validation cases. Refinement seeds use the connector ids the isolated eval harness seeds for fixtures.connectors (00000000-0000-4000-8000-<index+1>); remap them for a live tenant. Catalog configKeys are derived from codedAIFields.",
+  "catalog": {
+    "version": "coded-catalog-v2",
+    "nodeTypes": {
+      "source": [
+        "zendesk.fetch",
+        "gsheets.fetch",
+        "gdrive.fetch",
+        "excel.fetch",
+        "http.fetch",
+        "postgres.fetch",
+        "mysql.fetch",
+        "mongodb.fetch",
+        "s3.fetch",
+        "kafka.fetch",
+        "sftp.fetch",
+        "snowflake.fetch",
+        "iceberg.fetch"
+      ],
+      "transform": [
+        "transform.map",
+        "transform.filter",
+        "transform.formula",
+        "transform.select",
+        "transform.rename",
+        "transform.dedupe",
+        "transform.flatten",
+        "transform.parse",
+        "transform.contract"
+      ],
+      "fork": [
+        "flow.fork"
+      ],
+      "merge": [
+        "flow.merge"
+      ],
+      "sink": [
+        "sink.postgres",
+        "sink.clickhouse",
+        "sink.mysql",
+        "sink.mongodb",
+        "sink.s3",
+        "sink.kafka",
+        "sink.sftp",
+        "sink.snowflake",
+        "sink.iceberg",
+        "sink.gsheets",
+        "sink.webhook",
+        "sink.records"
+      ]
+    },
+    "commonConfigKeys": [],
+    "configKeys": {
+      "zendesk.fetch": [
+        "connectionId",
+        "subdomain",
+        "resource"
+      ],
+      "gsheets.fetch": [
+        "connectionId",
+        "spreadsheetId",
+        "range",
+        "sheetName",
+        "keyColumn"
+      ],
+      "gdrive.fetch": [
+        "connectionId",
+        "folderId",
+        "query"
+      ],
+      "excel.fetch": [
+        "connectionId",
+        "driveId",
+        "itemId",
+        "sheetName",
+        "keyColumn"
+      ],
+      "http.fetch": [
+        "connectionId",
+        "url",
+        "recordsPath",
+        "method",
+        "paginationJson",
+        "authJson",
+        "incrementalJson",
+        "pagination",
+        "auth",
+        "incremental",
+        "params",
+        "headers",
+        "pageSize"
+      ],
+      "postgres.fetch": [
+        "connectionId",
+        "table",
+        "syncMode",
+        "columns",
+        "cursorColumn",
+        "cursorType",
+        "pageSize",
+        "layer"
+      ],
+      "mysql.fetch": [
+        "connectionId",
+        "table",
+        "syncMode",
+        "columns",
+        "cursorColumn",
+        "cursorType",
+        "pageSize",
+        "layer"
+      ],
+      "mongodb.fetch": [
+        "connectionId",
+        "collection",
+        "syncMode",
+        "cursorField",
+        "cursorType",
+        "pageSize",
+        "layer"
+      ],
+      "s3.fetch": [
+        "connectionId",
+        "bucket",
+        "key",
+        "format",
+        "layer"
+      ],
+      "kafka.fetch": [
+        "connectionId",
+        "topic",
+        "cluster",
+        "startPosition",
+        "valueFormat",
+        "includeMetadata",
+        "pageSize",
+        "layer"
+      ],
+      "sftp.fetch": [
+        "connectionId",
+        "path",
+        "format"
+      ],
+      "snowflake.fetch": [
+        "connectionId",
+        "table",
+        "syncMode",
+        "cursorColumn",
+        "pageSize"
+      ],
+      "iceberg.fetch": [
+        "connectionId",
+        "namespace",
+        "table",
+        "pageSize"
+      ],
+      "transform.map": [
+        "expression"
+      ],
+      "transform.filter": [
+        "predicate"
+      ],
+      "transform.formula": [
+        "outputField",
+        "expression"
+      ],
+      "transform.select": [
+        "expression"
+      ],
+      "transform.rename": [
+        "mapping"
+      ],
+      "transform.dedupe": [
+        "key",
+        "keep",
+        "scope"
+      ],
+      "transform.flatten": [
+        "delimiter",
+        "maxDepth",
+        "arrayPolicy"
+      ],
+      "transform.parse": [
+        "fields",
+        "onError"
+      ],
+      "transform.contract": [
+        "schemaJson",
+        "onViolation",
+        "allowExtra"
+      ],
+      "flow.fork": [],
+      "flow.merge": [
+        "mergeStrategy",
+        "joinKey"
+      ],
+      "sink.postgres": [
+        "connectionId",
+        "table",
+        "writeMode",
+        "conflictKey",
+        "layer"
+      ],
+      "sink.clickhouse": [
+        "connectionId",
+        "table",
+        "layer"
+      ],
+      "sink.mysql": [
+        "connectionId",
+        "table",
+        "writeMode",
+        "primaryKey",
+        "layer"
+      ],
+      "sink.mongodb": [
+        "connectionId",
+        "collection",
+        "keyField",
+        "writeMode",
+        "layer"
+      ],
+      "sink.s3": [
+        "connectionId",
+        "bucket",
+        "key",
+        "format",
+        "layer"
+      ],
+      "sink.kafka": [
+        "connectionId",
+        "topic",
+        "cluster",
+        "keyField",
+        "layer"
+      ],
+      "sink.sftp": [
+        "connectionId",
+        "path",
+        "format"
+      ],
+      "sink.snowflake": [
+        "connectionId",
+        "table"
+      ],
+      "sink.iceberg": [
+        "connectionId",
+        "namespace",
+        "table"
+      ],
+      "sink.gsheets": [
+        "connectionId",
+        "spreadsheetId",
+        "sheetName",
+        "writeMode",
+        "includeHeader"
+      ],
+      "sink.webhook": [
+        "connectionId",
+        "url"
+      ],
+      "sink.records": [
+        "collection"
+      ]
+    }
+  },
+  "fixtures": {
+    "version": "tenant-connectors-v1",
+    "connectors": [
+      {
+        "provider": "postgres",
+        "kind": "credential",
+        "displayName": "warehouse-read"
+      },
+      {
+        "provider": "mysql",
+        "kind": "credential",
+        "displayName": "shop-mysql"
+      },
+      {
+        "provider": "mongodb",
+        "kind": "credential",
+        "displayName": "reporting-mongo"
+      },
+      {
+        "provider": "snowflake",
+        "kind": "credential",
+        "displayName": "snowflake-analytics"
+      },
+      {
+        "provider": "clickhouse",
+        "kind": "credential",
+        "displayName": "clickhouse-analytics"
+      },
+      {
+        "provider": "http",
+        "kind": "credential",
+        "displayName": "eval-http"
+      },
+      {
+        "provider": "s3",
+        "kind": "credential",
+        "displayName": "eval-s3"
+      },
+      {
+        "provider": "sftp",
+        "kind": "credential",
+        "displayName": "eval-sftp"
+      },
+      {
+        "provider": "kafka",
+        "kind": "credential",
+        "displayName": "eval-kafka"
+      },
+      {
+        "provider": "iceberg",
+        "kind": "credential",
+        "displayName": "eval-iceberg"
+      },
+      {
+        "provider": "google",
+        "kind": "oauth",
+        "displayName": "eval-google"
+      },
+      {
+        "provider": "zendesk",
+        "kind": "oauth",
+        "displayName": "eval-zendesk"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "lake-cdc-contract-iceberg",
+      "category": "lake-generation",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "warehouse-read",
+        "eval-iceberg"
+      ],
+      "request": {
+        "prompt": "Continuously capture CDC changes from PostgreSQL connection warehouse-read table public.customers (syncMode cdc), enforce a data contract with schemaJson {\"type\":\"object\",\"required\":[\"id\",\"email\"]} quarantining violations, then write through Iceberg connection eval-iceberg to namespace lake table customers_silver."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "postgres.fetch",
+            "transform.contract",
+            "sink.iceberg"
+          ],
+          "forbidden": [
+            "iceberg.fetch",
+            "sink.postgres"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "postgres.fetch",
+            "contains": {
+              "table": "public.customers",
+              "syncMode": "cdc"
+            }
+          },
+          {
+            "activityType": "transform.contract",
+            "contains": {
+              "onViolation": "quarantine"
+            }
+          },
+          {
+            "activityType": "sink.iceberg",
+            "contains": {
+              "namespace": "lake",
+              "table": "customers_silver"
+            }
+          }
+        ],
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "activityType": "postgres.fetch"
+              },
+              {
+                "activityType": "transform.contract"
+              },
+              {
+                "activityType": "sink.iceberg"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "lake-silver-to-gold-clickhouse",
+      "category": "lake-generation",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "eval-iceberg",
+        "clickhouse-analytics"
+      ],
+      "request": {
+        "prompt": "Read Iceberg connection eval-iceberg namespace lake table orders_silver, keep only rows where status equals completed, compute a revenue field as price * quantity, and load through ClickHouse connection clickhouse-analytics into table gold.daily_revenue as the gold layer."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "iceberg.fetch",
+            "transform.filter",
+            "transform.formula",
+            "sink.clickhouse"
+          ],
+          "forbidden": [
+            "sink.iceberg"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "iceberg.fetch",
+            "contains": {
+              "namespace": "lake",
+              "table": "orders_silver"
+            }
+          },
+          {
+            "activityType": "transform.formula",
+            "contains": {
+              "outputField": "revenue"
+            }
+          },
+          {
+            "activityType": "sink.clickhouse",
+            "contains": {
+              "table": "gold.daily_revenue",
+              "layer": "gold"
+            }
+          }
+        ],
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "activityType": "iceberg.fetch"
+              },
+              {
+                "activityType": "transform.filter"
+              },
+              {
+                "activityType": "transform.formula"
+              },
+              {
+                "activityType": "sink.clickhouse"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "lake-join-orders-payments",
+      "category": "lake-generation",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "warehouse-read",
+        "reporting-mongo",
+        "eval-iceberg"
+      ],
+      "request": {
+        "prompt": "Read orders from PostgreSQL connection warehouse-read table public.orders and payments from MongoDB connection reporting-mongo collection payments, left join them on order_id, and write the result through Iceberg connection eval-iceberg to namespace lake table order_payments."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "postgres.fetch",
+            "mongodb.fetch",
+            "flow.merge",
+            "sink.iceberg"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "flow.merge",
+            "contains": {
+              "mergeStrategy": "leftJoin",
+              "joinKey": "order_id"
+            }
+          },
+          {
+            "activityType": "mongodb.fetch",
+            "contains": {
+              "collection": "payments"
+            }
+          },
+          {
+            "activityType": "sink.iceberg",
+            "contains": {
+              "namespace": "lake",
+              "table": "order_payments"
+            }
+          }
+        ],
+        "graph": {
+          "minNodes": 4,
+          "minInDegree": 2,
+          "requiredPaths": [
+            [
+              {
+                "activityType": "flow.merge"
+              },
+              {
+                "activityType": "sink.iceberg"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "lake-s3-flatten-snowflake",
+      "category": "lake-generation",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "eval-s3",
+        "snowflake-analytics"
+      ],
+      "request": {
+        "prompt": "Ingest newline-delimited JSON from S3 connection eval-s3 bucket raw-zone key events/2026/10/15.jsonl, flatten nested fields with delimiter _, rename field usr_id to user_id, and load through Snowflake connection snowflake-analytics into table ANALYTICS.EVENTS_SILVER."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "s3.fetch",
+            "transform.flatten",
+            "transform.rename",
+            "sink.snowflake"
+          ],
+          "forbidden": [
+            "sink.s3"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "s3.fetch",
+            "contains": {
+              "bucket": "raw-zone",
+              "key": "events/2026/10/15.jsonl",
+              "format": "jsonl"
+            }
+          },
+          {
+            "activityType": "transform.flatten",
+            "contains": {
+              "delimiter": "_"
+            }
+          },
+          {
+            "activityType": "sink.snowflake",
+            "contains": {
+              "table": "ANALYTICS.EVENTS_SILVER"
+            }
+          }
+        ],
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "activityType": "s3.fetch"
+              },
+              {
+                "activityType": "transform.flatten"
+              },
+              {
+                "activityType": "transform.rename"
+              },
+              {
+                "activityType": "sink.snowflake"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "lake-medallion-fork-zones",
+      "category": "lake-generation",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "eval-s3",
+        "eval-iceberg",
+        "clickhouse-analytics"
+      ],
+      "request": {
+        "prompt": "Fetch https://api.example.test/telemetry and fork it into three zones: store the raw records through S3 connection eval-s3 in bucket lake-bronze key telemetry/raw.jsonl as bronze; deduplicate on device_id keeping the last record and write through Iceberg connection eval-iceberg to namespace lake table telemetry_silver as silver; and keep only rows where severity equals critical and send them through ClickHouse connection clickhouse-analytics to table gold.critical_alerts as gold."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "http.fetch",
+            "flow.fork",
+            "sink.s3",
+            "transform.dedupe",
+            "sink.iceberg",
+            "transform.filter",
+            "sink.clickhouse"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "sink.s3",
+            "contains": {
+              "bucket": "lake-bronze",
+              "key": "telemetry/raw.jsonl",
+              "layer": "bronze"
+            }
+          },
+          {
+            "activityType": "transform.dedupe",
+            "contains": {
+              "key": "device_id",
+              "keep": "last"
+            }
+          },
+          {
+            "activityType": "sink.iceberg",
+            "contains": {
+              "namespace": "lake",
+              "table": "telemetry_silver"
+            }
+          },
+          {
+            "activityType": "sink.clickhouse",
+            "contains": {
+              "table": "gold.critical_alerts",
+              "layer": "gold"
+            }
+          }
+        ],
+        "graph": {
+          "minNodes": 7,
+          "minOutDegree": 3,
+          "requiredPaths": [
+            [
+              {
+                "activityType": "transform.dedupe"
+              },
+              {
+                "activityType": "sink.iceberg"
+              }
+            ],
+            [
+              {
+                "activityType": "transform.filter"
+              },
+              {
+                "activityType": "sink.clickhouse"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "lake-kafka-parse-dedupe-iceberg",
+      "category": "lake-generation",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "eval-kafka",
+        "eval-iceberg"
+      ],
+      "request": {
+        "prompt": "Consume Kafka connection eval-kafka topic payments.v2 from the earliest offset, parse the fields amount and currency skipping rows that fail, deduplicate on payment_id keeping the first record across the whole pipeline, and append through Iceberg connection eval-iceberg to namespace lake table payments_bronze."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "kafka.fetch",
+            "transform.parse",
+            "transform.dedupe",
+            "sink.iceberg"
+          ],
+          "forbidden": [
+            "sink.kafka"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "kafka.fetch",
+            "contains": {
+              "topic": "payments.v2",
+              "startPosition": "earliest"
+            }
+          },
+          {
+            "activityType": "transform.parse",
+            "contains": {
+              "onError": "skip"
+            }
+          },
+          {
+            "activityType": "transform.dedupe",
+            "contains": {
+              "key": "payment_id",
+              "keep": "first",
+              "scope": "pipeline"
+            }
+          },
+          {
+            "activityType": "sink.iceberg",
+            "contains": {
+              "namespace": "lake",
+              "table": "payments_bronze"
+            }
+          }
+        ],
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "activityType": "kafka.fetch"
+              },
+              {
+                "activityType": "transform.parse"
+              },
+              {
+                "activityType": "transform.dedupe"
+              },
+              {
+                "activityType": "sink.iceberg"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "lake-spark-sql-gold",
+      "category": "lake-engines",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "eval-iceberg",
+        "clickhouse-analytics"
+      ],
+      "request": {
+        "prompt": "Using the Spark SQL engine, read Iceberg connection eval-iceberg namespace lake table events_silver, aggregate event counts per day in SQL, and write through ClickHouse connection clickhouse-analytics to table gold.daily_events as the gold layer."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "iceberg.fetch",
+            "sink.clickhouse"
+          ],
+          "forbidden": [
+            "transform.select",
+            "transform.map",
+            "transform.formula"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "sink.clickhouse",
+            "contains": {
+              "table": "gold.daily_events"
+            }
+          }
+        ],
+        "execution": {
+          "engine": "spark-sql"
+        }
+      }
+    },
+    {
+      "id": "lake-nightly-incremental",
+      "category": "lake-engines",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "shop-mysql",
+        "warehouse-read"
+      ],
+      "request": {
+        "prompt": "Every night at 01:15 UTC, incrementally load MySQL connection shop-mysql table shop.orders using cursor column updated_at of type date, and upsert through PostgreSQL connection warehouse-read into table lake.orders_silver on conflict key order_id."
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "mysql.fetch",
+            "sink.postgres"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "mysql.fetch",
+            "contains": {
+              "table": "shop.orders",
+              "cursorColumn": "updated_at"
+            }
+          },
+          {
+            "activityType": "sink.postgres",
+            "contains": {
+              "table": "lake.orders_silver",
+              "conflictKey": "order_id"
+            }
+          }
+        ],
+        "trigger": {
+          "type": "cron"
+        }
+      }
+    },
+    {
+      "id": "chat-answer-followup",
+      "category": "chat",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "warehouse-read",
+        "eval-iceberg"
+      ],
+      "request": {
+        "prompt": "Use PostgreSQL connection warehouse-read table public.orders as the source, keep only rows where status equals completed, and write through Iceberg connection eval-iceberg to namespace lake table orders_completed.",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Load completed orders into the lake."
+          },
+          {
+            "role": "assistant",
+            "content": "I need more information.\nQuestion: Which saved connection and table hold the orders?\nQuestion: Which Iceberg namespace and table should receive them?"
+          }
+        ]
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "postgres.fetch",
+            "transform.filter",
+            "sink.iceberg"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "postgres.fetch",
+            "contains": {
+              "table": "public.orders"
+            }
+          },
+          {
+            "activityType": "sink.iceberg",
+            "contains": {
+              "namespace": "lake",
+              "table": "orders_completed"
+            }
+          }
+        ],
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "activityType": "postgres.fetch"
+              },
+              {
+                "activityType": "transform.filter"
+              },
+              {
+                "activityType": "sink.iceberg"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "chat-vague-lake",
+      "category": "chat",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [],
+      "request": {
+        "prompt": "Build me a data lake for all our company data."
+      },
+      "expect": {
+        "status": "needs_input"
+      }
+    },
+    {
+      "id": "refine-lake-insert-dedupe",
+      "category": "lake-refinement",
+      "endpoint": "/api/ai/refine",
+      "connectorFixtures": [
+        "eval-kafka",
+        "eval-s3"
+      ],
+      "request": {
+        "prompt": "Insert a dedupe on event_id keeping the last record between the Kafka source and the S3 sink. Leave all existing node settings unchanged.",
+        "definition": {
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "activityType": "kafka.fetch",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000009",
+                "topic": "clicks.raw",
+                "layer": "bronze"
+              }
+            },
+            {
+              "id": "bronze",
+              "type": "sink",
+              "activityType": "sink.s3",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000007",
+                "bucket": "lake-bronze",
+                "key": "clicks/raw.jsonl",
+                "format": "jsonl",
+                "layer": "bronze"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "source": "src",
+              "target": "bronze"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "kafka.fetch",
+            "transform.dedupe",
+            "sink.s3"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "transform.dedupe",
+            "contains": {
+              "key": "event_id",
+              "keep": "last"
+            }
+          }
+        ],
+        "preserve": {
+          "nodes": [
+            {
+              "id": "src"
+            },
+            {
+              "id": "bronze"
+            }
+          ]
+        },
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "id": "src"
+              },
+              {
+                "activityType": "transform.dedupe"
+              },
+              {
+                "id": "bronze"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "refine-lake-swap-sink-iceberg",
+      "category": "lake-refinement",
+      "endpoint": "/api/ai/refine",
+      "connectorFixtures": [
+        "warehouse-read",
+        "eval-iceberg"
+      ],
+      "request": {
+        "prompt": "Replace the S3 sink with an Iceberg sink through connection eval-iceberg to namespace lake table orders_silver. Keep the source and the filter exactly as they are.",
+        "definition": {
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "orders",
+              "type": "source",
+              "activityType": "postgres.fetch",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000001",
+                "table": "public.orders"
+              }
+            },
+            {
+              "id": "completed",
+              "type": "transform",
+              "activityType": "transform.filter",
+              "config": {
+                "predicate": "r.status === 'completed'"
+              }
+            },
+            {
+              "id": "landing",
+              "type": "sink",
+              "activityType": "sink.s3",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000007",
+                "bucket": "lake-bronze",
+                "key": "orders.jsonl",
+                "format": "jsonl"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "source": "orders",
+              "target": "completed"
+            },
+            {
+              "source": "completed",
+              "target": "landing"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "postgres.fetch",
+            "transform.filter",
+            "sink.iceberg"
+          ],
+          "forbidden": [
+            "sink.s3"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "sink.iceberg",
+            "contains": {
+              "namespace": "lake",
+              "table": "orders_silver"
+            }
+          }
+        ],
+        "preserve": {
+          "nodes": [
+            {
+              "id": "orders"
+            },
+            {
+              "id": "completed"
+            }
+          ]
+        },
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "id": "orders"
+              },
+              {
+                "id": "completed"
+              },
+              {
+                "activityType": "sink.iceberg"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "refine-lake-add-gold-branch",
+      "category": "lake-refinement",
+      "endpoint": "/api/ai/refine",
+      "connectorFixtures": [
+        "eval-iceberg",
+        "clickhouse-analytics"
+      ],
+      "request": {
+        "prompt": "Also send the filtered rows through ClickHouse connection clickhouse-analytics to table gold.big_orders as the gold layer, keeping the existing Iceberg sink unchanged.",
+        "definition": {
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "silver_in",
+              "type": "source",
+              "activityType": "iceberg.fetch",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000010",
+                "namespace": "lake",
+                "table": "orders_silver"
+              }
+            },
+            {
+              "id": "big",
+              "type": "transform",
+              "activityType": "transform.filter",
+              "config": {
+                "predicate": "r.total > 100"
+              }
+            },
+            {
+              "id": "silver_out",
+              "type": "sink",
+              "activityType": "sink.iceberg",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000010",
+                "namespace": "lake",
+                "table": "big_orders"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "source": "silver_in",
+              "target": "big"
+            },
+            {
+              "source": "big",
+              "target": "silver_out"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "iceberg.fetch",
+            "transform.filter",
+            "sink.iceberg",
+            "sink.clickhouse"
+          ]
+        },
+        "configs": [
+          {
+            "activityType": "sink.clickhouse",
+            "contains": {
+              "table": "gold.big_orders",
+              "layer": "gold"
+            }
+          }
+        ],
+        "preserve": {
+          "nodes": [
+            {
+              "id": "silver_in"
+            },
+            {
+              "id": "big"
+            },
+            {
+              "id": "silver_out"
+            }
+          ]
+        },
+        "graph": {
+          "minOutDegree": 2,
+          "requiredPaths": [
+            [
+              {
+                "id": "big"
+              },
+              {
+                "id": "silver_out"
+              }
+            ],
+            [
+              {
+                "id": "big"
+              },
+              {
+                "activityType": "sink.clickhouse"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "refine-chat-revert-filter",
+      "category": "chat",
+      "endpoint": "/api/ai/refine",
+      "connectorFixtures": [
+        "reporting-mongo",
+        "eval-iceberg"
+      ],
+      "request": {
+        "prompt": "Actually, remove that amount filter again and connect the MongoDB source straight to the Iceberg sink. Do not change anything else.",
+        "definition": {
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "activityType": "mongodb.fetch",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000003",
+                "collection": "invoices"
+              }
+            },
+            {
+              "id": "amt",
+              "type": "transform",
+              "activityType": "transform.filter",
+              "config": {
+                "predicate": "r.amount > 100"
+              }
+            },
+            {
+              "id": "dst",
+              "type": "sink",
+              "activityType": "sink.iceberg",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000010",
+                "namespace": "lake",
+                "table": "invoices"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "source": "src",
+              "target": "amt"
+            },
+            {
+              "source": "amt",
+              "target": "dst"
+            }
+          ]
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Only keep invoices with amount over 100."
+          },
+          {
+            "role": "assistant",
+            "content": "Proposal ready"
+          }
+        ]
+      },
+      "expect": {
+        "activities": {
+          "required": [
+            "mongodb.fetch",
+            "sink.iceberg"
+          ],
+          "forbidden": [
+            "transform.filter"
+          ]
+        },
+        "preserve": {
+          "nodes": [
+            {
+              "id": "src"
+            },
+            {
+              "id": "dst"
+            }
+          ]
+        },
+        "graph": {
+          "requiredPaths": [
+            [
+              {
+                "id": "src"
+              },
+              {
+                "id": "dst"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "refine-lake-promote-layer",
+      "category": "lake-refinement",
+      "endpoint": "/api/ai/refine",
+      "connectorFixtures": [
+        "eval-iceberg",
+        "clickhouse-analytics"
+      ],
+      "request": {
+        "prompt": "Mark the ClickHouse sink as the gold layer. Change nothing else.",
+        "definition": {
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "events",
+              "type": "source",
+              "activityType": "iceberg.fetch",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000010",
+                "namespace": "lake",
+                "table": "events_silver"
+              }
+            },
+            {
+              "id": "mart",
+              "type": "sink",
+              "activityType": "sink.clickhouse",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000005",
+                "table": "marts.events",
+                "layer": "silver"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "source": "events",
+              "target": "mart"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "configs": [
+          {
+            "activityType": "sink.clickhouse",
+            "contains": {
+              "table": "marts.events",
+              "layer": "gold"
+            }
+          }
+        ],
+        "preserve": {
+          "nodes": [
+            {
+              "id": "events"
+            },
+            {
+              "id": "mart",
+              "fields": [
+                "id",
+                "activityType"
+              ]
+            }
+          ],
+          "edges": true
+        }
+      }
+    },
+    {
+      "id": "lake-unknown-connection",
+      "category": "lake-validation",
+      "endpoint": "/api/ai/generate",
+      "connectorFixtures": [
+        "eval-iceberg"
+      ],
+      "request": {
+        "prompt": "Read bucket raw-zone key orders.jsonl using S3 connection prod-datalake-s3 and write it to Iceberg connection eval-iceberg namespace lake table orders."
+      },
+      "expect": {
+        "status": "needs_input"
+      }
+    },
+    {
+      "id": "lake-refine-cycle",
+      "category": "lake-validation",
+      "endpoint": "/api/ai/refine",
+      "connectorFixtures": [
+        "warehouse-read",
+        "eval-s3"
+      ],
+      "request": {
+        "prompt": "Make the Iceberg sink feed back into the Postgres source so the pipeline loops forever.",
+        "definition": {
+          "trigger": {
+            "type": "manual"
+          },
+          "nodes": [
+            {
+              "id": "orders",
+              "type": "source",
+              "activityType": "postgres.fetch",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000001",
+                "table": "public.orders"
+              }
+            },
+            {
+              "id": "completed",
+              "type": "transform",
+              "activityType": "transform.filter",
+              "config": {
+                "predicate": "r.status === 'completed'"
+              }
+            },
+            {
+              "id": "landing",
+              "type": "sink",
+              "activityType": "sink.s3",
+              "config": {
+                "connectionId": "00000000-0000-4000-8000-000000000007",
+                "bucket": "lake-bronze",
+                "key": "orders.jsonl",
+                "format": "jsonl"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "source": "orders",
+              "target": "completed"
+            },
+            {
+              "source": "completed",
+              "target": "landing"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": "rejected"
+      }
+    }
+  ]
+}

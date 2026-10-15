@@ -311,8 +311,11 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		`- Return status "rejected" with a non-empty reason and warning for requests that require secret exposure, unsafe/private outbound URLs, or a cyclic graph. Do not return a DAG.`,
 		`- For needs_input, return empty suggestedName, nodes, and edges and use a manual trigger.`,
 		`- For ready and needs_input, reason must be an empty string.`,
-		`Respond with ONLY JSON matching the supplied schema; no markdown or explanation.`,
 	)
+	if aiFewShotEnabled() {
+		lines = append(lines, aiFewShotSection(prompt)...)
+	}
+	lines = append(lines, `Respond with ONLY JSON matching the supplied schema; no markdown or explanation.`)
 	buildResult := func(output aiPipelineResponse) (map[string]interface{}, error) {
 		questions := append([]string{}, output.Questions...)
 		assumptions := append([]string{}, output.Assumptions...)
@@ -458,7 +461,7 @@ func (s *Server) ollamaJSON(r *http.Request, system, user string, schema map[str
 	payload, err := json.Marshal(map[string]interface{}{
 		"model": env("OLLAMA_MODEL", "llama3.1:8b"), "stream": false, "format": schema,
 		"think":    strings.EqualFold(env("OLLAMA_THINK", "false"), "true"),
-		"options":  map[string]interface{}{"temperature": 0, "seed": 42, "num_ctx": 4096},
+		"options":  map[string]interface{}{"temperature": 0, "seed": 42, "num_ctx": aiNumCtx()},
 		"messages": []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": user}},
 	})
 	if err != nil {

@@ -10,7 +10,7 @@ import type { AiGenerateResult } from '../../hooks/useAiGenerate';
 export function AiBuilderPanel({
   showAI, setShowAI, hasNodes,
   aiMessages, aiProposal, aiProposalStale, aiChanges, applyAI, discardProposal, aiLoading, runAI,
-  aiPrompt, setAiPrompt, aiError, aiUndo, undoAI,
+  aiPrompt, setAiPrompt, aiError, aiUndo, undoAI, canRedoAI, redoAI,
 }: {
   showAI: boolean;
   setShowAI: (show: boolean) => void;
@@ -28,6 +28,8 @@ export function AiBuilderPanel({
   aiError: string | null;
   aiUndo: any | null;
   undoAI: () => void;
+  canRedoAI: boolean;
+  redoAI: () => void;
 }) {
   const requestInput = useRef<HTMLInputElement>(null);
   const finishReview = (action: () => void) => {
@@ -90,7 +92,10 @@ export function AiBuilderPanel({
             </div>
             {aiError && <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-[10px] text-red-600 dark:border-red-500/15 dark:bg-red-500/[0.06] dark:text-red-300">{aiError}</p>}
             {aiLoading && <div className="h-0.5 animate-pulse bg-brand-500" />}
-            {aiUndo && <button className="mt-2 text-xs text-brand-500" onClick={() => finishReview(undoAI)}>Undo last apply</button>}
+            {(aiUndo || canRedoAI) && <div className="mt-2 flex gap-3">
+              {aiUndo && <button className="text-xs text-brand-500" onClick={() => finishReview(undoAI)}>Undo last apply</button>}
+              {canRedoAI && <button className="text-xs text-brand-500" onClick={() => finishReview(redoAI)}>Redo last apply</button>}
+            </div>}
           </div>
         </>
       )}
