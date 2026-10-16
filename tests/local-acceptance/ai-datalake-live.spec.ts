@@ -39,6 +39,7 @@ async function wire(page: Page) {
   return proposals;
 }
 
+const outcome = /Proposed graph · \d+ nodes|More information needed|No proposal created|could not (generate|refine)/;
 const activities = (proposal: any) => (proposal?.definition?.nodes ?? []).map((node: any) => node.activityType);
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 
@@ -50,7 +51,7 @@ test('live lakehouse: generate, chat refine, Apply/Undo/Redo with a real model',
   await request.fill('Continuously capture CDC changes from PostgreSQL connection warehouse-read table public.customers (syncMode cdc), '
     + 'drop duplicate customer id keeping the last record, then write through Iceberg connection eval-iceberg to namespace lake table customers_silver.');
   await button(page, 'Generate').click();
-  await expect(page.getByText(/Proposed graph · \d+ nodes|More information needed|No proposal created/)).toBeVisible({ timeout: 15 * 60_000 });
+  await expect(page.getByText(outcome).first()).toBeVisible({ timeout: 15 * 60_000 });
   const first = proposals.at(-1);
   info.annotations.push({ type: 'model-generate', description: `${first.status}: ${activities(first).join(' -> ')}` });
   expect(first.status, 'model must produce a lakehouse proposal for a fully specified request').toBe('ready');
@@ -63,20 +64,29 @@ test('live lakehouse: generate, chat refine, Apply/Undo/Redo with a real model',
 
   await request.fill('Add a data contract with schemaJson {"type":"object","required":["id"]} that quarantines violations, right before the Iceberg sink. Keep every existing node unchanged.');
   await button(page, 'Refine').click();
-  await expect(page.getByText(/Proposed graph · \d+ nodes|More information needed|No proposal created/)).toBeVisible({ timeout: 15 * 60_000 });
+  await expect(page.getByText(outcome).first()).toBeVisible({ timeout: 15 * 60_000 });
   const second = proposals.at(-1);
   info.annotations.push({ type: 'model-refine', description: `${second.status}: ${activities(second).join(' -> ')}` });
   expect(second.status).toBe('ready');
   expect(activities(second)).toContain('transform.contract');
 
   await button(page, 'Apply').click();
-  await expect(button(page, 'Save'), 'a ready proposal must be a graph the canvas can save').toBeEnabled();
+  // A proposal the planner could not fully repair carries a "Review the graph"
+  // warning: the canvas must then block Save and say why (model miss, UI correct).
+  const shapeWarning = (second.warnings ?? []).find((warning: string) => warning.startsWith('Review the graph before saving'));
+  info.annotations.push({ type: 'model-refine-shape', description: shapeWarning ?? 'saveable graph' });
+  if (shapeWarning) {
+    await expect(button(page, 'Save')).toBeDisabled();
+    await expect(page.locator('#pipeline-action-status')).toHaveText(/no outgoing edge|not connected|cannot have/);
+  } else {
+    await expect(button(page, 'Save'), 'a warning-free ready proposal must be saveable').toBeEnabled();
+  }
   const refinedCount = await page.locator('.react-flow__node').count();
   expect(refinedCount).toBeGreaterThan(appliedCount);
   await button(page, 'Undo last apply').click();
   await expect(page.locator('.react-flow__node')).toHaveCount(appliedCount);
   await button(page, 'Redo last apply').click();
   await expect(page.locator('.react-flow__node')).toHaveCount(refinedCount);
-  await expect(button(page, 'Save')).toBeEnabled();
+  await expect(button(page, 'Save'))[shapeWarning ? 'toBeDisabled' : 'toBeEnabled']();
   await page.screenshot({ path: info.outputPath('live-lakehouse.png'), fullPage: true });
 });

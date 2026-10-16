@@ -327,7 +327,10 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		lines = append(lines, aiFewShotSection(prompt)...)
 	}
 	lines = append(lines, `Respond with ONLY JSON matching the supplied schema; no markdown or explanation.`)
-	buildResult := func(output aiPipelineResponse) (map[string]interface{}, error) {
+	// tolerateShape: on the final attempt a graph the canvas would flag (e.g. a
+	// dead-end node) is still returned, with a warning, so the user can fix one
+	// edge on the canvas instead of losing the whole proposal.
+	buildResult := func(output aiPipelineResponse, tolerateShape bool) (map[string]interface{}, error) {
 		questions := append([]string{}, output.Questions...)
 		assumptions := append([]string{}, output.Assumptions...)
 		warnings := append([]string{}, output.Warnings...)
@@ -424,7 +427,10 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 			return nil, err
 		}
 		if err := aiGraphShapeError(def); err != nil {
-			return nil, err
+			if !tolerateShape {
+				return nil, err
+			}
+			warnings = append(warnings, "Review the graph before saving: "+err.Error()+".")
 		}
 		mermaidLabel := func(value string) string {
 			value = strings.ReplaceAll(value, `\`, `\\`)
@@ -458,7 +464,7 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 				return nil, err
 			}
 			lastErr = err
-		} else if result, err := buildResult(output); err == nil {
+		} else if result, err := buildResult(output, attempt == 1); err == nil {
 			result["metrics"] = map[string]int{"repairCount": attempt}
 			return result, nil
 		} else {

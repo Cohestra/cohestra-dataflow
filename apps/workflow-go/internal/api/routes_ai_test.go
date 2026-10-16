@@ -444,3 +444,33 @@ func TestBuildPipelineStillRejectsNonStringListItems(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestBuildPipelineRepairsDeadEndThenWarnsIfStillPresent(t *testing.T) {
+	graph := func(edges string) string {
+		return `{"status":"ready","reason":"","suggestedName":"Customers","questions":[],"assumptions":[],"warnings":[],"trigger":{"type":"manual"},
+			"nodes":[{"id":"n1","label":"API","activityType":"http.fetch","config":{"url":"https://api.example.test/c"}},
+			{"id":"n2","label":"Dedupe","activityType":"transform.dedupe","config":{"key":"id"}},
+			{"id":"n4","label":"Contract","activityType":"transform.contract","config":{"schemaJson":"{}"}},
+			{"id":"n3","label":"Store","activityType":"sink.records","config":{"collection":"c"}}],"edges":` + edges + `}`
+	}
+	deadEnd := graph(`[{"source":"n1","target":"n2"},{"source":"n2","target":"n3"},{"source":"n2","target":"n4"}]`)
+	fixed := graph(`[{"source":"n1","target":"n2"},{"source":"n2","target":"n4"},{"source":"n4","target":"n3"}]`)
+	for name, second := range map[string]string{"repaired": fixed, "still dead-end": deadEnd} {
+		server, requests := fakeOllama(t, deadEnd, second)
+		t.Setenv("OLLAMA_URL", server.URL)
+		api := &Server{HTTP: server.Client()}
+		result, err := api.buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "add a contract before the sink")
+		server.Close()
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if len(*requests) != 2 || !strings.Contains((*requests)[1].Messages[1]["content"].(string), "node n4 (transform) has no outgoing edge") {
+			t.Fatalf("%s: repair round must name the dead-end node", name)
+		}
+		warnings := result["warnings"].([]string)
+		warned := len(warnings) == 1 && strings.Contains(warnings[0], "Review the graph before saving: node n4")
+		if result["status"] != aiPipelineReady || warned != (name == "still dead-end") {
+			t.Fatalf("%s: status=%v warnings=%v", name, result["status"], warnings)
+		}
+	}
+}
