@@ -104,7 +104,7 @@ export default function PipelineCanvasPage() {
     const definition = mergeAiProposal(aiProposalBase, aiProposal.definition);
     return { definition, changes: describeProposalChanges(aiProposalBase, definition) };
   }, [aiProposalBase, aiProposal]);
-  const { generate: aiGenerate, refine: aiRefine, loading: aiLoading, error: aiError } = useAiGenerate();
+  const { generate: aiGenerate, refine: aiRefine, loading: aiLoading, error: aiError, models: aiModels, model: aiModel, setModel: setAiModel } = useAiGenerate();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>('runs');
@@ -600,6 +600,7 @@ export default function PipelineCanvasPage() {
         aiMessages={aiMessages} aiProposal={aiProposal} aiProposalStale={aiProposalStale} aiChanges={aiReview?.changes ?? null} applyAI={applyAI}
         discardProposal={() => { setAiProposal(null); setAiProposalBase(null); }} aiLoading={aiLoading} runAI={runAI}
         aiPrompt={aiPrompt} setAiPrompt={setAiPrompt} aiError={aiError} aiUndo={aiUndo} undoAI={undoAI} canRedoAI={canRedoAI} redoAI={redoAI}
+        aiModels={aiModels} aiModel={aiModel} setAiModel={setAiModel}
       />
 
       <InspectorPanel

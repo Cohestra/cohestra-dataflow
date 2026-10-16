@@ -4,6 +4,7 @@ import { ProposalChanges } from './ProposalChanges';
 import type { ProposalChange } from '../../utils/pipelineProposal';
 import { MermaidPreview } from '../../components/MermaidPreview';
 import type { AiGenerateResult } from '../../hooks/useAiGenerate';
+import type { AiModelOption } from '../../api';
 
 // Right-hand "Build with AI" chat panel: prompt input, message history, and
 // the pending proposal (mermaid preview + apply/discard/retry).
@@ -11,6 +12,7 @@ export function AiBuilderPanel({
   showAI, setShowAI, hasNodes,
   aiMessages, aiProposal, aiProposalStale, aiChanges, applyAI, discardProposal, aiLoading, runAI,
   aiPrompt, setAiPrompt, aiError, aiUndo, undoAI, canRedoAI, redoAI,
+  aiModels, aiModel, setAiModel,
 }: {
   showAI: boolean;
   setShowAI: (show: boolean) => void;
@@ -30,6 +32,9 @@ export function AiBuilderPanel({
   undoAI: () => void;
   canRedoAI: boolean;
   redoAI: () => void;
+  aiModels: AiModelOption[];
+  aiModel: string;
+  setAiModel: (model: string) => void;
 }) {
   const requestInput = useRef<HTMLInputElement>(null);
   const finishReview = (action: () => void) => {
@@ -78,6 +83,13 @@ export function AiBuilderPanel({
             </div>}
           </div>
           <div className="border-t border-gray-100 p-3 dark:border-white/[0.07]">
+            {aiModels.length > 1 && <label className="mb-2 flex items-center gap-2 text-xs text-gray-500 dark:text-white/50">
+              Model
+              <select className="glass-input flex-1 py-1 text-xs" aria-label="AI model" value={aiModel} disabled={aiLoading}
+                onChange={e => setAiModel(e.target.value)}>
+                {aiModels.map(option => <option key={option.id} value={option.id}>{option.label} — {option.description}</option>)}
+              </select>
+            </label>}
             <div className="flex items-center gap-2">
               <input ref={requestInput}
                 className="glass-input flex-1 text-sm"

@@ -14,6 +14,9 @@ hostPath: /workspace
 # qwen3:8b + few-shot won the October 2026 CPU bake-off (docs/AI_MODEL_BAKEOFF.md);
 # llama3.2:3b (the previous default) fits the old 4Gi limit but passed 4/12.
 ollamaModel: qwen3:8b
+# Models the AI builder's picker offers (default first); all are pulled.
+# qwen3:4b-instruct-2507: 11/17 at ~1.7x the speed.
+ollamaModels: [qwen3:8b, qwen3:4b-instruct-2507]
 ollama:
   # Sized for an 8-9B Q4 model (~5-7 GB weights) plus an 8k KV cache; a 3-4B
   # model fits in 4Gi. 27B+ models (e.g. qwen3.6/3.8 27b) need ~24Gi and a GPU.

@@ -67,6 +67,8 @@ x-app-env: &app-env
   OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
   # qwen3:8b + few-shot won the October 2026 CPU bake-off (docs/AI_MODEL_BAKEOFF.md).
   OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:8b}
+  # Models the builder's picker may select (default first): best quality, faster.
+  OLLAMA_MODELS: ${OLLAMA_MODELS:-qwen3:8b,qwen3:4b-instruct-2507}
   OLLAMA_THINK: ${OLLAMA_THINK:-false}
   OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-8192}
   AI_FEW_SHOT: ${AI_FEW_SHOT:-true}
@@ -438,6 +440,9 @@ services:
     image: ollama/ollama:latest
     volumes:
       - ollamadata:/root/.ollama
+    # One model resident at a time keeps the picker's two models inside the limit.
+    environment:
+      - OLLAMA_MAX_LOADED_MODELS=1
     # Generous: an 8B model needs ~6-8 GB resident.
     mem_limit: 10g
     networks: [dataflow]
@@ -450,7 +455,9 @@ services:
     command:
       - |
         until ollama list >/dev/null 2>&1; do echo "waiting for ollama…"; sleep 2; done
-        ollama pull "${OLLAMA_MODEL:-qwen3:8b}"
+        for model in $$(echo "${OLLAMA_MODEL:-qwen3:8b},${OLLAMA_MODELS:-qwen3:8b,qwen3:4b-instruct-2507}" | tr ',' ' '); do
+          ollama pull "$$model" || exit 1
+        done
     environment:
       - OLLAMA_HOST=http://ollama:11434
     depends_on: [ollama]

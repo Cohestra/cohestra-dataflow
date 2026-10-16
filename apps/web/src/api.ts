@@ -47,7 +47,10 @@ export type AiConversationMessage = { role: 'user' | 'assistant'; content: strin
 type AiPipelineContext = {
   mermaid?: string;
   messages?: AiConversationMessage[];
+  model?: string;
 };
+
+export type AiModelOption = { id: string; label: string; description: string };
 
 const listPipelines = (params?: PipelineListParams) => {
   const clean = Object.entries(params ?? {}).filter(([, v]) => v) as [string, string][];
@@ -133,12 +136,14 @@ export const api = {
   generatePipeline: (prompt: string, context: AiPipelineContext = {}) =>
     request('/api/ai/generate', {
       method: 'POST',
-      body: JSON.stringify({ prompt, mermaid: context.mermaid ?? '', messages: context.messages ?? [] }),
+      body: JSON.stringify({ prompt, mermaid: context.mermaid ?? '', messages: context.messages ?? [], ...(context.model ? { model: context.model } : {}) }),
     }).then(j),
+  // Operator-approved planner models, default first.
+  aiModels: (): Promise<{ default: string; models: AiModelOption[] }> => request('/api/ai/models').then(j),
   refinePipeline: (definition: any, prompt: string, context: AiPipelineContext = {}) =>
     request('/api/ai/refine', {
       method: 'POST',
-      body: JSON.stringify({ definition, prompt, mermaid: context.mermaid ?? '', messages: context.messages ?? [] }),
+      body: JSON.stringify({ definition, prompt, mermaid: context.mermaid ?? '', messages: context.messages ?? [], ...(context.model ? { model: context.model } : {}) }),
     }).then(j),
 
   listExecutions: (params?: Record<string, string>) => {

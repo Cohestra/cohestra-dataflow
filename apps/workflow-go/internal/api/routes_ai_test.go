@@ -13,6 +13,7 @@ import (
 )
 
 type capturedOllamaRequest struct {
+	Model    string                   `json:"model"`
 	Format   interface{}              `json:"format"`
 	Think    bool                     `json:"think"`
 	Options  map[string]interface{}   `json:"options"`

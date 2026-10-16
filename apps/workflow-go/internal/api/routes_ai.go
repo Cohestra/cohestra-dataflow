@@ -141,12 +141,14 @@ func aiPipelineJSONSchema(activityTypes []string) map[string]interface{} {
 func (s *Server) registerAI(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/ai/generate", handle(s.aiGenerate))
 	mux.HandleFunc("POST /api/ai/refine", handle(s.aiRefine))
+	mux.HandleFunc("GET /api/ai/models", handle(s.aiModels))
 }
 func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
 		Prompt   string                  `json:"prompt"`
 		Mermaid  string                  `json:"mermaid"`
 		Messages []aiConversationMessage `json:"messages"`
+		Model    string                  `json:"model"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return nil
@@ -157,6 +159,11 @@ func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) error {
 	if len([]rune(body.Prompt)) > maxAIUserRunes {
 		return badRequest(ErrInvalidRequest, "prompt is too large")
 	}
+	model, allowed := resolveAIModel(body.Model)
+	if !allowed {
+		return badRequest(ErrInvalidRequest, "unsupported AI model")
+	}
+	r = withAIModel(r, model)
 	if reason, rejected := rejectedAIIntent(body.Prompt); rejected {
 		jsonResponse(w, http.StatusOK, aiRejectedResult(reason, 0))
 		return nil
@@ -169,6 +176,7 @@ func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &HTTPError{Status: http.StatusUnprocessableEntity, Message: "could not generate a valid pipeline: " + err.Error()}
 	}
+	result["model"] = model
 	jsonResponse(w, http.StatusOK, result)
 	return nil
 }
@@ -178,6 +186,7 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 		Definition interface{}             `json:"definition"`
 		Mermaid    string                  `json:"mermaid"`
 		Messages   []aiConversationMessage `json:"messages"`
+		Model      string                  `json:"model"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return nil
@@ -188,6 +197,11 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 	if len([]rune(body.Prompt)) > maxAIUserRunes {
 		return badRequest(ErrInvalidRequest, "prompt is too large")
 	}
+	model, allowed := resolveAIModel(body.Model)
+	if !allowed {
+		return badRequest(ErrInvalidRequest, "unsupported AI model")
+	}
+	r = withAIModel(r, model)
 	if reason, rejected := rejectedAIIntent(body.Prompt); rejected {
 		jsonResponse(w, http.StatusOK, aiRejectedResult(reason, 0))
 		return nil
@@ -215,6 +229,7 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &HTTPError{Status: http.StatusUnprocessableEntity, Message: "could not refine pipeline: " + err.Error()}
 	}
+	result["model"] = model
 	jsonResponse(w, http.StatusOK, result)
 	return nil
 }
@@ -479,7 +494,7 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 
 func (s *Server) ollamaJSON(r *http.Request, system, user string, schema map[string]interface{}, target interface{}) error {
 	payload, err := json.Marshal(map[string]interface{}{
-		"model": env("OLLAMA_MODEL", "qwen3:8b"), "stream": false, "format": schema,
+		"model": aiModelFrom(r), "stream": false, "format": schema,
 		"think":    strings.EqualFold(env("OLLAMA_THINK", "false"), "true"),
 		"options":  map[string]interface{}{"temperature": 0, "seed": 42, "num_ctx": aiNumCtx()},
 		"messages": []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": user}},

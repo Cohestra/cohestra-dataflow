@@ -53,6 +53,11 @@ async function mockApi(page: Page, planner: Planner) {
       body = planner(path, sent);
     } else if (path === '/api/auth/refresh' || path === '/api/auth/me') {
       body = { accessToken: 'fixture', user: { id: 'u1', email: 'qa@example.com', role: 'owner', tenant_id: 't1' } };
+    } else if (path === '/api/ai/models') {
+      body = { default: 'qwen3:8b', models: [
+        { id: 'qwen3:8b', label: 'Qwen3 8B', description: 'Best quality' },
+        { id: 'qwen3:4b-instruct-2507', label: 'Qwen3 4B', description: 'Faster' },
+      ] };
     } else if (path === '/api/connectors/catalog') {
       body = { catalog };
     } else if (path === '/api/edition') {
@@ -173,4 +178,24 @@ test('stale lakehouse proposal cannot be applied over a newer draft', async ({ p
   await expect(page.locator('#ai-proposal-stale')).toBeVisible();
   await button(page, 'Discard').click();
   await expect(nodesOnCanvas(page)).toHaveCount(7);
+});
+
+test('model picker offers the top two planner models and remembers the choice', async ({ page }) => {
+  const calls = await mockApi(page, () => ready(medallion));
+  await page.goto('/?ai=1');
+  const picker = page.getByLabel('AI model');
+  await expect(picker).toHaveValue('qwen3:8b');
+  await expect(picker.locator('option')).toHaveText(['Qwen3 8B — Best quality', 'Qwen3 4B — Faster']);
+
+  await ask(page, 'Build the telemetry lakehouse', 'Generate');
+  await expect(page.getByText('Proposed graph · 7 nodes')).toBeVisible();
+  expect(calls.at(-1)!.body.model).toBe('qwen3:8b');
+
+  await picker.selectOption('qwen3:4b-instruct-2507');
+  await button(page, 'Retry').click();
+  await expect.poll(() => calls.length).toBe(2);
+  expect(calls.at(-1)!.body.model).toBe('qwen3:4b-instruct-2507');
+
+  await page.reload();
+  await expect(page.getByLabel('AI model')).toHaveValue('qwen3:4b-instruct-2507');
 });
