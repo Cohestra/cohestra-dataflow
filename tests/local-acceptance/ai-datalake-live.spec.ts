@@ -6,6 +6,8 @@ import { expect, test, type Page } from '@playwright/test';
 // app endpoints are mocked. Verdicts on model fidelity are recorded as
 // annotations so UI correctness and model quality stay separable.
 const live = process.env.AI_LIVE_API;
+// Optional: pick this model in the builder's picker (it must be on the server's list).
+const liveModel = process.env.AI_LIVE_MODEL;
 test.skip(!live, 'set AI_LIVE_API to a planner base URL');
 test.setTimeout(20 * 60_000);
 
@@ -46,6 +48,10 @@ const button = (page: Page, name: string) => page.getByRole('button', { name, ex
 test('live lakehouse: generate, chat refine, Apply/Undo/Redo with a real model', async ({ page }, info) => {
   const proposals = await wire(page);
   await page.goto('/?ai=1');
+  if (liveModel) {
+    await expect(page.getByLabel('AI model')).toBeVisible();
+    await page.getByLabel('AI model').selectOption(liveModel);
+  }
   const request = page.getByLabel('AI pipeline request');
 
   await request.fill('Continuously capture CDC changes from PostgreSQL connection warehouse-read table public.customers (syncMode cdc), '
@@ -53,6 +59,7 @@ test('live lakehouse: generate, chat refine, Apply/Undo/Redo with a real model',
   await button(page, 'Generate').click();
   await expect(page.getByText(outcome).first()).toBeVisible({ timeout: 15 * 60_000 });
   const first = proposals.at(-1);
+  if (liveModel) expect(first.model, 'proposal must come from the model chosen in the picker').toBe(liveModel);
   info.annotations.push({ type: 'model-generate', description: `${first.status}: ${activities(first).join(' -> ')}` });
   expect(first.status, 'model must produce a lakehouse proposal for a fully specified request').toBe('ready');
   for (const wanted of ['postgres.fetch', 'transform.dedupe', 'sink.iceberg']) expect(activities(first)).toContain(wanted);
@@ -66,6 +73,7 @@ test('live lakehouse: generate, chat refine, Apply/Undo/Redo with a real model',
   await button(page, 'Refine').click();
   await expect(page.getByText(outcome).first()).toBeVisible({ timeout: 15 * 60_000 });
   const second = proposals.at(-1);
+  if (liveModel) expect(second.model).toBe(liveModel);
   info.annotations.push({ type: 'model-refine', description: `${second.status}: ${activities(second).join(' -> ')}` });
   expect(second.status).toBe('ready');
   expect(activities(second)).toContain('transform.contract');
