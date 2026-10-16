@@ -1,0 +1,27 @@
+{
+  "commit": "22ff51536554d7e074ba6505c959e5f82b29b56b",
+  "model": "nemotron-3-nano:4b",
+  "details": {
+    "parent_model": "nemotron-3-nano_4b.gguf",
+    "format": "gguf",
+    "family": "nemotron_h",
+    "families": [
+      "nemotron_h"
+    ],
+    "parameter_size": "4.0B",
+    "quantization_level": "Q4_K_M",
+    "runner": "llamacpp"
+  },
+  "modelInfo": {
+    "general.parameter_count": 3973556832,
+    "nemotron_h.context_length": 1048576
+  },
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "think": false
+  },
+  "cases": "scripts/subset12.json",
+  "host": "4 vCPU, 15 GiB RAM, CPU-only"
+}

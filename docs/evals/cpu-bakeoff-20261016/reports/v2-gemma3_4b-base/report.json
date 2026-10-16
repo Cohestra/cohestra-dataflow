@@ -1,0 +1,266 @@
+{
+  "byCategory": {
+    "chat": {
+      "activityAccuracyRate": 1.0,
+      "cases": 3,
+      "clarificationAccuracyRate": 1.0,
+      "groundingAccuracyRate": 1.0,
+      "latencyMsMean": 70014.4,
+      "latencyMsP95": 88679.13,
+      "passRate": 0.6667,
+      "passed": 2,
+      "preservationAccuracyRate": 1.0,
+      "repairCountMean": 0.5,
+      "schemaValidRate": 1.0,
+      "structuralValidRate": 1.0
+    },
+    "lake-engines": {
+      "activityAccuracyRate": null,
+      "cases": 2,
+      "clarificationAccuracyRate": null,
+      "groundingAccuracyRate": null,
+      "latencyMsMean": 170489.89,
+      "latencyMsP95": 240032.43,
+      "passRate": 0.0,
+      "passed": 0,
+      "preservationAccuracyRate": null,
+      "repairCountMean": null,
+      "schemaValidRate": null,
+      "structuralValidRate": null
+    },
+    "lake-generation": {
+      "activityAccuracyRate": 0.2667,
+      "cases": 6,
+      "clarificationAccuracyRate": null,
+      "groundingAccuracyRate": null,
+      "latencyMsMean": 94346.76,
+      "latencyMsP95": 148129.76,
+      "passRate": 0.0,
+      "passed": 0,
+      "preservationAccuracyRate": null,
+      "repairCountMean": 0.0,
+      "schemaValidRate": 1.0,
+      "structuralValidRate": null
+    },
+    "lake-refinement": {
+      "activityAccuracyRate": null,
+      "cases": 4,
+      "clarificationAccuracyRate": null,
+      "groundingAccuracyRate": null,
+      "latencyMsMean": 181138.94,
+      "latencyMsP95": 272280.77,
+      "passRate": 0.0,
+      "passed": 0,
+      "preservationAccuracyRate": null,
+      "repairCountMean": null,
+      "schemaValidRate": null,
+      "structuralValidRate": null
+    },
+    "lake-validation": {
+      "activityAccuracyRate": null,
+      "cases": 2,
+      "clarificationAccuracyRate": 1.0,
+      "groundingAccuracyRate": null,
+      "latencyMsMean": 22658.62,
+      "latencyMsP95": 45316.47,
+      "passRate": 1.0,
+      "passed": 2,
+      "preservationAccuracyRate": null,
+      "repairCountMean": 0.0,
+      "schemaValidRate": 1.0,
+      "structuralValidRate": null
+    }
+  },
+  "catalogVersion": "coded-catalog-v2",
+  "fixtureVersion": "tenant-connectors-v1",
+  "generatedAt": "2026-10-16T06:19:14Z",
+  "mode": "live",
+  "model": "gemma3:4b",
+  "promptVersion": "main-22ff51536554",
+  "results": [
+    {
+      "activityAccuracy": 0.4,
+      "category": "lake-generation",
+      "clarificationAccuracy": null,
+      "groundingAccuracy": null,
+      "id": "lake-cdc-contract-iceberg",
+      "latencyMs": 88644.69,
+      "passed": false,
+      "preservationAccuracy": null,
+      "repairCount": 0.0,
+      "responseStatus": "needs_input",
+      "schemaValid": true,
+      "structuralValid": null
+    },
+    {
+      "activityAccuracy": 0.2,
+      "category": "lake-generation",
+      "clarificationAccuracy": null,
+      "groundingAccuracy": null,
+      "id": "lake-silver-to-gold-clickhouse",
+      "latencyMs": 58796.64,
+      "passed": false,
+      "preservationAccuracy": null,
+      "repairCount": 0.0,
+      "responseStatus": "needs_input",
+      "schemaValid": true,
+      "structuralValid": null
+    },
+    {
+      "category": "lake-generation",
+      "error": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: needs_input response must include a question\"}",
+      "id": "lake-join-orders-payments",
+      "latencyMs": 115366.58,
+      "passed": false
+    },
+    {
+      "category": "lake-generation",
+      "error": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: node transform-flatten-n2 (transform.flatten) contains unsupported config.allowExtra\"}",
+      "id": "lake-s3-flatten-snowflake",
+      "latencyMs": 103167.06,
+      "passed": false
+    },
+    {
+      "category": "lake-generation",
+      "error": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: pipeline name is required\"}",
+      "id": "lake-medallion-fork-zones",
+      "latencyMs": 148129.76,
+      "passed": false
+    },
+    {
+      "activityAccuracy": 0.2,
+      "category": "lake-generation",
+      "clarificationAccuracy": null,
+      "groundingAccuracy": null,
+      "id": "lake-kafka-parse-dedupe-iceberg",
+      "latencyMs": 51975.8,
+      "passed": false,
+      "preservationAccuracy": null,
+      "repairCount": 0.0,
+      "responseStatus": "needs_input",
+      "schemaValid": true,
+      "structuralValid": null
+    },
+    {
+      "category": "lake-engines",
+      "error": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: AI builder is unavailable\"}",
+      "id": "lake-spark-sql-gold",
+      "latencyMs": 240032.43,
+      "passed": false
+    },
+    {
+      "category": "lake-engines",
+      "error": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: node n3 (postgres.fetch) contains unsupported config.writeMode\"}",
+      "id": "lake-nightly-incremental",
+      "latencyMs": 100947.34,
+      "passed": false
+    },
+    {
+      "category": "chat",
+      "error": "HTTP 422 from /api/ai/generate: {\"error\":\"could not generate a valid pipeline: model response invalid after one repair: node n1 (excel.fetch) requires config.driveId\"}",
+      "id": "chat-answer-followup",
+      "latencyMs": 88679.13,
+      "passed": false
+    },
+    {
+      "activityAccuracy": null,
+      "category": "chat",
+      "clarificationAccuracy": 1.0,
+      "groundingAccuracy": null,
+      "id": "chat-vague-lake",
+      "latencyMs": 41685.2,
+      "passed": true,
+      "preservationAccuracy": null,
+      "repairCount": 0.0,
+      "responseStatus": "needs_input",
+      "schemaValid": true,
+      "structuralValid": null
+    },
+    {
+      "category": "lake-refinement",
+      "error": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: node parse config.fields must have type text\"}",
+      "id": "refine-lake-insert-dedupe",
+      "latencyMs": 272280.77,
+      "passed": false
+    },
+    {
+      "category": "lake-refinement",
+      "error": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: node landing (sink.iceberg) contains unsupported config.layer\"}",
+      "id": "refine-lake-swap-sink-iceberg",
+      "latencyMs": 118446.55,
+      "passed": false
+    },
+    {
+      "category": "lake-refinement",
+      "error": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: node clickhouse_out references unknown tenant connector instance \\\"00000000-0000-4000-8000-0000-000000000004\\\"\"}",
+      "id": "refine-lake-add-gold-branch",
+      "latencyMs": 134476.36,
+      "passed": false
+    },
+    {
+      "activityAccuracy": 1.0,
+      "category": "chat",
+      "clarificationAccuracy": null,
+      "groundingAccuracy": 1.0,
+      "id": "refine-chat-revert-filter",
+      "latencyMs": 79678.86,
+      "passed": true,
+      "preservationAccuracy": 1.0,
+      "repairCount": 1.0,
+      "responseStatus": "ready",
+      "schemaValid": true,
+      "structuralValid": true
+    },
+    {
+      "category": "lake-refinement",
+      "error": "HTTP 422 from /api/ai/refine: {\"error\":\"could not refine pipeline: model response invalid after one repair: pipeline name is required\"}",
+      "id": "refine-lake-promote-layer",
+      "latencyMs": 199352.07,
+      "passed": false
+    },
+    {
+      "activityAccuracy": null,
+      "category": "lake-validation",
+      "clarificationAccuracy": 1.0,
+      "groundingAccuracy": null,
+      "id": "lake-unknown-connection",
+      "latencyMs": 45316.47,
+      "passed": true,
+      "preservationAccuracy": null,
+      "repairCount": 0.0,
+      "responseStatus": "needs_input",
+      "schemaValid": true,
+      "structuralValid": null
+    },
+    {
+      "activityAccuracy": null,
+      "category": "lake-validation",
+      "clarificationAccuracy": 1.0,
+      "groundingAccuracy": null,
+      "id": "lake-refine-cycle",
+      "latencyMs": 0.76,
+      "passed": true,
+      "preservationAccuracy": null,
+      "repairCount": 0.0,
+      "responseStatus": "rejected",
+      "schemaValid": true,
+      "structuralValid": null
+    }
+  ],
+  "schemaVersion": "pipeline-definition-v1",
+  "suiteVersion": "2.0.0-datalake",
+  "summary": {
+    "activityAccuracyRate": 0.45,
+    "cases": 17,
+    "clarificationAccuracyRate": 1.0,
+    "groundingAccuracyRate": 1.0,
+    "latencyMsMean": 110998.62,
+    "latencyMsP95": 272280.77,
+    "passRate": 0.2353,
+    "passed": 4,
+    "preservationAccuracyRate": 1.0,
+    "repairCountMean": 0.14,
+    "schemaValidRate": 1.0,
+    "structuralValidRate": 1.0
+  }
+}

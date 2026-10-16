@@ -1,0 +1,30 @@
+{
+  "commit": "22ff51536554d7e074ba6505c959e5f82b29b56b",
+  "model": "qwen3.5:4b",
+  "details": {
+    "parent_model": "qwen3.5_4b.gguf",
+    "format": "gguf",
+    "family": "qwen35",
+    "families": [
+      "qwen35"
+    ],
+    "parameter_size": "4.2B",
+    "quantization_level": "Q4_K_M",
+    "runner": "llamacpp"
+  },
+  "modelInfo": {
+    "general.parameter_count": 4205751296,
+    "qwen35.context_length": 262144
+  },
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "think": false
+  },
+  "apiEnv": [
+    "OLLAMA_NUM_CTX=8192"
+  ],
+  "harness": "$BAKE/scripts/h2/ai-harness-ee.test",
+  "cases": "/home/user/cohestra-dataflow/tests/ai-evals/cases/v2-datalake.json",
+  "host": "4 vCPU, 15 GiB RAM, CPU-only"
+}

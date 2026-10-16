@@ -1,0 +1,27 @@
+{
+  "commit": "c54a666e2b7ddc423a506bd6e2e7b396974782fb",
+  "model": "qwen3:8b",
+  "details": {
+    "parent_model": "qwen3_8b.gguf",
+    "format": "gguf",
+    "family": "qwen3",
+    "families": [
+      "qwen3"
+    ],
+    "parameter_size": "8.2B",
+    "quantization_level": "Q4_K_M",
+    "runner": "llamacpp"
+  },
+  "modelInfo": {
+    "general.parameter_count": 8190735360,
+    "qwen3.context_length": 40960
+  },
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "think": false
+  },
+  "cases": "scripts/subset12.json",
+  "host": "4 vCPU, 15 GiB RAM, CPU-only"
+}
