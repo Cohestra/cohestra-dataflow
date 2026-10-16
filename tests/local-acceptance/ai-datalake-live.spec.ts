@@ -70,6 +70,7 @@ test('live lakehouse: generate, chat refine, Apply/Undo/Redo with a real model',
   expect(activities(second)).toContain('transform.contract');
 
   await button(page, 'Apply').click();
+  await expect(button(page, 'Save'), 'a ready proposal must be a graph the canvas can save').toBeEnabled();
   const refinedCount = await page.locator('.react-flow__node').count();
   expect(refinedCount).toBeGreaterThan(appliedCount);
   await button(page, 'Undo last apply').click();

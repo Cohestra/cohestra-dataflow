@@ -420,6 +420,9 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		if err := validatePipeline(def); err != nil {
 			return nil, err
 		}
+		if err := aiGraphShapeError(def); err != nil {
+			return nil, err
+		}
 		mermaidLabel := func(value string) string {
 			value = strings.ReplaceAll(value, `\`, `\\`)
 			value = strings.ReplaceAll(value, `"`, `\"`)

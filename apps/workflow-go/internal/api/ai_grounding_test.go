@@ -165,3 +165,29 @@ func TestMergeCatalogFieldsPreservesManifestMetadata(t *testing.T) {
 		t.Fatalf("merged fields = %#v", byKey)
 	}
 }
+
+func TestAIGraphShapeMatchesCanvasRules(t *testing.T) {
+	node := func(id, kind string) model.Node { return model.Node{ID: id, Type: kind, ActivityType: kind + ".x"} }
+	edge := func(source, target string) model.Edge {
+		return model.Edge{ID: source + target, Source: source, Target: target}
+	}
+	linear := model.PipelineDefinition{Nodes: []model.Node{node("s", "source"), node("t", "transform"), node("k", "sink")}, Edges: []model.Edge{edge("s", "t"), edge("t", "k")}}
+	if err := aiGraphShapeError(linear); err != nil {
+		t.Fatalf("linear pipeline rejected: %v", err)
+	}
+	cases := map[string]model.PipelineDefinition{
+		// The live qwen3:8b refine that added a contract as a side branch.
+		"dead-end transform": {Nodes: []model.Node{node("s", "source"), node("d", "transform"), node("c", "transform"), node("k", "sink")},
+			Edges: []model.Edge{edge("s", "d"), edge("d", "k"), edge("d", "c")}},
+		"orphan":             {Nodes: []model.Node{node("s", "source"), node("k", "sink"), node("o", "transform")}, Edges: []model.Edge{edge("s", "k")}},
+		"sink with output":   {Nodes: []model.Node{node("s", "source"), node("k", "sink"), node("k2", "sink")}, Edges: []model.Edge{edge("s", "k"), edge("k", "k2")}},
+		"single-arm fork":    {Nodes: []model.Node{node("s", "source"), node("f", "fork"), node("k", "sink")}, Edges: []model.Edge{edge("s", "f"), edge("f", "k")}},
+		"single-input merge": {Nodes: []model.Node{node("s", "source"), node("m", "merge"), node("k", "sink")}, Edges: []model.Edge{edge("s", "m"), edge("m", "k")}},
+		"no sink":            {Nodes: []model.Node{node("s", "source")}},
+	}
+	for name, def := range cases {
+		if aiGraphShapeError(def) == nil {
+			t.Fatalf("%s: expected a shape error", name)
+		}
+	}
+}

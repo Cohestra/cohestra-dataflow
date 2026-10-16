@@ -472,3 +472,42 @@ func unsafePipelineReason(def model.PipelineDefinition) string {
 	}
 	return ""
 }
+
+// aiGraphShapeError applies the canvas's structural rules (apps/web
+// validatePipeline.ts) to a planner proposal, so a graph the editor would
+// refuse to save triggers the repair round instead of being returned as ready.
+func aiGraphShapeError(def model.PipelineDefinition) error {
+	incoming, outgoing := map[string]int{}, map[string]int{}
+	for _, edge := range def.Edges {
+		outgoing[edge.Source]++
+		incoming[edge.Target]++
+	}
+	sources, sinks := 0, 0
+	for _, node := range def.Nodes {
+		in, out := incoming[node.ID], outgoing[node.ID]
+		switch {
+		case node.Type == "source" && in > 0:
+			return fmt.Errorf("source node %s cannot have incoming edges", node.ID)
+		case node.Type == "sink" && out > 0:
+			return fmt.Errorf("sink node %s cannot have outgoing edges", node.ID)
+		case node.Type == "fork" && out < 2:
+			return fmt.Errorf("fork node %s needs at least two outgoing edges", node.ID)
+		case node.Type == "merge" && in < 2:
+			return fmt.Errorf("merge node %s needs at least two incoming edges", node.ID)
+		case in+out == 0:
+			return fmt.Errorf("node %s is not connected to the pipeline", node.ID)
+		case node.Type != "sink" && out == 0:
+			return fmt.Errorf("node %s (%s) has no outgoing edge; connect it to a downstream node or sink", node.ID, node.Type)
+		}
+		if node.Type == "source" {
+			sources++
+		}
+		if node.Type == "sink" {
+			sinks++
+		}
+	}
+	if sources == 0 || sinks == 0 {
+		return fmt.Errorf("pipeline needs at least one source and one sink")
+	}
+	return nil
+}
