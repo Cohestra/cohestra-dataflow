@@ -257,6 +257,9 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 				}
 				suffix += " one of " + strings.Join(options, "|")
 			}
+			if aiCommaListField(entry.ActivityType, field.Key) {
+				suffix += " (comma-separated string)"
+			}
 			fields = append(fields, field.Key+suffix)
 		}
 		line := fmt.Sprintf("- %s (%s) %s", entry.ActivityType, entry.NodeType, entry.Label)

@@ -325,6 +325,38 @@ func validateAIField(nodeID string, field model.CatalogField, value interface{})
 	return nil
 }
 
+// aiCommaListFields are text fields the runtime splits on commas. Models often
+// send them as JSON arrays; normalizeAIConfig joins those instead of spending
+// the repair round on a type error.
+var aiCommaListFields = map[string]map[string]bool{
+	"transform.parse":  {"fields": true},
+	"transform.dedupe": {"key": true},
+	"postgres.fetch":   {"columns": true},
+	"mysql.fetch":      {"columns": true},
+}
+
+func aiCommaListField(activityType, key string) bool { return aiCommaListFields[activityType][key] }
+
+func normalizeAIConfig(node model.Node) {
+	for key := range aiCommaListFields[node.ActivityType] {
+		list, ok := node.Config[key].([]interface{})
+		if !ok {
+			continue
+		}
+		parts := make([]string, 0, len(list))
+		for _, item := range list {
+			text, isString := item.(string)
+			if !isString {
+				return // leave mixed lists for the type check to reject
+			}
+			if text = strings.TrimSpace(text); text != "" {
+				parts = append(parts, text)
+			}
+		}
+		node.Config[key] = strings.Join(parts, ",")
+	}
+}
+
 func validateAIGrounding(def model.PipelineDefinition, catalog map[string]model.CatalogEntry, instances []aiConnectorInstance) error {
 	byID := map[string]aiConnectorInstance{}
 	byName := map[string][]aiConnectorInstance{}
@@ -337,6 +369,7 @@ func validateAIGrounding(def model.PipelineDefinition, catalog map[string]model.
 		if !ok {
 			return fmt.Errorf("unknown activityType %s", node.ActivityType)
 		}
+		normalizeAIConfig(node)
 		fields := map[string]model.CatalogField{}
 		for _, field := range entry.Fields {
 			fields[field.Key] = field
