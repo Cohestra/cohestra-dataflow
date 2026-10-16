@@ -467,7 +467,7 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 
 func (s *Server) ollamaJSON(r *http.Request, system, user string, schema map[string]interface{}, target interface{}) error {
 	payload, err := json.Marshal(map[string]interface{}{
-		"model": env("OLLAMA_MODEL", "llama3.1:8b"), "stream": false, "format": schema,
+		"model": env("OLLAMA_MODEL", "qwen3:8b"), "stream": false, "format": schema,
 		"think":    strings.EqualFold(env("OLLAMA_THINK", "false"), "true"),
 		"options":  map[string]interface{}{"temperature": 0, "seed": 42, "num_ctx": aiNumCtx()},
 		"messages": []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": user}},

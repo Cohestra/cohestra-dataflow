@@ -12,8 +12,11 @@ model is installed:
 ./scripts/bootstrap.sh
 ```
 
-The local default is `llama3.2:3b`, stored on an 8 GiB persistent volume. Override
-`ollamaModel` with a Helm value when a smaller or larger model is required.
+The default is `qwen3:8b` with few-shot planner examples (`ollama.fewShot`,
+`ollama.numCtx: 8192`), stored on a 20 GiB volume with a 12 GiB pod limit; it
+won the [October 2026 bake-off](AI_MODEL_BAKEOFF.md). Override `ollamaModel`
+and `ollama.resources` for another model: a 3-4B model fits in 4 GiB, while
+27B+ models (qwen3.6 / qwen3.8) need ~24 GiB and a GPU.
 
 ## How it works
 

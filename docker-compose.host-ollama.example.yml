@@ -10,4 +10,4 @@ services:
   api:
     environment:
       OLLAMA_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:8b}
