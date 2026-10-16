@@ -92,9 +92,19 @@ build.
 - **Enum guessing was the main failure mode.** The prompt named config keys
   but not their allowed values, so models guessed `keep`, `writeMode`,
   `syncMode` or `layer` and burned their single repair. Fixed in `22ff515`.
-- **Remaining common failure:** `transform.parse` `fields` is a text field but
-  every model sends an array (`lake-kafka-parse-dedupe-iceberg`). A type hint
-  on the catalog line is the next prompt fix.
+- **Array vs comma-list (fixed after the runs, `b75aa24`):** every model sent
+  `transform.parse` `fields` as a JSON array, which grounding rejected even
+  though the runtime accepts lists. Grounding now joins string arrays for
+  comma-list fields and the prompt states the format. Re-run with `qwen3:8b` +
+  few-shot, `lake-kafka-parse-dedupe-iceberg` now returns a valid ready graph
+  with `fields: "amount,currency"` and no repair; it still misses one
+  grounding check (`dedupe.scope: pipeline` for "across the whole pipeline").
+- **Dead-end branches (fixed after the runs, `b16d9ce`, `6308912`):** the live
+  browser run showed `qwen3:8b` attaching a requested contract as a dead-end
+  branch, which the API returned as ready although the canvas cannot save it.
+  Planner proposals now go through the canvas's shape rules and use the
+  repair round; if the model repeats the mistake, the proposal is returned
+  with a "Review the graph before saving" warning instead of an error.
 - **Spark SQL:** the community build rejects `execution.engine=spark-sql`
   ("requires the enterprise build"), and the ee build accepts only
   `s3.fetch`/`iceberg.fetch` → `sink.iceberg`/`sink.clickhouse`, so v1's
