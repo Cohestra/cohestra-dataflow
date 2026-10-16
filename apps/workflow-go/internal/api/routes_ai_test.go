@@ -382,3 +382,19 @@ func TestRefineKeepsCurrentNameWhenModelOmitsIt(t *testing.T) {
 		t.Fatalf("requests = %d, want 1 (no repair for a blank name)", len(*requests))
 	}
 }
+
+func TestBuildPipelinePromptListsSelectOptions(t *testing.T) {
+	server, requests := fakeOllama(t, `{"status":"needs_input","reason":"","suggestedName":"","questions":["Which connection?"],"assumptions":[],"warnings":[],"trigger":{"type":"manual"},"nodes":[],"edges":[]}`)
+	defer server.Close()
+	t.Setenv("OLLAMA_URL", server.URL)
+	api := &Server{HTTP: server.Client()}
+	if _, err := api.buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "dedupe orders"); err != nil {
+		t.Fatal(err)
+	}
+	system, _ := (*requests)[0].Messages[0]["content"].(string)
+	for _, want := range []string{"keep one of first|last", "layer one of bronze|silver|gold", "writeMode one of upsert|apply-cdc"} {
+		if !strings.Contains(system, want) {
+			t.Fatalf("system prompt missing %q", want)
+		}
+	}
+}

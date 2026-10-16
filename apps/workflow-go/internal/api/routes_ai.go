@@ -249,6 +249,14 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 			if field.Required {
 				suffix = " (required)"
 			}
+			// Grounding rejects values outside a select's options, so state them.
+			if len(field.Options) > 0 {
+				options := make([]string, len(field.Options))
+				for i, option := range field.Options {
+					options[i] = fmt.Sprint(option)
+				}
+				suffix += " one of " + strings.Join(options, "|")
+			}
 			fields = append(fields, field.Key+suffix)
 		}
 		line := fmt.Sprintf("- %s (%s) %s", entry.ActivityType, entry.NodeType, entry.Label)
