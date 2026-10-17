@@ -18,6 +18,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Preserve pipeline concurrency, node policies and asset bindings across canvas load/save, AI Apply/Undo and Mermaid structural edits; block AI proposals based on an older draft.
 - CI secret scanning exempts one exact historical documentation false positive; the external-service smoke workflow is manual-only.
 - Upgrade Go to 1.26.8 and the vendored SSH dependency to x/crypto 0.56.0 to clear reachable vulnerability findings.
+- Upgrade Go to 1.26.9 and golang.org/x/net to 0.60.0 (with x/crypto 0.57.0, x/sys, x/text, x/term, x/sync) for the October 2026 net/http, crypto/tls, html/template, mime/multipart and x/net/http2 advisories.
 
 ### Changed
 - The AI builder default model is `qwen3:8b` with few-shot planner examples (`AI_FEW_SHOT`, `OLLAMA_NUM_CTX=8192`), chosen by the October 2026 bake-off (`docs/evals/cpu-bakeoff-20261016`). Helm's Ollama pod limit is now 12 GiB (was 4 GiB) on a 20 GiB volume; the model-call timeout is configurable (`OLLAMA_TIMEOUT_SECONDS`, 480 in compose/Helm).
