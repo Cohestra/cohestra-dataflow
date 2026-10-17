@@ -275,6 +275,9 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 			if aiCommaListField(entry.ActivityType, field.Key) {
 				suffix += " (comma-separated string)"
 			}
+			if field.Type == "json" {
+				suffix += ` (JSON object, e.g. {"old":"new"})`
+			}
 			fields = append(fields, field.Key+suffix)
 		}
 		line := fmt.Sprintf("- %s (%s) %s", entry.ActivityType, entry.NodeType, entry.Label)

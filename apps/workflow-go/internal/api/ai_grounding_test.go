@@ -214,3 +214,19 @@ func TestAIGraphShapeHintsTheInsertionFix(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeAIRenameMappingShorthand(t *testing.T) {
+	cases := map[string]interface{}{
+		"email:email_address":             map[string]interface{}{"email": "email_address"},
+		"usr_id -> user_id, cust:cust_id": map[string]interface{}{"usr_id": "user_id", "cust": "cust_id"},
+		`{"a":"b"}`:                       `{"a":"b"}`, // valid JSON text is already accepted
+		"not a mapping":                   "not a mapping",
+	}
+	for in, want := range cases {
+		node := model.Node{ID: "n", ActivityType: "transform.rename", Config: map[string]interface{}{"mapping": in}}
+		normalizeAIConfig(node)
+		if got, _ := json.Marshal(node.Config["mapping"]); string(got) != func() string { b, _ := json.Marshal(want); return string(b) }() {
+			t.Fatalf("%q -> %s", in, got)
+		}
+	}
+}

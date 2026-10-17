@@ -338,6 +338,7 @@ var aiCommaListFields = map[string]map[string]bool{
 func aiCommaListField(activityType, key string) bool { return aiCommaListFields[activityType][key] }
 
 func normalizeAIConfig(node model.Node) {
+	normalizeAIRenameMapping(node)
 	for key := range aiCommaListFields[node.ActivityType] {
 		list, ok := node.Config[key].([]interface{})
 		if !ok {
@@ -354,6 +355,31 @@ func normalizeAIConfig(node model.Node) {
 			}
 		}
 		node.Config[key] = strings.Join(parts, ",")
+	}
+}
+
+// normalizeAIRenameMapping accepts the "old:new, a->b" shorthand models write
+// for transform.rename mapping (a JSON object field). Anything else, including
+// valid JSON text, is left for the type check.
+func normalizeAIRenameMapping(node model.Node) {
+	text, ok := node.Config["mapping"].(string)
+	if node.ActivityType != "transform.rename" || !ok || json.Valid([]byte(text)) {
+		return
+	}
+	mapping := map[string]interface{}{}
+	for _, pair := range strings.Split(text, ",") {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		parts := strings.SplitN(strings.Replace(pair, "->", ":", 1), ":", 2)
+		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+			return
+		}
+		mapping[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+	if len(mapping) > 0 {
+		node.Config["mapping"] = mapping
 	}
 }
 
