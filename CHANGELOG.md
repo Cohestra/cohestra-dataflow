@@ -8,6 +8,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- AI builder no longer returns "ready" for graphs the canvas cannot save (dead ends, orphans, under-connected fork/merge): it repairs, splices an unambiguously dangling step (noted as an assumption), or returns a warned draft.
+- AI grounding accepts comma-list fields sent as JSON arrays and the `old:new` rename shorthand; the planner prompt lists each select field's allowed values.
+- Plain `docker compose up` no longer silently switches the AI builder to `qwen2.5vl:7b` (the tracked override is now an opt-in example).
 - Restore granted editor access under tenant row-level security; use canonical ingestion modes in AI schemas.
 - Count source pages once and show consistent run controls, completion times and monitoring totals.
 - Keep Save reachable on narrow screens while the AI panel is open.
@@ -17,10 +20,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Upgrade Go to 1.26.8 and the vendored SSH dependency to x/crypto 0.56.0 to clear reachable vulnerability findings.
 
 ### Changed
+- The AI builder default model is `qwen3:8b` with few-shot planner examples (`AI_FEW_SHOT`, `OLLAMA_NUM_CTX=8192`), chosen by the October 2026 bake-off (`docs/evals/cpu-bakeoff-20261016`). Helm's Ollama pod limit is now 12 GiB (was 4 GiB) on a 20 GiB volume; the model-call timeout is configurable (`OLLAMA_TIMEOUT_SECONDS`, 480 in compose/Helm).
 - Per-node `timeoutSec` and `retry.maximumAttempts` are now validated: `0`, negative and overflowing values are rejected on save, manual/webhook/backfill runs, activation and promotion. Previously `0` was silently ignored, so an existing pipeline saved with `0` must be re-saved without that field. Temporal schedules created before this release embed the old definition; their next run fails with `InvalidNodePolicy` if it carries such a value. Re-activate the pipeline to refresh its schedule.
 - Connector manifests with a kind other than `source` are skipped at startup (logged as `skipping unsupported connector manifest`). Saved pipelines that reference such a manifest sink fail at dispatch until a coded handler exists.
 
 ### Added
+- AI builder model picker (`qwen3:8b` best quality, `qwen3:4b-instruct-2507` faster) backed by `GET /api/ai/models` and an operator allow-list (`OLLAMA_MODELS` / `ollamaModels`).
+- AI builder "Redo last apply".
+- `tests/ai-evals/cases/v2-datalake.json` lakehouse/chat corpus with a golden-output preflight, and mocked plus live browser tests for AI generate/refine/Apply/Undo/Redo.
 - Isolated real Temporal/PostgreSQL sandbox with golden data output, retry/timeout, control delivery, cancellation, and workflow-worker restart acceptance in both editions
 - Durable execution pause/resume/cancel intent with atomic audit, retryable worker delivery, responsive workflow controls, and tenant-scoped activity admission
 - Execution pause/resume/cancel now require owner, pipeline creator, or pipeline editor/admin access (viewers get 403, others 404); see `docs/EXECUTION_CONTROLS.md` for rollout of migration 027
