@@ -105,6 +105,14 @@ build.
   Planner proposals now go through the canvas's shape rules and use the
   repair round; if the model repeats the mistake, the proposal is returned
   with a "Review the graph before saving" warning instead of an error.
+- **Insert-before-sink refines (fixed, `f024f7c`, `96ff16c`, `c3074ce`):** a
+  3-node insertion few-shot example, an explicit edge-replacement rule, the
+  `old:new` rename shorthand, an unambiguous dangling-step splice (recorded as
+  an assumption) and `OLLAMA_TIMEOUT_SECONDS` (480 in compose/Helm). Real-model
+  check, contract and rename inserted before an Iceberg sink: 4/4 correct
+  graphs with no repair round on both picker models (two correct from the
+  model, two spliced), against 0/4 before. The live browser run with
+  `qwen3:8b` then produced a saveable refine on the first call.
 - **Spark SQL:** the community build rejects `execution.engine=spark-sql`
   ("requires the enterprise build"), and the ee build accepts only
   `s3.fetch`/`iceberg.fetch` → `sink.iceberg`/`sink.clickhouse`, so v1's
