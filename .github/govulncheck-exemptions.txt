@@ -1,0 +1,6 @@
+# Reviewed exemptions for the CI govulncheck gate (scripts/govulncheck-gate.py).
+# Format: <OSV id> <review-by YYYY-MM-DD> <reason>
+# Only add an advisory with no usable fix. An exemption past its review-by
+# date fails CI again; remove it once a fixed version is adopted.
+
+GO-2026-6665 2026-12-01 gosnowflake writes sensitive information to logs; no fixed v1 release (v1.19.1 is latest). Track a patched v1 or migration to gosnowflake/v2, and keep Snowflake driver logging at its default level.

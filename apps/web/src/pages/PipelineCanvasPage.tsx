@@ -94,6 +94,9 @@ export default function PipelineCanvasPage() {
   const [aiProposal, setAiProposal] = useState<AiGenerateResult | null>(null);
   const [aiUndo, setAiUndo] = useState<PipelineDefinition | null>(null);
   const aiUndoPositions = useRef<Map<string, Node['position']> | null>(null);
+  // Redo re-applies the change Undo reverted, only while the graph is still
+  // exactly the undone state; any manual edit after Undo discards it.
+  const [aiRedo, setAiRedo] = useState<{ definition: PipelineDefinition; positions: Map<string, Node['position']>; undoneFingerprint: string } | null>(null);
   const [aiProposalFingerprint, setAiProposalFingerprint] = useState<string | null>(null);
   const [aiProposalBase, setAiProposalBase] = useState<PipelineDefinition | null>(null);
   const aiReview = useMemo(() => {
@@ -101,7 +104,7 @@ export default function PipelineCanvasPage() {
     const definition = mergeAiProposal(aiProposalBase, aiProposal.definition);
     return { definition, changes: describeProposalChanges(aiProposalBase, definition) };
   }, [aiProposalBase, aiProposal]);
-  const { generate: aiGenerate, refine: aiRefine, loading: aiLoading, error: aiError } = useAiGenerate();
+  const { generate: aiGenerate, refine: aiRefine, loading: aiLoading, error: aiError, models: aiModels, model: aiModel, setModel: setAiModel } = useAiGenerate();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>('runs');
@@ -193,7 +196,7 @@ export default function PipelineCanvasPage() {
     const openBackfill = (location.state as any)?.openBackfill === true || new URLSearchParams(location.search).get('backfill') === '1';
     const hydrationKey = pipelineId ?? (stateDef ? 'generated' : null);
     if (!hydrationKey || hydrated.current === hydrationKey) return;
-    setAiUndo(null); setAiProposal(null); setAiProposalBase(null);
+    setAiUndo(null); setAiRedo(null); setAiProposal(null); setAiProposalBase(null);
 
     if (stateDef) {
       hydrated.current = hydrationKey;
@@ -458,6 +461,7 @@ export default function PipelineCanvasPage() {
     const positions = new Map(nodes.map(node => [node.id, { ...node.position }]));
     setAiUndo(structuredClone(previous));
     aiUndoPositions.current = new Map(positions);
+    setAiRedo(null);
     hydrateFromDefinition(aiReview.definition, 'AI proposal applied', positions);
     setSelected(null); setSelectedEdge(null);
     setAiProposal(null); setAiProposalBase(null); setAiPrompt('');
@@ -465,8 +469,20 @@ export default function PipelineCanvasPage() {
 
   const undoAI = () => {
     if (!aiUndo) return;
+    const applied = buildDefinition();
+    const appliedPositions = new Map(nodes.map(node => [node.id, { ...node.position }]));
+    setAiRedo({ definition: structuredClone(applied), positions: appliedPositions, undoneFingerprint: pipelineFingerprint(aiUndo) });
     hydrateFromDefinition(aiUndo, 'AI change undone', aiUndoPositions.current ?? undefined);
     setSelected(null); setSelectedEdge(null); setAiUndo(null); aiUndoPositions.current = null;
+  };
+
+  const canRedoAI = !!aiRedo && aiRedo.undoneFingerprint === definitionFingerprint;
+  const redoAI = () => {
+    if (!aiRedo || !canRedoAI) return;
+    setAiUndo(structuredClone(buildDefinition()));
+    aiUndoPositions.current = new Map(nodes.map(node => [node.id, { ...node.position }]));
+    hydrateFromDefinition(aiRedo.definition, 'AI change redone', aiRedo.positions);
+    setSelected(null); setSelectedEdge(null); setAiRedo(null);
   };
 
   const openDrawer = async (tab: BottomTab = 'runs') => {
@@ -583,7 +599,8 @@ export default function PipelineCanvasPage() {
         showAI={showAI} setShowAI={setShowAI} hasNodes={nodes.length > 0}
         aiMessages={aiMessages} aiProposal={aiProposal} aiProposalStale={aiProposalStale} aiChanges={aiReview?.changes ?? null} applyAI={applyAI}
         discardProposal={() => { setAiProposal(null); setAiProposalBase(null); }} aiLoading={aiLoading} runAI={runAI}
-        aiPrompt={aiPrompt} setAiPrompt={setAiPrompt} aiError={aiError} aiUndo={aiUndo} undoAI={undoAI}
+        aiPrompt={aiPrompt} setAiPrompt={setAiPrompt} aiError={aiError} aiUndo={aiUndo} undoAI={undoAI} canRedoAI={canRedoAI} redoAI={redoAI}
+        aiModels={aiModels} aiModel={aiModel} setAiModel={setAiModel}
       />
 
       <InspectorPanel

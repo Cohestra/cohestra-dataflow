@@ -1,5 +1,11 @@
 # AI model bake-off
 
+> **Latest result (October 2026):** an 11-model CPU bake-off plus a top-5
+> base vs few-shot comparison on the v2 lakehouse suite selected `qwen3:8b`
+> with few-shot planner examples (14/17). See
+> [evals/cpu-bakeoff-20261016](evals/cpu-bakeoff-20261016/README.md). The
+> August notes below are kept for history.
+
 This runbook selects an Ollama model for the DataFlow pipeline planner. Run the
 same versioned corpus, prompt, schema, API build, context window, and generation
 settings for every candidate. `AI_EVAL_MODEL` only labels the report; it does

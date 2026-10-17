@@ -344,12 +344,15 @@ spec:
             - |
               ollama serve & pid=$!
               until ollama list >/dev/null 2>&1; do sleep 1; done
-              ollama pull "$OLLAMA_MODEL"
+              for model in $OLLAMA_MODEL $(echo "$OLLAMA_MODELS" | tr ',' ' '); do ollama pull "$model" || exit 1; done
               touch /tmp/model-ready
               wait $pid
           env:
             - {name: OLLAMA_HOST, value: "0.0.0.0:11434"}
             - {name: OLLAMA_MODEL, value: {{ .Values.ollamaModel | quote }}}
+            - {name: OLLAMA_MODELS, value: {{ join "," .Values.ollamaModels | quote }}}
+            # One model resident at a time keeps both picker models inside the limit.
+            - {name: OLLAMA_MAX_LOADED_MODELS, value: "1"}
             - {name: HOME, value: /home/ollama}
           ports: [{containerPort: 11434}]
           readinessProbe: {exec: {command: [test, -f, /tmp/model-ready]}, periodSeconds: 5}
@@ -357,9 +360,7 @@ spec:
             - {name: home, mountPath: /home/ollama}
             - {name: data, mountPath: /home/ollama/.ollama}
             - {name: tmp, mountPath: /tmp}
-          resources:
-            requests: {cpu: 500m, memory: 1Gi}
-            limits: {cpu: "4", memory: 4Gi}
+          resources: {{ toJson .Values.ollama.resources }}
       volumes:
         - name: data
           persistentVolumeClaim: {claimName: ollama-data}

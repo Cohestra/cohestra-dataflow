@@ -325,6 +325,64 @@ func validateAIField(nodeID string, field model.CatalogField, value interface{})
 	return nil
 }
 
+// aiCommaListFields are text fields the runtime splits on commas. Models often
+// send them as JSON arrays; normalizeAIConfig joins those instead of spending
+// the repair round on a type error.
+var aiCommaListFields = map[string]map[string]bool{
+	"transform.parse":  {"fields": true},
+	"transform.dedupe": {"key": true},
+	"postgres.fetch":   {"columns": true},
+	"mysql.fetch":      {"columns": true},
+}
+
+func aiCommaListField(activityType, key string) bool { return aiCommaListFields[activityType][key] }
+
+func normalizeAIConfig(node model.Node) {
+	normalizeAIRenameMapping(node)
+	for key := range aiCommaListFields[node.ActivityType] {
+		list, ok := node.Config[key].([]interface{})
+		if !ok {
+			continue
+		}
+		parts := make([]string, 0, len(list))
+		for _, item := range list {
+			text, isString := item.(string)
+			if !isString {
+				return // leave mixed lists for the type check to reject
+			}
+			if text = strings.TrimSpace(text); text != "" {
+				parts = append(parts, text)
+			}
+		}
+		node.Config[key] = strings.Join(parts, ",")
+	}
+}
+
+// normalizeAIRenameMapping accepts the "old:new, a->b" shorthand models write
+// for transform.rename mapping (a JSON object field). Anything else, including
+// valid JSON text, is left for the type check.
+func normalizeAIRenameMapping(node model.Node) {
+	text, ok := node.Config["mapping"].(string)
+	if node.ActivityType != "transform.rename" || !ok || json.Valid([]byte(text)) {
+		return
+	}
+	mapping := map[string]interface{}{}
+	for _, pair := range strings.Split(text, ",") {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		parts := strings.SplitN(strings.Replace(pair, "->", ":", 1), ":", 2)
+		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+			return
+		}
+		mapping[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+	if len(mapping) > 0 {
+		node.Config["mapping"] = mapping
+	}
+}
+
 func validateAIGrounding(def model.PipelineDefinition, catalog map[string]model.CatalogEntry, instances []aiConnectorInstance) error {
 	byID := map[string]aiConnectorInstance{}
 	byName := map[string][]aiConnectorInstance{}
@@ -337,6 +395,7 @@ func validateAIGrounding(def model.PipelineDefinition, catalog map[string]model.
 		if !ok {
 			return fmt.Errorf("unknown activityType %s", node.ActivityType)
 		}
+		normalizeAIConfig(node)
 		fields := map[string]model.CatalogField{}
 		for _, field := range entry.Fields {
 			fields[field.Key] = field
@@ -469,6 +528,149 @@ func unsafePipelineReason(def model.PipelineDefinition) string {
 				return fmt.Sprintf("Node %s targets a private or metadata address.", node.ID)
 			}
 		}
+	}
+	return ""
+}
+
+// aiGraphShapeError applies the canvas's structural rules (apps/web
+// validatePipeline.ts) to a planner proposal, so a graph the editor would
+// refuse to save triggers the repair round instead of being returned as ready.
+func aiGraphShapeError(def model.PipelineDefinition) error {
+	incoming, outgoing := map[string]int{}, map[string]int{}
+	parents, children := map[string][]string{}, map[string][]string{}
+	for _, edge := range def.Edges {
+		outgoing[edge.Source]++
+		incoming[edge.Target]++
+		parents[edge.Target] = append(parents[edge.Target], edge.Source)
+		children[edge.Source] = append(children[edge.Source], edge.Target)
+	}
+	sources, sinks := 0, 0
+	for _, node := range def.Nodes {
+		in, out := incoming[node.ID], outgoing[node.ID]
+		switch {
+		case node.Type == "source" && in > 0:
+			return fmt.Errorf("source node %s cannot have incoming edges", node.ID)
+		case node.Type == "sink" && out > 0:
+			return fmt.Errorf("sink node %s cannot have outgoing edges", node.ID)
+		case node.Type == "fork" && out < 2:
+			return fmt.Errorf("fork node %s needs at least two outgoing edges", node.ID)
+		case node.Type == "merge" && in < 2:
+			return fmt.Errorf("merge node %s needs at least two incoming edges", node.ID)
+		case in+out == 0:
+			return fmt.Errorf("node %s is not connected to the pipeline", node.ID)
+		case node.Type != "sink" && out == 0:
+			return fmt.Errorf("node %s (%s) has no outgoing edge; connect it to a downstream node or sink%s", node.ID, node.Type, aiInsertHint(def, node.ID, parents, children))
+		}
+		if node.Type == "source" {
+			sources++
+		}
+		if node.Type == "sink" {
+			sinks++
+		}
+	}
+	if sources == 0 || sinks == 0 {
+		return fmt.Errorf("pipeline needs at least one source and one sink")
+	}
+	return nil
+}
+
+// aiInsertHint names the edge fix for the two misses seen live when a step X
+// is inserted before a sink T: X attached as a P -> X side branch next to
+// P -> T, or P -> T dropped so T is left without input.
+func aiInsertHint(def model.PipelineDefinition, id string, parents, children map[string][]string) string {
+	// The other miss: the old P -> T edge was dropped, leaving T unfed.
+	unfed := []string{}
+	for _, node := range def.Nodes {
+		if node.Type == "sink" && len(parents[node.ID]) == 0 {
+			unfed = append(unfed, node.ID)
+		}
+	}
+	if len(unfed) == 1 {
+		return fmt.Sprintf(" (add edge %s -> %s so the sink receives its output)", id, unfed[0])
+	}
+	if len(parents[id]) != 1 {
+		return ""
+	}
+	parent := parents[id][0]
+	siblings := []string{}
+	for _, child := range children[parent] {
+		if child != id {
+			siblings = append(siblings, child)
+		}
+	}
+	if len(siblings) != 1 {
+		return ""
+	}
+	target := siblings[0]
+	return fmt.Sprintf(" (to place %s before %s, replace edge %s -> %s with %s -> %s and %s -> %s)", id, target, parent, target, parent, id, id, target)
+}
+
+// aiSpliceDanglingStep connects the one transform a model left dangling when
+// exactly one reading is possible, and returns a note for the proposal's
+// assumptions ("" when nothing was changed). Patterns seen live:
+//   - side branch: P -> X added beside P -> T; becomes P -> X -> T.
+//   - dropped edge: P -> X with the sink T left unfed; adds X -> T.
+//   - unconnected: X has no edges and the only sink T has a single parent P;
+//     becomes P -> X -> T.
+//
+// Forks are never rewritten: their extra branches are intentional.
+func aiSpliceDanglingStep(def *model.PipelineDefinition) string {
+	incoming, outgoing := map[string][]string{}, map[string][]string{}
+	byID := map[string]model.Node{}
+	for _, node := range def.Nodes {
+		byID[node.ID] = node
+	}
+	for _, edge := range def.Edges {
+		outgoing[edge.Source] = append(outgoing[edge.Source], edge.Target)
+		incoming[edge.Target] = append(incoming[edge.Target], edge.Source)
+	}
+	dangling, sinks := []model.Node{}, []model.Node{}
+	for _, node := range def.Nodes {
+		if node.Type == "transform" && len(outgoing[node.ID]) == 0 {
+			dangling = append(dangling, node)
+		}
+		if node.Type == "sink" {
+			sinks = append(sinks, node)
+		}
+	}
+	if len(dangling) != 1 || len(sinks) != 1 {
+		return ""
+	}
+	step, sink := dangling[0], sinks[0]
+	label := func(id string) string {
+		if node := byID[id]; strings.TrimSpace(node.Label) != "" {
+			return node.Label
+		}
+		return id
+	}
+	link := func(source, target string) {
+		def.Edges = append(def.Edges, model.Edge{ID: fmt.Sprintf("e-ai-%s-%s", source, target), Source: source, Target: target})
+	}
+	unlink := func(source, target string) {
+		kept := def.Edges[:0]
+		for _, edge := range def.Edges {
+			if edge.Source != source || edge.Target != target {
+				kept = append(kept, edge)
+			}
+		}
+		def.Edges = kept
+	}
+	splice := func(parent string) string {
+		unlink(parent, sink.ID)
+		link(parent, step.ID)
+		link(step.ID, sink.ID)
+		return fmt.Sprintf("Connected %s between %s and %s so no data is dropped; review before applying.", label(step.ID), label(parent), label(sink.ID))
+	}
+	parents := incoming[step.ID]
+	switch {
+	case len(parents) == 1 && byID[parents[0]].Type != "fork" && len(incoming[sink.ID]) == 1 && incoming[sink.ID][0] == parents[0]:
+		unlink(parents[0], step.ID)
+		return splice(parents[0])
+	case len(parents) >= 1 && len(incoming[sink.ID]) == 0:
+		link(step.ID, sink.ID)
+		return fmt.Sprintf("Connected %s to %s so the sink receives data; review before applying.", label(step.ID), label(sink.ID))
+	case len(parents) == 0 && len(incoming[sink.ID]) == 1 && byID[incoming[sink.ID][0]].Type != "fork":
+		return splice(incoming[sink.ID][0])
 	}
 	return ""
 }

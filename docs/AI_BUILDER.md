@@ -12,8 +12,19 @@ model is installed:
 ./scripts/bootstrap.sh
 ```
 
-The local default is `llama3.2:3b`, stored on an 8 GiB persistent volume. Override
-`ollamaModel` with a Helm value when a smaller or larger model is required.
+The default is `qwen3:8b` with few-shot planner examples (`ollama.fewShot`,
+`ollama.numCtx: 8192`), stored on a 20 GiB volume with a 12 GiB pod limit; it
+won the [October 2026 bake-off](AI_MODEL_BAKEOFF.md). Override `ollamaModel`
+and `ollama.resources` for another model: a 3-4B model fits in 4 GiB, while
+27B+ models (qwen3.6 / qwen3.8) need ~24 GiB and a GPU.
+
+The Build with AI panel has a **Model** picker with the top two bake-off
+models: `qwen3:8b` (best quality, 14/17) and `qwen3:4b-instruct-2507` (about
+1.7x faster, 11/17). The list comes from `GET /api/ai/models`, set by
+`OLLAMA_MODELS` (compose) or `ollamaModels` (Helm), and every listed model is
+pulled at startup. The API rejects any model not on the list, and Ollama keeps
+one model resident at a time, so switching models costs a reload of a few
+seconds. The choice is remembered per browser.
 
 ## How it works
 

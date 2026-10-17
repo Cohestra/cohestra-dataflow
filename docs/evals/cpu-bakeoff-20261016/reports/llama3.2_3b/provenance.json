@@ -1,0 +1,27 @@
+{
+  "commit": "58c386ca3fa7239fe39ffa74b51e994301cc1deb",
+  "model": "llama3.2:3b",
+  "details": {
+    "parent_model": "llama3.2_3b.gguf",
+    "format": "gguf",
+    "family": "llama",
+    "families": [
+      "llama"
+    ],
+    "parameter_size": "3.2B",
+    "quantization_level": "Q4_K_M",
+    "runner": "llamacpp"
+  },
+  "modelInfo": {
+    "general.parameter_count": 3212749888,
+    "llama.context_length": 131072
+  },
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "think": false
+  },
+  "cases": "scripts/subset12.json",
+  "host": "4 vCPU, 15 GiB RAM, CPU-only"
+}

@@ -29,3 +29,6 @@ graphify-out/
 
 # Private local acceptance credentials, logs and test evidence
 /.artifacts/
+
+# Per-developer compose overrides (auto-loaded by docker compose)
+docker-compose.override.yml

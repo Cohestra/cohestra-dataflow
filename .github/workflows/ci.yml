@@ -85,7 +85,11 @@ jobs:
           cache-dependency-path: apps/workflow-go/go.sum
       - name: Scan Go dependencies for known vulnerabilities
         working-directory: apps/workflow-go
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+        # Fails on reachable vulnerabilities not covered by a dated, reviewed
+        # exemption in .github/govulncheck-exemptions.txt.
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 -format json ./... > "$RUNNER_TEMP/govulncheck.json"
+          python3 ../../scripts/govulncheck-gate.py "$RUNNER_TEMP/govulncheck.json" ../../.github/govulncheck-exemptions.txt
 
   compose:
     runs-on: ubuntu-latest

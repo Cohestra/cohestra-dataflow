@@ -4,13 +4,15 @@ import { ProposalChanges } from './ProposalChanges';
 import type { ProposalChange } from '../../utils/pipelineProposal';
 import { MermaidPreview } from '../../components/MermaidPreview';
 import type { AiGenerateResult } from '../../hooks/useAiGenerate';
+import type { AiModelOption } from '../../api';
 
 // Right-hand "Build with AI" chat panel: prompt input, message history, and
 // the pending proposal (mermaid preview + apply/discard/retry).
 export function AiBuilderPanel({
   showAI, setShowAI, hasNodes,
   aiMessages, aiProposal, aiProposalStale, aiChanges, applyAI, discardProposal, aiLoading, runAI,
-  aiPrompt, setAiPrompt, aiError, aiUndo, undoAI,
+  aiPrompt, setAiPrompt, aiError, aiUndo, undoAI, canRedoAI, redoAI,
+  aiModels, aiModel, setAiModel,
 }: {
   showAI: boolean;
   setShowAI: (show: boolean) => void;
@@ -28,6 +30,11 @@ export function AiBuilderPanel({
   aiError: string | null;
   aiUndo: any | null;
   undoAI: () => void;
+  canRedoAI: boolean;
+  redoAI: () => void;
+  aiModels: AiModelOption[];
+  aiModel: string;
+  setAiModel: (model: string) => void;
 }) {
   const requestInput = useRef<HTMLInputElement>(null);
   const finishReview = (action: () => void) => {
@@ -76,6 +83,13 @@ export function AiBuilderPanel({
             </div>}
           </div>
           <div className="border-t border-gray-100 p-3 dark:border-white/[0.07]">
+            {aiModels.length > 1 && <label className="mb-2 flex items-center gap-2 text-xs text-gray-500 dark:text-white/50">
+              Model
+              <select className="glass-input flex-1 py-1 text-xs" aria-label="AI model" value={aiModel} disabled={aiLoading}
+                onChange={e => setAiModel(e.target.value)}>
+                {aiModels.map(option => <option key={option.id} value={option.id}>{option.label} — {option.description}</option>)}
+              </select>
+            </label>}
             <div className="flex items-center gap-2">
               <input ref={requestInput}
                 className="glass-input flex-1 text-sm"
@@ -90,7 +104,10 @@ export function AiBuilderPanel({
             </div>
             {aiError && <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-[10px] text-red-600 dark:border-red-500/15 dark:bg-red-500/[0.06] dark:text-red-300">{aiError}</p>}
             {aiLoading && <div className="h-0.5 animate-pulse bg-brand-500" />}
-            {aiUndo && <button className="mt-2 text-xs text-brand-500" onClick={() => finishReview(undoAI)}>Undo last apply</button>}
+            {(aiUndo || canRedoAI) && <div className="mt-2 flex gap-3">
+              {aiUndo && <button className="text-xs text-brand-500" onClick={() => finishReview(undoAI)}>Undo last apply</button>}
+              {canRedoAI && <button className="text-xs text-brand-500" onClick={() => finishReview(redoAI)}>Redo last apply</button>}
+            </div>}
           </div>
         </>
       )}

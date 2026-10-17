@@ -11,7 +11,24 @@ images:
   curl: curlimages/curl:8.9.1
 
 hostPath: /workspace
-ollamaModel: llama3.2:3b
+# qwen3:8b + few-shot won the October 2026 CPU bake-off (docs/AI_MODEL_BAKEOFF.md);
+# llama3.2:3b (the previous default) fits the old 4Gi limit but passed 4/12.
+ollamaModel: qwen3:8b
+# Models the AI builder's picker offers (default first); all are pulled.
+# qwen3:4b-instruct-2507: 11/17 at ~1.7x the speed.
+ollamaModels: [qwen3:8b, qwen3:4b-instruct-2507]
+ollama:
+  # Sized for an 8-9B Q4 model (~5-7 GB weights) plus an 8k KV cache; a 3-4B
+  # model fits in 4Gi. 27B+ models (e.g. qwen3.6/3.8 27b) need ~24Gi and a GPU.
+  resources:
+    requests: {cpu: "1", memory: 4Gi}
+    limits: {cpu: "4", memory: 12Gi}
+  # Planner context window; few-shot examples need 8192.
+  numCtx: 8192
+  # Category-matched planner examples (see internal/api/ai_fewshot.go).
+  fewShot: true
+  # Per model call. qwen3:8b on a 4-vCPU node can exceed 240s; use ~120 on a GPU.
+  timeoutSeconds: 480
 cohestraURL: http://cohestra-control-api.cohestra-system:8080
 # Enables internal demo-only features in the API. Keep false in production.
 internalDemoFeatures: false
@@ -31,7 +48,9 @@ storage:
   postgres: 2Gi
   redis: 2Gi
   clickhouse: 2Gi
-  ollama: 8Gi
+  # Room for the model plus one replacement pull. Growing an existing PVC
+  # needs a StorageClass with allowVolumeExpansion.
+  ollama: 20Gi
 
 runtime:
   # Production mode makes auth cookies Secure and refuses to start without

@@ -1,0 +1,11 @@
+llama3.2:3b|llama3.2|3B-Q4_K_M
+qwen3:4b-instruct-2507|qwen3|4b-instruct-2507-q4_K_M
+granite4.2:3b|granite4.2|3b-q4_K_M
+gemma3:4b|gemma3|4b-q4_K_M
+ministral3:3b|ministral3|3B-Q4_K_M
+nemotron-3-nano:4b|nemotron-3-nano|4b-q4_K_M
+qwen3.5:4b|qwen3.5|4b-q4_K_XL
+llama3.1:8b|llama3.1|8B-Q4_K_M
+qwen3:8b|qwen3|8b-q4_K_M
+granite4.2:8b|granite4.2|8b-q4_K_M
+qwen3.5:9b|qwen3.5|9b-q4_K_M

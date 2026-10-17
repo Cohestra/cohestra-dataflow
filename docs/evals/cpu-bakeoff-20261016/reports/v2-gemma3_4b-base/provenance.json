@@ -1,0 +1,30 @@
+{
+  "commit": "22ff51536554d7e074ba6505c959e5f82b29b56b",
+  "model": "gemma3:4b",
+  "details": {
+    "parent_model": "gemma3_4b.gguf",
+    "format": "gguf",
+    "family": "gemma3",
+    "families": [
+      "gemma3"
+    ],
+    "parameter_size": "3.9B",
+    "quantization_level": "Q4_K_M",
+    "runner": "llamacpp"
+  },
+  "modelInfo": {
+    "gemma3.context_length": 131072,
+    "general.parameter_count": 3880263168
+  },
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "think": false
+  },
+  "apiEnv": [
+    "OLLAMA_NUM_CTX=8192"
+  ],
+  "harness": "$BAKE/scripts/h2/ai-harness-ee.test",
+  "cases": "/home/user/cohestra-dataflow/tests/ai-evals/cases/v2-datalake.json",
+  "host": "4 vCPU, 15 GiB RAM, CPU-only"
+}

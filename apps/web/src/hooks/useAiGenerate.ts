@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { api, type AiConversationMessage } from '../api';
+import { useEffect, useState } from 'react';
+import { api, type AiConversationMessage, type AiModelOption } from '../api';
 
 export type AiGenerateStatus = 'ready' | 'needs_input' | 'rejected';
 
@@ -53,14 +53,36 @@ export function aiErrorMessage(error: unknown): string {
   return 'The AI builder is unavailable right now. Your pipeline is unchanged. Try again shortly or edit the node settings directly.';
 }
 
+const MODEL_KEY = 'ai-builder-model';
+const storedModel = () => { try { return localStorage.getItem(MODEL_KEY) ?? ''; } catch { return ''; } };
+
 export function useAiGenerate() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The server lists the models it allows; without that list the default is used.
+  const [models, setModels] = useState<AiModelOption[]>([]);
+  const [model, setModelState] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    api.aiModels().then(result => {
+      if (cancelled || !Array.isArray(result?.models)) return;
+      setModels(result.models);
+      const remembered = storedModel();
+      setModelState(result.models.some(option => option.id === remembered) ? remembered : result.default ?? '');
+    }).catch(() => { /* older API: no model choice */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const setModel = (next: string) => {
+    setModelState(next);
+    try { localStorage.setItem(MODEL_KEY, next); } catch { /* per-viewer convenience only */ }
+  };
 
   const generate = async (prompt: string, mermaid = '', messages: AiConversationMessage[] = []): Promise<AiGenerateResult | null> => {
     setLoading(true); setError(null);
     try {
-      return normalizeAiGenerateResult(await api.generatePipeline(prompt, { mermaid, messages }));
+      return normalizeAiGenerateResult(await api.generatePipeline(prompt, { mermaid, messages, model }));
     } catch (e) { setError(aiErrorMessage(e)); return null; }
     finally { setLoading(false); }
   };
@@ -68,10 +90,10 @@ export function useAiGenerate() {
   const refine = async (definition: any, prompt: string, mermaid = '', messages: AiConversationMessage[] = []): Promise<AiGenerateResult | null> => {
     setLoading(true); setError(null);
     try {
-      return normalizeAiGenerateResult(await api.refinePipeline(definition, prompt, { mermaid, messages }));
+      return normalizeAiGenerateResult(await api.refinePipeline(definition, prompt, { mermaid, messages, model }));
     } catch (e) { setError(aiErrorMessage(e)); return null; }
     finally { setLoading(false); }
   };
 
-  return { generate, refine, loading, error };
+  return { generate, refine, loading, error, models, model, setModel };
 }

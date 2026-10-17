@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/dataflow-poc/workflow-go/internal/model"
 )
@@ -141,12 +140,14 @@ func aiPipelineJSONSchema(activityTypes []string) map[string]interface{} {
 func (s *Server) registerAI(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/ai/generate", handle(s.aiGenerate))
 	mux.HandleFunc("POST /api/ai/refine", handle(s.aiRefine))
+	mux.HandleFunc("GET /api/ai/models", handle(s.aiModels))
 }
 func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
 		Prompt   string                  `json:"prompt"`
 		Mermaid  string                  `json:"mermaid"`
 		Messages []aiConversationMessage `json:"messages"`
+		Model    string                  `json:"model"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return nil
@@ -157,6 +158,11 @@ func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) error {
 	if len([]rune(body.Prompt)) > maxAIUserRunes {
 		return badRequest(ErrInvalidRequest, "prompt is too large")
 	}
+	model, allowed := resolveAIModel(body.Model)
+	if !allowed {
+		return badRequest(ErrInvalidRequest, "unsupported AI model")
+	}
+	r = withAIModel(r, model)
 	if reason, rejected := rejectedAIIntent(body.Prompt); rejected {
 		jsonResponse(w, http.StatusOK, aiRejectedResult(reason, 0))
 		return nil
@@ -169,6 +175,7 @@ func (s *Server) aiGenerate(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &HTTPError{Status: http.StatusUnprocessableEntity, Message: "could not generate a valid pipeline: " + err.Error()}
 	}
+	result["model"] = model
 	jsonResponse(w, http.StatusOK, result)
 	return nil
 }
@@ -178,6 +185,7 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 		Definition interface{}             `json:"definition"`
 		Mermaid    string                  `json:"mermaid"`
 		Messages   []aiConversationMessage `json:"messages"`
+		Model      string                  `json:"model"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return nil
@@ -188,6 +196,11 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 	if len([]rune(body.Prompt)) > maxAIUserRunes {
 		return badRequest(ErrInvalidRequest, "prompt is too large")
 	}
+	model, allowed := resolveAIModel(body.Model)
+	if !allowed {
+		return badRequest(ErrInvalidRequest, "unsupported AI model")
+	}
+	r = withAIModel(r, model)
 	if reason, rejected := rejectedAIIntent(body.Prompt); rejected {
 		jsonResponse(w, http.StatusOK, aiRejectedResult(reason, 0))
 		return nil
@@ -215,6 +228,7 @@ func (s *Server) aiRefine(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &HTTPError{Status: http.StatusUnprocessableEntity, Message: "could not refine pipeline: " + err.Error()}
 	}
+	result["model"] = model
 	jsonResponse(w, http.StatusOK, result)
 	return nil
 }
@@ -248,6 +262,20 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 			suffix := ""
 			if field.Required {
 				suffix = " (required)"
+			}
+			// Grounding rejects values outside a select's options, so state them.
+			if len(field.Options) > 0 {
+				options := make([]string, len(field.Options))
+				for i, option := range field.Options {
+					options[i] = fmt.Sprint(option)
+				}
+				suffix += " one of " + strings.Join(options, "|")
+			}
+			if aiCommaListField(entry.ActivityType, field.Key) {
+				suffix += " (comma-separated string)"
+			}
+			if field.Type == "json" {
+				suffix += ` (JSON object, e.g. {"old":"new"})`
 			}
 			fields = append(fields, field.Key+suffix)
 		}
@@ -286,6 +314,7 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		`- New node "id" values should be short lowercase alphanumeric strings like n1, n2, n3. When refining, preserve existing safe IDs, including hyphens and underscores.`,
 		`- Every edge "source" and "target" MUST exactly match one of the node "id" values you defined above.`,
 		`- A pipeline starts with source nodes, applies transforms in request order, and ends with sink nodes.`,
+		`- To insert a step between connected nodes A -> B, replace that edge with A -> new and new -> B. Every non-sink node needs an outgoing edge; never leave a new step as a dead-end branch.`,
 		`- Plan as a symbolic operator chain first; do not generate code. Each natural-language action must map to one catalog activityType.`,
 		`- Ground parameters in the user's words and available schemas/columns when named. Do not invent column names, buckets, paths, URLs, or table names.`,
 		`- Keep operator order semantically valid: filtering/renaming/casting happens before downstream aggregations, sinks, and exports that depend on those fields.`,
@@ -311,9 +340,15 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		`- Return status "rejected" with a non-empty reason and warning for requests that require secret exposure, unsafe/private outbound URLs, or a cyclic graph. Do not return a DAG.`,
 		`- For needs_input, return empty suggestedName, nodes, and edges and use a manual trigger.`,
 		`- For ready and needs_input, reason must be an empty string.`,
-		`Respond with ONLY JSON matching the supplied schema; no markdown or explanation.`,
 	)
-	buildResult := func(output aiPipelineResponse) (map[string]interface{}, error) {
+	if aiFewShotEnabled() {
+		lines = append(lines, aiFewShotSection(prompt)...)
+	}
+	lines = append(lines, `Respond with ONLY JSON matching the supplied schema; no markdown or explanation.`)
+	// tolerateShape: on the final attempt a graph the canvas would flag (e.g. a
+	// dead-end node) is still returned, with a warning, so the user can fix one
+	// edge on the canvas instead of losing the whole proposal.
+	buildResult := func(output aiPipelineResponse, tolerateShape bool) (map[string]interface{}, error) {
 		questions := append([]string{}, output.Questions...)
 		assumptions := append([]string{}, output.Assumptions...)
 		warnings := append([]string{}, output.Warnings...)
@@ -409,6 +444,19 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		if err := validatePipeline(def); err != nil {
 			return nil, err
 		}
+		if aiGraphShapeError(def) != nil {
+			// Small models often leave an inserted step unconnected; splice it
+			// in when the fix is unambiguous. The user reviews it before Apply.
+			if note := aiSpliceDanglingStep(&def); note != "" && aiGraphShapeError(def) == nil {
+				assumptions = append(assumptions, note)
+			}
+		}
+		if err := aiGraphShapeError(def); err != nil {
+			if !tolerateShape {
+				return nil, err
+			}
+			warnings = append(warnings, "Review the graph before saving: "+err.Error()+".")
+		}
 		mermaidLabel := func(value string) string {
 			value = strings.ReplaceAll(value, `\`, `\\`)
 			value = strings.ReplaceAll(value, `"`, `\"`)
@@ -441,7 +489,7 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 				return nil, err
 			}
 			lastErr = err
-		} else if result, err := buildResult(output); err == nil {
+		} else if result, err := buildResult(output, attempt == 1); err == nil {
 			result["metrics"] = map[string]int{"repairCount": attempt}
 			return result, nil
 		} else {
@@ -456,9 +504,9 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 
 func (s *Server) ollamaJSON(r *http.Request, system, user string, schema map[string]interface{}, target interface{}) error {
 	payload, err := json.Marshal(map[string]interface{}{
-		"model": env("OLLAMA_MODEL", "llama3.1:8b"), "stream": false, "format": schema,
+		"model": aiModelFrom(r), "stream": false, "format": schema,
 		"think":    strings.EqualFold(env("OLLAMA_THINK", "false"), "true"),
-		"options":  map[string]interface{}{"temperature": 0, "seed": 42, "num_ctx": 4096},
+		"options":  map[string]interface{}{"temperature": 0, "seed": 42, "num_ctx": aiNumCtx()},
 		"messages": []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": user}},
 	})
 	if err != nil {
@@ -477,7 +525,7 @@ func (s *Server) ollamaJSON(r *http.Request, system, user string, schema map[str
 	client := *s.HTTP
 	// ponytail: CPU-only Ollama on this box runs ~4 tok/s and can take minutes,
 	// especially on a cold model load — give it real headroom.
-	client.Timeout = 4 * time.Minute
+	client.Timeout = aiCallTimeout()
 	if err := doJSON(&client, request, &response); err != nil {
 		return fmt.Errorf("AI builder is unavailable")
 	}

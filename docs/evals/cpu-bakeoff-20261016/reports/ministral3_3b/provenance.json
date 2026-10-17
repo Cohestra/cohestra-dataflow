@@ -1,0 +1,28 @@
+{
+  "commit": "22ff51536554d7e074ba6505c959e5f82b29b56b",
+  "model": "ministral3:3b",
+  "details": {
+    "parent_model": "ministral3_3b.gguf",
+    "format": "gguf",
+    "family": "mistral3",
+    "families": [
+      "mistral3"
+    ],
+    "parameter_size": "3.4B",
+    "quantization_level": "Q4_K_M",
+    "runner": "llamacpp"
+  },
+  "modelInfo": {
+    "general.parameter_count": 3429006336,
+    "mistral3.context_length": 262144,
+    "mistral3.rope.scaling.original_context_length": 16384
+  },
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "think": false
+  },
+  "cases": "scripts/subset12.json",
+  "host": "4 vCPU, 15 GiB RAM, CPU-only"
+}

@@ -1,0 +1,27 @@
+{
+  "commit": "22ff51536554d7e074ba6505c959e5f82b29b56b",
+  "model": "granite4.2:3b",
+  "details": {
+    "parent_model": "granite4.2_3b.gguf",
+    "format": "gguf",
+    "family": "granite",
+    "families": [
+      "granite"
+    ],
+    "parameter_size": "3.7B",
+    "quantization_level": "Q4_K_M",
+    "runner": "llamacpp"
+  },
+  "modelInfo": {
+    "general.parameter_count": 3659737600,
+    "granite.context_length": 131072
+  },
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "num_ctx": 4096,
+    "think": false
+  },
+  "cases": "scripts/subset12.json",
+  "host": "4 vCPU, 15 GiB RAM, CPU-only"
+}

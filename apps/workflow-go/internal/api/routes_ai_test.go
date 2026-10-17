@@ -13,6 +13,7 @@ import (
 )
 
 type capturedOllamaRequest struct {
+	Model    string                   `json:"model"`
 	Format   interface{}              `json:"format"`
 	Think    bool                     `json:"think"`
 	Options  map[string]interface{}   `json:"options"`
@@ -380,5 +381,103 @@ func TestRefineKeepsCurrentNameWhenModelOmitsIt(t *testing.T) {
 	}
 	if len(*requests) != 1 {
 		t.Fatalf("requests = %d, want 1 (no repair for a blank name)", len(*requests))
+	}
+}
+
+func TestBuildPipelinePromptListsSelectOptions(t *testing.T) {
+	server, requests := fakeOllama(t, `{"status":"needs_input","reason":"","suggestedName":"","questions":["Which connection?"],"assumptions":[],"warnings":[],"trigger":{"type":"manual"},"nodes":[],"edges":[]}`)
+	defer server.Close()
+	t.Setenv("OLLAMA_URL", server.URL)
+	api := &Server{HTTP: server.Client()}
+	if _, err := api.buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "dedupe orders"); err != nil {
+		t.Fatal(err)
+	}
+	system, _ := (*requests)[0].Messages[0]["content"].(string)
+	for _, want := range []string{"keep one of first|last", "layer one of bronze|silver|gold", "writeMode one of upsert|apply-cdc"} {
+		if !strings.Contains(system, want) {
+			t.Fatalf("system prompt missing %q", want)
+		}
+	}
+}
+
+func TestBuildPipelineJoinsCommaListFieldsWithoutRepair(t *testing.T) {
+	// Every bake-off model sent transform.parse fields as a JSON array.
+	server, requests := fakeOllama(t, `{"status":"ready","reason":"","suggestedName":"Parse payments","questions":[],"assumptions":[],"warnings":[],"trigger":{"type":"manual"},
+		"nodes":[{"id":"n1","label":"API","activityType":"http.fetch","config":{"url":"https://api.example.test/payments"}},
+		{"id":"n2","label":"Parse","activityType":"transform.parse","config":{"fields":["amount"," currency"],"onError":"skip"}},
+		{"id":"n3","label":"Dedupe","activityType":"transform.dedupe","config":{"key":["payment_id"],"keep":"first"}},
+		{"id":"n4","label":"Store","activityType":"sink.records","config":{"collection":"payments"}}],
+		"edges":[{"source":"n1","target":"n2"},{"source":"n2","target":"n3"},{"source":"n3","target":"n4"}]}`)
+	defer server.Close()
+	t.Setenv("OLLAMA_URL", server.URL)
+	api := &Server{HTTP: server.Client()}
+	result, err := api.buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "parse payments")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(*requests) != 1 {
+		t.Fatalf("expected no repair round, got %d model calls", len(*requests))
+	}
+	nodes := result["definition"].(map[string]interface{})["nodes"].([]model.Node)
+	if got := nodes[1].Config["fields"]; got != "amount,currency" {
+		t.Fatalf("parse fields = %#v, want comma-separated string", got)
+	}
+	if got := nodes[2].Config["key"]; got != "payment_id" {
+		t.Fatalf("dedupe key = %#v", got)
+	}
+	system, _ := (*requests)[0].Messages[0]["content"].(string)
+	if !strings.Contains(system, "fields (comma-separated string)") {
+		t.Fatal("prompt must state the comma-separated format for transform.parse fields")
+	}
+}
+
+func TestBuildPipelineStillRejectsNonStringListItems(t *testing.T) {
+	bad := `{"status":"ready","reason":"","suggestedName":"x","questions":[],"assumptions":[],"warnings":[],"trigger":{"type":"manual"},
+		"nodes":[{"id":"n1","label":"API","activityType":"http.fetch","config":{"url":"https://api.example.test/p"}},
+		{"id":"n2","label":"Parse","activityType":"transform.parse","config":{"fields":[{"name":"amount"}]}},
+		{"id":"n3","label":"Store","activityType":"sink.records","config":{"collection":"p"}}],
+		"edges":[{"source":"n1","target":"n2"},{"source":"n2","target":"n3"}]}`
+	server, _ := fakeOllama(t, bad, bad)
+	defer server.Close()
+	t.Setenv("OLLAMA_URL", server.URL)
+	api := &Server{HTTP: server.Client()}
+	if _, err := api.buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "parse"); err == nil || !strings.Contains(err.Error(), "config.fields must have type text") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestBuildPipelineSplicesDeadEndOrWarnsWhenAmbiguous(t *testing.T) {
+	graph := func(nodes, edges string) string {
+		return `{"status":"ready","reason":"","suggestedName":"Customers","questions":[],"assumptions":[],"warnings":[],"trigger":{"type":"manual"},
+			"nodes":[{"id":"n1","label":"API","activityType":"http.fetch","config":{"url":"https://api.example.test/c"}},
+			{"id":"n2","label":"Dedupe","activityType":"transform.dedupe","config":{"key":"id"}},` + nodes + `
+			{"id":"n3","label":"Store","activityType":"sink.records","config":{"collection":"c"}}],"edges":` + edges + `}`
+	}
+	contract := `{"id":"n4","label":"Contract","activityType":"transform.contract","config":{"schemaJson":"{}"}},`
+	// The live qwen3:8b miss: contract attached beside dedupe -> sink. Fixed without a repair round.
+	sideBranch := graph(contract, `[{"source":"n1","target":"n2"},{"source":"n2","target":"n3"},{"source":"n2","target":"n4"}]`)
+	server, requests := fakeOllama(t, sideBranch)
+	t.Setenv("OLLAMA_URL", server.URL)
+	result, err := (&Server{HTTP: server.Client()}).buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "add a contract before the sink")
+	server.Close()
+	if err != nil || len(*requests) != 1 {
+		t.Fatalf("splice: err=%v calls=%d", err, len(*requests))
+	}
+	if assumptions := result["assumptions"].([]string); len(assumptions) != 1 || !strings.Contains(assumptions[0], "Connected Contract between Dedupe and Store") {
+		t.Fatalf("assumptions = %v", assumptions)
+	}
+
+	// Two dangling steps are ambiguous: repair round names the node, then a warned draft.
+	ambiguous := graph(contract+`{"id":"n5","label":"Mask","activityType":"transform.map","config":{"expression":"r"}},`,
+		`[{"source":"n1","target":"n2"},{"source":"n2","target":"n3"},{"source":"n2","target":"n4"},{"source":"n2","target":"n5"}]`)
+	server, requests = fakeOllama(t, ambiguous, ambiguous)
+	t.Setenv("OLLAMA_URL", server.URL)
+	result, err = (&Server{HTTP: server.Client()}).buildPipeline(httptest.NewRequest(http.MethodPost, "/", nil), "add two steps")
+	server.Close()
+	if err != nil || len(*requests) != 2 || !strings.Contains((*requests)[1].Messages[1]["content"].(string), "has no outgoing edge") {
+		t.Fatalf("ambiguous: err=%v calls=%d", err, len(*requests))
+	}
+	if warnings := result["warnings"].([]string); len(warnings) != 1 || !strings.HasPrefix(warnings[0], "Review the graph before saving:") {
+		t.Fatalf("warnings = %v", warnings)
 	}
 }
