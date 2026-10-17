@@ -511,9 +511,12 @@ func unsafePipelineReason(def model.PipelineDefinition) string {
 // refuse to save triggers the repair round instead of being returned as ready.
 func aiGraphShapeError(def model.PipelineDefinition) error {
 	incoming, outgoing := map[string]int{}, map[string]int{}
+	parents, children := map[string][]string{}, map[string][]string{}
 	for _, edge := range def.Edges {
 		outgoing[edge.Source]++
 		incoming[edge.Target]++
+		parents[edge.Target] = append(parents[edge.Target], edge.Source)
+		children[edge.Source] = append(children[edge.Source], edge.Target)
 	}
 	sources, sinks := 0, 0
 	for _, node := range def.Nodes {
@@ -530,7 +533,7 @@ func aiGraphShapeError(def model.PipelineDefinition) error {
 		case in+out == 0:
 			return fmt.Errorf("node %s is not connected to the pipeline", node.ID)
 		case node.Type != "sink" && out == 0:
-			return fmt.Errorf("node %s (%s) has no outgoing edge; connect it to a downstream node or sink", node.ID, node.Type)
+			return fmt.Errorf("node %s (%s) has no outgoing edge; connect it to a downstream node or sink%s", node.ID, node.Type, aiInsertHint(def, node.ID, parents, children))
 		}
 		if node.Type == "source" {
 			sources++
@@ -543,4 +546,35 @@ func aiGraphShapeError(def model.PipelineDefinition) error {
 		return fmt.Errorf("pipeline needs at least one source and one sink")
 	}
 	return nil
+}
+
+// aiInsertHint names the edge fix for the two misses seen live when a step X
+// is inserted before a sink T: X attached as a P -> X side branch next to
+// P -> T, or P -> T dropped so T is left without input.
+func aiInsertHint(def model.PipelineDefinition, id string, parents, children map[string][]string) string {
+	// The other miss: the old P -> T edge was dropped, leaving T unfed.
+	unfed := []string{}
+	for _, node := range def.Nodes {
+		if node.Type == "sink" && len(parents[node.ID]) == 0 {
+			unfed = append(unfed, node.ID)
+		}
+	}
+	if len(unfed) == 1 {
+		return fmt.Sprintf(" (add edge %s -> %s so the sink receives its output)", id, unfed[0])
+	}
+	if len(parents[id]) != 1 {
+		return ""
+	}
+	parent := parents[id][0]
+	siblings := []string{}
+	for _, child := range children[parent] {
+		if child != id {
+			siblings = append(siblings, child)
+		}
+	}
+	if len(siblings) != 1 {
+		return ""
+	}
+	target := siblings[0]
+	return fmt.Sprintf(" (to place %s before %s, replace edge %s -> %s with %s -> %s and %s -> %s)", id, target, parent, target, parent, id, id, target)
 }

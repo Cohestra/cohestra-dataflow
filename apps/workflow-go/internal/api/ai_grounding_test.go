@@ -191,3 +191,26 @@ func TestAIGraphShapeMatchesCanvasRules(t *testing.T) {
 		}
 	}
 }
+
+func TestAIGraphShapeHintsTheInsertionFix(t *testing.T) {
+	node := func(id, kind string) model.Node { return model.Node{ID: id, Type: kind, ActivityType: kind + ".x"} }
+	edge := func(source, target string) model.Edge {
+		return model.Edge{ID: source + target, Source: source, Target: target}
+	}
+	nodes := []model.Node{node("n1", "source"), node("n2", "transform"), node("n4", "transform"), node("n3", "sink")}
+	cases := map[string]struct {
+		edges []model.Edge
+		want  string
+	}{
+		// qwen3:8b live: contract attached beside the existing dedupe -> sink edge.
+		"side branch": {[]model.Edge{edge("n1", "n2"), edge("n2", "n3"), edge("n2", "n4")}, "replace edge n2 -> n3 with n2 -> n4 and n4 -> n3"},
+		// qwen3:4b live: dedupe -> sink dropped, sink left without input.
+		"dropped edge": {[]model.Edge{edge("n1", "n2"), edge("n2", "n4")}, "add edge n4 -> n3"},
+	}
+	for name, c := range cases {
+		err := aiGraphShapeError(model.PipelineDefinition{Nodes: nodes, Edges: c.edges})
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Fatalf("%s: err = %v, want hint %q", name, err, c.want)
+		}
+	}
+}

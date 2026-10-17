@@ -312,6 +312,7 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		`- New node "id" values should be short lowercase alphanumeric strings like n1, n2, n3. When refining, preserve existing safe IDs, including hyphens and underscores.`,
 		`- Every edge "source" and "target" MUST exactly match one of the node "id" values you defined above.`,
 		`- A pipeline starts with source nodes, applies transforms in request order, and ends with sink nodes.`,
+		`- To insert a step between connected nodes A -> B, replace that edge with A -> new and new -> B. Every non-sink node needs an outgoing edge; never leave a new step as a dead-end branch.`,
 		`- Plan as a symbolic operator chain first; do not generate code. Each natural-language action must map to one catalog activityType.`,
 		`- Ground parameters in the user's words and available schemas/columns when named. Do not invent column names, buckets, paths, URLs, or table names.`,
 		`- Keep operator order semantically valid: filtering/renaming/casting happens before downstream aggregations, sinks, and exports that depend on those fields.`,

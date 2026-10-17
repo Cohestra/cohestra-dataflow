@@ -87,16 +87,18 @@ var aiFewShotExamples = []aiFewShotExample{
 		}, []map[string]string{fsEdge("n1", "n3"), fsEdge("n2", "n3"), fsEdge("n3", "n4")}),
 	},
 	{
+		// Insert mid-chain: the existing dedupe -> sink edge is replaced, not kept.
 		Category: "refine",
 		Request: `Current pipeline JSON:
-{"nodes":[{"id":"orders_src","activityType":"mysql.fetch","config":{"connectionId":"example-shop","table":"shop.orders"}},{"id":"lake_out","activityType":"sink.iceberg","config":{"connectionId":"example-lake","namespace":"lake","table":"orders"}}],"edges":[{"source":"orders_src","target":"lake_out"}],"trigger":{"type":"manual"}}
+{"nodes":[{"id":"orders_src","activityType":"mysql.fetch","config":{"connectionId":"example-shop","table":"shop.orders"}},{"id":"latest","activityType":"transform.dedupe","config":{"key":"order_id","keep":"last"}},{"id":"lake_out","activityType":"sink.iceberg","config":{"connectionId":"example-lake","namespace":"lake","table":"orders"}}],"edges":[{"source":"orders_src","target":"latest"},{"source":"latest","target":"lake_out"}],"trigger":{"type":"manual"}}
 
-Apply this change: Rename column cust to customer_id before the lake sink. Keep everything else.`,
+Apply this change: Add a filter that keeps rows where total > 0, right before the lake sink. Keep every existing node unchanged.`,
 		Output: fsReady("Orders to lake", []map[string]interface{}{
 			fsNode("orders_src", "Orders", "mysql.fetch", map[string]interface{}{"connectionId": "example-shop", "table": "shop.orders"}),
-			fsNode("n1", "Rename cust", "transform.rename", map[string]interface{}{"mapping": map[string]interface{}{"cust": "customer_id"}}),
+			fsNode("latest", "Latest per order", "transform.dedupe", map[string]interface{}{"key": "order_id", "keep": "last"}),
+			fsNode("n1", "Positive totals", "transform.filter", map[string]interface{}{"predicate": "r.total > 0"}),
 			fsNode("lake_out", "Lake", "sink.iceberg", map[string]interface{}{"connectionId": "example-lake", "namespace": "lake", "table": "orders"}),
-		}, []map[string]string{fsEdge("orders_src", "n1"), fsEdge("n1", "lake_out")}),
+		}, []map[string]string{fsEdge("orders_src", "latest"), fsEdge("latest", "n1"), fsEdge("n1", "lake_out")}),
 	},
 	{
 		Category: "clarify",
