@@ -71,6 +71,8 @@ x-app-env: &app-env
   OLLAMA_MODELS: ${OLLAMA_MODELS:-qwen3:8b,qwen3:4b-instruct-2507}
   OLLAMA_THINK: ${OLLAMA_THINK:-false}
   OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-8192}
+  # Per model call; qwen3:8b on CPU can exceed the 240s code default.
+  OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-480}
   AI_FEW_SHOT: ${AI_FEW_SHOT:-true}
   # Connector SDK: drop *.manifest.json files in ./connectors/manifests and
   # they load on restart — no rebuild. The bundled examples ship in the image.

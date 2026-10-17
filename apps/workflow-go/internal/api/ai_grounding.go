@@ -604,3 +604,73 @@ func aiInsertHint(def model.PipelineDefinition, id string, parents, children map
 	target := siblings[0]
 	return fmt.Sprintf(" (to place %s before %s, replace edge %s -> %s with %s -> %s and %s -> %s)", id, target, parent, target, parent, id, id, target)
 }
+
+// aiSpliceDanglingStep connects the one transform a model left dangling when
+// exactly one reading is possible, and returns a note for the proposal's
+// assumptions ("" when nothing was changed). Patterns seen live:
+//   - side branch: P -> X added beside P -> T; becomes P -> X -> T.
+//   - dropped edge: P -> X with the sink T left unfed; adds X -> T.
+//   - unconnected: X has no edges and the only sink T has a single parent P;
+//     becomes P -> X -> T.
+//
+// Forks are never rewritten: their extra branches are intentional.
+func aiSpliceDanglingStep(def *model.PipelineDefinition) string {
+	incoming, outgoing := map[string][]string{}, map[string][]string{}
+	byID := map[string]model.Node{}
+	for _, node := range def.Nodes {
+		byID[node.ID] = node
+	}
+	for _, edge := range def.Edges {
+		outgoing[edge.Source] = append(outgoing[edge.Source], edge.Target)
+		incoming[edge.Target] = append(incoming[edge.Target], edge.Source)
+	}
+	dangling, sinks := []model.Node{}, []model.Node{}
+	for _, node := range def.Nodes {
+		if node.Type == "transform" && len(outgoing[node.ID]) == 0 {
+			dangling = append(dangling, node)
+		}
+		if node.Type == "sink" {
+			sinks = append(sinks, node)
+		}
+	}
+	if len(dangling) != 1 || len(sinks) != 1 {
+		return ""
+	}
+	step, sink := dangling[0], sinks[0]
+	label := func(id string) string {
+		if node := byID[id]; strings.TrimSpace(node.Label) != "" {
+			return node.Label
+		}
+		return id
+	}
+	link := func(source, target string) {
+		def.Edges = append(def.Edges, model.Edge{ID: fmt.Sprintf("e-ai-%s-%s", source, target), Source: source, Target: target})
+	}
+	unlink := func(source, target string) {
+		kept := def.Edges[:0]
+		for _, edge := range def.Edges {
+			if edge.Source != source || edge.Target != target {
+				kept = append(kept, edge)
+			}
+		}
+		def.Edges = kept
+	}
+	splice := func(parent string) string {
+		unlink(parent, sink.ID)
+		link(parent, step.ID)
+		link(step.ID, sink.ID)
+		return fmt.Sprintf("Connected %s between %s and %s so no data is dropped; review before applying.", label(step.ID), label(parent), label(sink.ID))
+	}
+	parents := incoming[step.ID]
+	switch {
+	case len(parents) == 1 && byID[parents[0]].Type != "fork" && len(incoming[sink.ID]) == 1 && incoming[sink.ID][0] == parents[0]:
+		unlink(parents[0], step.ID)
+		return splice(parents[0])
+	case len(parents) >= 1 && len(incoming[sink.ID]) == 0:
+		link(step.ID, sink.ID)
+		return fmt.Sprintf("Connected %s to %s so the sink receives data; review before applying.", label(step.ID), label(sink.ID))
+	case len(parents) == 0 && len(incoming[sink.ID]) == 1 && byID[incoming[sink.ID][0]].Type != "fork":
+		return splice(incoming[sink.ID][0])
+	}
+	return ""
+}

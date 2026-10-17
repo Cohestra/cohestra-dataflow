@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/dataflow-poc/workflow-go/internal/model"
 )
@@ -445,6 +444,13 @@ func (s *Server) buildNamedPipeline(r *http.Request, prompt, currentName string)
 		if err := validatePipeline(def); err != nil {
 			return nil, err
 		}
+		if aiGraphShapeError(def) != nil {
+			// Small models often leave an inserted step unconnected; splice it
+			// in when the fix is unambiguous. The user reviews it before Apply.
+			if note := aiSpliceDanglingStep(&def); note != "" && aiGraphShapeError(def) == nil {
+				assumptions = append(assumptions, note)
+			}
+		}
 		if err := aiGraphShapeError(def); err != nil {
 			if !tolerateShape {
 				return nil, err
@@ -519,7 +525,7 @@ func (s *Server) ollamaJSON(r *http.Request, system, user string, schema map[str
 	client := *s.HTTP
 	// ponytail: CPU-only Ollama on this box runs ~4 tok/s and can take minutes,
 	// especially on a cold model load — give it real headroom.
-	client.Timeout = 4 * time.Minute
+	client.Timeout = aiCallTimeout()
 	if err := doJSON(&client, request, &response); err != nil {
 		return fmt.Errorf("AI builder is unavailable")
 	}

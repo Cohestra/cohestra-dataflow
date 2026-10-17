@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 	"testing"
 
@@ -227,6 +228,44 @@ func TestNormalizeAIRenameMappingShorthand(t *testing.T) {
 		normalizeAIConfig(node)
 		if got, _ := json.Marshal(node.Config["mapping"]); string(got) != func() string { b, _ := json.Marshal(want); return string(b) }() {
 			t.Fatalf("%q -> %s", in, got)
+		}
+	}
+}
+
+func TestAISpliceDanglingStep(t *testing.T) {
+	node := func(id, kind string) model.Node { return model.Node{ID: id, Type: kind, ActivityType: kind + ".x"} }
+	edge := func(source, target string) model.Edge {
+		return model.Edge{ID: source + target, Source: source, Target: target}
+	}
+	chain := []model.Node{node("n1", "source"), node("n2", "transform"), node("n4", "transform"), node("n3", "sink")}
+	want := "n1>n2 n2>n4 n4>n3"
+	cases := map[string][]model.Edge{
+		"side branch (qwen3:8b live)":  {edge("n1", "n2"), edge("n2", "n3"), edge("n2", "n4")},
+		"dropped edge (qwen3:4b live)": {edge("n1", "n2"), edge("n2", "n4")},
+		"unconnected (qwen3:8b live)":  {edge("n1", "n2"), edge("n2", "n3")},
+	}
+	for name, edges := range cases {
+		def := model.PipelineDefinition{Nodes: chain, Edges: append([]model.Edge{}, edges...)}
+		note := aiSpliceDanglingStep(&def)
+		got := []string{}
+		for _, e := range def.Edges {
+			got = append(got, e.Source+">"+e.Target)
+		}
+		sort.Strings(got)
+		if note == "" || strings.Join(got, " ") != want || aiGraphShapeError(def) != nil {
+			t.Fatalf("%s: note=%q edges=%v", name, note, got)
+		}
+	}
+	untouched := map[string]model.PipelineDefinition{
+		"fork branch is intentional": {Nodes: []model.Node{node("s", "source"), node("f", "fork"), node("x", "transform"), node("k", "sink")},
+			Edges: []model.Edge{edge("s", "f"), edge("f", "k"), edge("f", "x")}},
+		"two dangling steps are ambiguous": {Nodes: []model.Node{node("s", "source"), node("a", "transform"), node("b", "transform"), node("k", "sink")},
+			Edges: []model.Edge{edge("s", "k"), edge("s", "a"), edge("s", "b")}},
+	}
+	for name, def := range untouched {
+		before := len(def.Edges)
+		if note := aiSpliceDanglingStep(&def); note != "" || len(def.Edges) != before {
+			t.Fatalf("%s: must not be rewritten (note %q)", name, note)
 		}
 	}
 }

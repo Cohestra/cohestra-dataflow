@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dataflow-poc/workflow-go/internal/model"
 )
@@ -123,5 +124,19 @@ func TestFewShotIsOptInAndContextWindowConfigurable(t *testing.T) {
 		if (*requests)[0].Options["num_ctx"] != wantCtx {
 			t.Fatalf("num_ctx = %v, want %v", (*requests)[0].Options["num_ctx"], wantCtx)
 		}
+	}
+}
+
+func TestAICallTimeoutConfigurable(t *testing.T) {
+	if aiCallTimeout() != 240*time.Second {
+		t.Fatalf("default = %v", aiCallTimeout())
+	}
+	t.Setenv("OLLAMA_TIMEOUT_SECONDS", "480")
+	if aiCallTimeout() != 480*time.Second {
+		t.Fatalf("configured = %v", aiCallTimeout())
+	}
+	t.Setenv("OLLAMA_TIMEOUT_SECONDS", "5")
+	if aiCallTimeout() != 240*time.Second {
+		t.Fatal("values under 30s fall back to the default")
 	}
 }

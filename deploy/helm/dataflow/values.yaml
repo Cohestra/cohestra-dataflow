@@ -27,6 +27,8 @@ ollama:
   numCtx: 8192
   # Category-matched planner examples (see internal/api/ai_fewshot.go).
   fewShot: true
+  # Per model call. qwen3:8b on a 4-vCPU node can exceed 240s; use ~120 on a GPU.
+  timeoutSeconds: 480
 cohestraURL: http://cohestra-control-api.cohestra-system:8080
 # Enables internal demo-only features in the API. Keep false in production.
 internalDemoFeatures: false

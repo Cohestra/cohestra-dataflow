@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Few-shot planner examples ("runtime training"). A held-out bake-off showed
@@ -115,6 +116,15 @@ func aiNumCtx() int {
 		return value
 	}
 	return 4096
+}
+
+// aiCallTimeout bounds one Ollama call (OLLAMA_TIMEOUT_SECONDS, default 240).
+// qwen3:8b with few-shot on a 4-vCPU node can exceed 4 minutes for a refine.
+func aiCallTimeout() time.Duration {
+	if seconds, err := strconv.Atoi(strings.TrimSpace(env("OLLAMA_TIMEOUT_SECONDS", "240"))); err == nil && seconds >= 30 {
+		return time.Duration(seconds) * time.Second
+	}
+	return 4 * time.Minute
 }
 
 func aiFewShotEnabled() bool {
