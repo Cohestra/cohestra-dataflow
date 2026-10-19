@@ -14,7 +14,7 @@ func TestLiteralByKind(t *testing.T) {
 		{"boolean", true, "true"},
 		{"boolean", "false", "false"},
 		{"date", "2026-07-05T00:00:00Z", "parseDateTimeBestEffort('2026-07-05T00:00:00Z')"},
-		{"string", "O'Reilly", "'O''Reilly'"},
+		{"string", "O'Reilly", `'O\'Reilly'`},
 	}
 	for _, tc := range cases {
 		if got := Literal(tc.kind, tc.value); string(got) != tc.want {
@@ -87,5 +87,19 @@ func TestSelectRequiresColumnAndTable(t *testing.T) {
 func TestSelectBadAliasPropagates(t *testing.T) {
 	if _, err := NewSelect().Column(Raw("1"), "bad alias").From("t").Build(); err == nil {
 		t.Fatal("bad alias accepted")
+	}
+}
+
+func TestStringEscapesBackslashBeforeQuote(t *testing.T) {
+	cases := map[string]string{
+		`x\' OR 1=1 --`: `'x\\\' OR 1=1 --'`,
+		`a\b`:           `'a\\b'`,
+		`\`:             `'\\'`,
+		`''`:            `'\'\''`,
+	}
+	for in, want := range cases {
+		if got := string(String(in)); got != want {
+			t.Errorf("String(%q) = %s, want %s", in, got, want)
+		}
 	}
 }
