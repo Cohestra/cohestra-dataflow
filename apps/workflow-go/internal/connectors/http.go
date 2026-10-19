@@ -265,8 +265,13 @@ func (r *Runtime) webhookSink(ctx context.Context, input interface{}, cfg map[st
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Idempotency-Key", idempotencyKey(handler, 0))
 	if secret != "" {
+		// Same scheme DataFlow's own webhook triggers verify: HMAC-SHA256 of
+		// "<unix seconds>.<body>", so a captured request cannot be replayed later.
+		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 		mac := hmac.New(sha256.New, []byte(secret))
+		_, _ = mac.Write([]byte(timestamp + "."))
 		_, _ = mac.Write(body)
+		request.Header.Set("X-Signature-Timestamp", timestamp)
 		request.Header.Set("X-Signature-SHA256", hex.EncodeToString(mac.Sum(nil)))
 	}
 	response, err := r.SafeHTTP.Do(request)

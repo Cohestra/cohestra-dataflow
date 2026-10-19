@@ -56,6 +56,7 @@ jobs:
             TestPublicEntryPaymentWebhookCreditsTenantUnderRLS
             TestPublicEntryOAuthSignupClaimsInvitationUnderRLS
             TestPublicEntryPasswordSignupRequiresEmailVerification
+            TestPublicEntryAPIRefusesRLSBypassRoleInProduction
             TestQuotaEnforcedOnlyWhenBillingEnabled
             TestControlPipelineVersionAndExecutionAccess
             TestPipelineAccessWithApplicationRoleRLS
@@ -66,4 +67,14 @@ jobs:
             for name in $REQUIRED_TESTS; do
               grep -q -- "--- PASS: $name " "/tmp/controls-${tags:-community}.log" || { echo "::error::$name did not pass (${tags:-community})"; exit 1; }
             done
+          done
+      - name: Verify Postgres connector paging and sink transactions
+        working-directory: apps/workflow-go
+        env:
+          CONNECTOR_TEST_POSTGRES_URL: ${{ env.CONTROL_TEST_DATABASE_URL }}
+        run: |
+          set -o pipefail
+          go test -race ./internal/connectors -run '^TestPostgres(FetchNeverDropsRowsSharingTheBoundaryCursor|SinkWritesAllBatchesOrNone)$' -count=1 -v | tee /tmp/connectors.log
+          for name in TestPostgresFetchNeverDropsRowsSharingTheBoundaryCursor TestPostgresSinkWritesAllBatchesOrNone; do
+            grep -q -- "--- PASS: $name " /tmp/connectors.log || { echo "::error::$name did not pass"; exit 1; }
           done

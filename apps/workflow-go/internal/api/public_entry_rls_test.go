@@ -202,3 +202,16 @@ func TestPublicEntryPasswordSignupRequiresEmailVerification(t *testing.T) {
 		t.Fatalf("verified login: status=%d body=%s", res.Code, res.Body.String())
 	}
 }
+
+func TestPublicEntryAPIRefusesRLSBypassRoleInProduction(t *testing.T) {
+	ctx, db, app := openPublicEntryFixture(t)
+	if err := checkRLSRole(ctx, app, true); err != nil {
+		t.Fatalf("dataflow_app role rejected: %v", err)
+	}
+	if err := checkRLSRole(ctx, db, true); err == nil || !strings.Contains(err.Error(), "bypasses row-level security") {
+		t.Fatalf("superuser API role in production: err=%v", err)
+	}
+	if err := checkRLSRole(ctx, db, false); err != nil {
+		t.Fatalf("development should only warn: %v", err)
+	}
+}

@@ -43,9 +43,6 @@ type Config struct {
 	InternalDemoFeatures         bool
 	// Production is NODE_ENV=production (the Helm chart's runtime.production).
 	Production bool
-	// AppDatabaseURLSet records whether APP_DATABASE_URL was given explicitly;
-	// without it the API falls back to DATABASE_URL and RLS does not apply.
-	AppDatabaseURLSet bool
 	// MailConfigured is true when SMTP_HOST or SMTP_USER is set, so the API
 	// can send invitation and verification email.
 	MailConfigured bool
@@ -106,7 +103,6 @@ func Load() Config {
 		InternalDemoFeatures:         boolEnv("INTERNAL_DEMO_FEATURES"),
 		BillingEnabled:               boolEnv("BILLING_ENABLED"),
 		Production:                   os.Getenv("NODE_ENV") == "production",
-		AppDatabaseURLSet:            os.Getenv("APP_DATABASE_URL") != "",
 		MailConfigured:               os.Getenv("SMTP_HOST") != "" || os.Getenv("SMTP_USER") != "",
 		AuditRetentionDays:           intEnv("AUDIT_RETENTION_DAYS", 90),
 		ExecutionRetentionDays:       intEnv("EXECUTION_RETENTION_DAYS", 90),
@@ -132,13 +128,11 @@ const DefaultJWTAccessSecret = "dev-access-secret-change-me"
 
 // ValidateAPI checks settings the API must not run with. In production any
 // problem is an error; in development it is returned as a warning to log.
+// (The database role's RLS bypass is checked once connected, in api.New.)
 func (c Config) ValidateAPI() (warnings []string, err error) {
 	var problems []string
 	if c.JWTAccessSecret == DefaultJWTAccessSecret || len(c.JWTAccessSecret) < 32 {
 		problems = append(problems, "JWT_ACCESS_SECRET must be a random value of at least 32 characters, not the development default")
-	}
-	if !c.AppDatabaseURLSet || c.AppDatabaseURL == c.DatabaseURL {
-		problems = append(problems, "APP_DATABASE_URL must name the RLS-bound dataflow_app role; without it tenant row-level security is not enforced")
 	}
 	if c.Production {
 		if len(problems) > 0 {

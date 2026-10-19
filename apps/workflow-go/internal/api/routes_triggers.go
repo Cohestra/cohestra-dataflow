@@ -160,7 +160,13 @@ func (s *Server) webhookTrigger(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if s.Redis != nil {
-		key := "dataflow:webhook-seen:" + sha256Hex(stringValue(row["id"])+":"+r.Header.Get("X-Signature-Timestamp")+":"+strings.ToLower(r.Header.Get("X-Signature-Sha256")))
+		// An Idempotency-Key (sent by DataFlow's webhook sink, stable across its
+		// retries) identifies a delivery better than its timestamped signature.
+		delivery := r.Header.Get("X-Signature-Timestamp") + ":" + strings.ToLower(r.Header.Get("X-Signature-Sha256"))
+		if idempotency := strings.TrimSpace(r.Header.Get("Idempotency-Key")); idempotency != "" {
+			delivery = "idem:" + idempotency
+		}
+		key := "dataflow:webhook-seen:" + sha256Hex(stringValue(row["id"])+":"+delivery)
 		fresh, err := s.Redis.SetNX(r.Context(), key, "1", 2*webhookSignatureMaxAge).Result()
 		if err != nil {
 			slog.Warn("webhook replay check unavailable", "error", err)

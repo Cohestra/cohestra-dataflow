@@ -7,6 +7,16 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- Analytics: ClickHouse string literals now escape backslashes; a crafted dataset name could previously drop the tenant filter and read other workspaces' records.
+- Webhook triggers, the Razorpay webhook and OAuth sign-up with an invitation resolve their tenant through `SECURITY DEFINER` functions (`db/028_public_entry_resolvers.sql`); under row-level security they previously found nothing (webhooks errored, payments were never credited, invited OAuth users got a new workspace).
+- Saving a new version of an existing pipeline needs editor access to it (sharing carries over to the new version); run details, retry, status and trace follow the pipeline's roles, and run/log lists only include pipelines the member can view.
+- Webhook triggers verify HMAC-SHA256 over `"<X-Signature-Timestamp>.<raw body>"` with a 5-minute window and reject repeated deliveries; signing secrets are write-only in API responses, must be 16+ characters (no `change-me`), and a path active in another workspace cannot be activated. DataFlow's webhook sink signs the same way.
+- Password sign-ups must confirm their email (24-hour link; logged when SMTP is not configured) unless they come from an invitation or are the first account; Google/OIDC logins are never linked to an unverified account and need an explicit `email_verified` claim. Login timing no longer reveals which emails exist.
+- In production (`NODE_ENV=production`) the API refuses to start with the default or a short `JWT_ACCESS_SECRET`, or when its database role bypasses row-level security; `bootstrap.sh` no longer installs without production mode on a public IP when secrets are missing (`ALLOW_INSECURE_PUBLIC_INSTALL=true` overrides).
+- Service-account API tokens act as the user who created them, so their writes and audit rows no longer fail on `users(id)` foreign keys; audit write failures are logged. Run errors shown to users are redacted (DSN credentials, key=value secrets, bearer tokens).
+- Compose Grafana gives anonymous users Viewer instead of Admin and listens on localhost only.
+
 ### Fixed
 - AI builder no longer returns "ready" for graphs the canvas cannot save (dead ends, orphans, under-connected fork/merge): it repairs, splices an unambiguously dangling step (noted as an assumption), or returns a warned draft.
 - AI grounding accepts comma-list fields sent as JSON arrays and the `old:new` rename shorthand; the planner prompt lists each select field's allowed values.
@@ -21,7 +31,16 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Upgrade Go to 1.26.9 and golang.org/x/net to 0.60.0 (with x/crypto 0.57.0, x/sys, x/text, x/term, x/sync) for the October 2026 net/http, crypto/tls, html/template, mime/multipart and x/net/http2 advisories.
 - Migrate the Snowflake driver to `github.com/snowflakedb/gosnowflake/v2` v2.3.0 (log secret masking, slog instead of logrus) and drop the GO-2026-6665 govulncheck exemption. AWS SDK modules move up with it.
 
+- Self-hosted installs are no longer limited to 5 runs a month: the execution quota applies only with `BILLING_ENABLED=true` (Helm `billingEnabled`); usage is still counted.
+- Resumable sources that reach the 50-page per-run cap now finish the run, commit their cursor and resume next run (node meta `truncated`); before, large tables failed on every run.
+- Incremental Postgres/MySQL paging no longer drops rows that share the cursor value at a page boundary (optional `keyColumn` for keyset paging); Mongo pages on cursor plus `_id`; Snowflake without `cursorColumn` fails clearly instead of re-reading the same page.
+- Postgres, MySQL and Snowflake sinks write each attempt in one transaction, so a retried step no longer duplicates rows; the webhook sink sends a stable `Idempotency-Key`, Kafka records carry an idempotency header, and Spark retries attach to the job they already submitted.
+- Bad records, bad configuration and unknown steps fail once (`SchemaValidationError`, `InvalidConfigError`, `UnknownActivityError`) instead of being retried 5 times; non-object records no longer panic transform steps, and expressions compile once per step.
+- Cross-run dedupe keys travel by payload reference, not through Temporal history (which overflowed near 30k rows); over-size payload reads name `MAX_PAYLOAD_BYTES`.
+- nginx `proxy_read_timeout` is 540s, above the 480s AI model timeout.
+
 ### Changed
+- **Upgrade notes:** apply `db/028_public_entry_resolvers.sql`. Webhook senders must add `X-Signature-Timestamp` and sign `"<timestamp>.<body>"` (or set `WEBHOOK_LEGACY_SIGNATURES=true` temporarily); webhook pipelines with a short or placeholder secret must be given a new one before they can be saved or activated. HTTP sources without a saved watermark now read full history on their first run unless `incremental.initialWatermark` is set (it used to start silently at now-1h). Hosted deployments that sell top-ups need `BILLING_ENABLED=true`.
 - CI govulncheck now runs through `scripts/govulncheck-gate.py`: reachable vulnerabilities fail unless listed in `.github/govulncheck-exemptions.txt` with a review-by date (expired exemptions fail again).
 - The AI builder default model is `qwen3:8b` with few-shot planner examples (`AI_FEW_SHOT`, `OLLAMA_NUM_CTX=8192`), chosen by the October 2026 bake-off (`docs/evals/cpu-bakeoff-20261016`). Helm's Ollama pod limit is now 12 GiB (was 4 GiB) on a 20 GiB volume; the model-call timeout is configurable (`OLLAMA_TIMEOUT_SECONDS`, 480 in compose/Helm).
 - Per-node `timeoutSec` and `retry.maximumAttempts` are now validated: `0`, negative and overflowing values are rejected on save, manual/webhook/backfill runs, activation and promotion. Previously `0` was silently ignored, so an existing pipeline saved with `0` must be re-saved without that field. Temporal schedules created before this release embed the old definition; their next run fails with `InvalidNodePolicy` if it carries such a value. Re-activate the pipeline to refresh its schedule.

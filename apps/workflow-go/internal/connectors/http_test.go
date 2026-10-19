@@ -3,7 +3,11 @@ package connectors
 import (
 	"bufio"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -121,5 +125,27 @@ func TestWebhookSink(t *testing.T) {
 	record := recordsRaw[0].(map[string]interface{})
 	if record["status"] != "paid" {
 		t.Fatalf("expected status 'paid', got %v", record["status"])
+	}
+}
+
+func TestWebhookSinkSignsTimestampAndBody(t *testing.T) {
+	var timestamp, signature string
+	var raw []byte
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		timestamp, signature = r.Header.Get("X-Signature-Timestamp"), r.Header.Get("X-Signature-Sha256")
+		raw, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	rt := &Runtime{SafeHTTP: ts.Client(), Sources: map[string]Source{}, Handlers: map[string]Handler{}}
+	rt.registerHTTP()
+	if _, _, err := rt.Handlers["sink.webhook"](context.Background(), []map[string]interface{}{{"id": 1}}, map[string]interface{}{"url": ts.URL, "secret": "s3cret-signing-key"}, HandlerContext{}); err != nil {
+		t.Fatal(err)
+	}
+	mac := hmac.New(sha256.New, []byte("s3cret-signing-key"))
+	_, _ = mac.Write([]byte(timestamp + "."))
+	_, _ = mac.Write(raw)
+	if timestamp == "" || signature != hex.EncodeToString(mac.Sum(nil)) {
+		t.Fatalf("signature %q does not cover %q.<body>", signature, timestamp)
 	}
 }
