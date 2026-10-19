@@ -8,6 +8,18 @@ const STAGE_STYLES: Record<Stage, string> = {
   archived:   'bg-gray-100   text-gray-500   dark:bg-white/5       dark:text-white/35',
 };
 
+// A fresh, unguessable signing secret for a new webhook trigger. The API
+// rejects placeholders and returns secrets blank afterwards (write-only).
+function newWebhookSecret(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function newWebhookPath(): string {
+  return `hook-${newWebhookSecret().slice(0, 10)}`;
+}
+
 // Top floating pill: pipeline name, lifecycle-stage dropdown, and trigger
 // config (manual/cron/webhook/upstream-pipeline/asset picker). These three
 // share one visual pill and one "left offset shifts when a side panel opens"
@@ -77,7 +89,7 @@ export function PipelineHeaderBar({
             value={trigger.type}
             onChange={e => setTrigger({ type: e.target.value,
               ...(e.target.value === 'cron' ? { schedule: '*/5 * * * *' } : {}),
-              ...(e.target.value === 'webhook' ? { path: 'my-hook', secret: 'change-me' } : {}),
+              ...(e.target.value === 'webhook' ? { path: newWebhookPath(), secret: newWebhookSecret() } : {}),
               ...(e.target.value === 'event' ? { topic: upstreamPipelines.find(p => p.pipeline_key !== pipelineKey)
                 ? `pipeline.completed.${upstreamPipelines.find(p => p.pipeline_key !== pipelineKey)!.pipeline_key}` : 'pipeline.completed.<pipeline-key>' } : {}),
               ...(e.target.value === 'asset' ? { assetUrn: workspaceAssets[0]?.urn ?? '' } : {}) })}>
@@ -90,6 +102,17 @@ export function PipelineHeaderBar({
           {trigger.type === 'cron' && (
             <input className="bg-transparent text-xs outline-none w-28 text-gray-600 dark:text-white/60 font-mono"
               value={trigger.schedule} onChange={e => setTrigger({ ...trigger, schedule: e.target.value })} />
+          )}
+          {trigger.type === 'webhook' && (
+            <>
+              <input className="bg-transparent text-xs outline-none w-32 text-gray-600 dark:text-white/60 font-mono"
+                aria-label="Webhook path" title="Webhook path: POST /api/hooks/<path>"
+                value={trigger.path ?? ''} onChange={e => setTrigger({ ...trigger, path: e.target.value })} />
+              <input className="bg-transparent text-xs outline-none w-40 text-gray-600 dark:text-white/60 font-mono"
+                aria-label="Webhook signing secret" title="HMAC-SHA256 signing secret. Copy it now: it is not shown again after saving."
+                placeholder={trigger.secretSet ? 'secret set · type to replace' : 'signing secret (16+ chars)'}
+                value={trigger.secret ?? ''} onChange={e => setTrigger({ ...trigger, secret: e.target.value })} />
+            </>
           )}
           {trigger.type === 'event' && (
             <select className="max-w-48 bg-transparent text-xs text-gray-600 outline-none dark:text-white/60"

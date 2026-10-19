@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -66,13 +67,13 @@ func (s *Server) authenticate(r *http.Request) (model.TenantContext, error) {
 	hash := sha256Hex(token)
 	var tenant model.TenantContext
 	var revokedAt, expiresAt *time.Time
-	err = s.DB.Pool.QueryRow(r.Context(), `SELECT t.id,t.tenant_id,t.role,t.revoked_at,t.expires_at,u.email
+	err = s.DB.Pool.QueryRow(r.Context(), `SELECT t.id,t.created_by,t.tenant_id,t.role,t.revoked_at,t.expires_at
       FROM api_tokens t JOIN users u ON u.id=t.created_by WHERE t.token_hash=$1`, hash).
-		Scan(&tenant.UserID, &tenant.TenantID, &tenant.Role, &revokedAt, &expiresAt, &tenant.Email)
+		Scan(&tenant.TokenID, &tenant.UserID, &tenant.TenantID, &tenant.Role, &revokedAt, &expiresAt)
 	if err != nil || revokedAt != nil || (expiresAt != nil && !expiresAt.After(time.Now())) {
 		return model.TenantContext{}, &HTTPError{Status: http.StatusUnauthorized, Message: "invalid token"}
 	}
-	tenant.Email = "sa:" + tenant.UserID
+	tenant.Email = "sa:" + tenant.TokenID
 	tenant.EmailVerified = true
 	return tenant, nil
 }
@@ -107,47 +108,127 @@ func owner(next http.Handler) http.Handler {
 	})
 }
 
+var pipelineRoleRank = map[string]int{"viewer": 0, "editor": 1, "admin": 2}
+
+// pipelineAllows reports whether the caller holds at least minimum on a pipeline
+// row. Workspace owners and the row's creator always do; everyone else needs a
+// pipeline_access grant.
+func pipelineAllows(tenant model.TenantContext, createdBy, role *string, minimum string) bool {
+	if tenant.Role == "owner" || (createdBy != nil && *createdBy == tenant.UserID) {
+		return true
+	}
+	return role != nil && pipelineRoleRank[*role] >= pipelineRoleRank[minimum]
+}
+
+// pipelineAccessError returns nil when the caller may use the pipeline row at
+// the given level, otherwise a 404 (no visibility) or 403 (too low a role).
+func pipelineAccessError(tenant model.TenantContext, createdBy, role *string, minimum string) error {
+	if pipelineAllows(tenant, createdBy, role, minimum) {
+		return nil
+	}
+	if role == nil {
+		return notFound(ErrNotFound, "not found")
+	}
+	return &HTTPError{Status: http.StatusForbidden, Code: ErrForbidden, Message: "pipeline access requires " + minimum + " role"}
+}
+
+// pipelineVisibleSQL limits a pipelines alias to rows the user may view; $n is
+// the user id. Only applied to non-owners.
+func pipelineVisibleSQL(alias string, userParam int) string {
+	return fmt.Sprintf(`(%[1]s.created_by=$%[2]d OR EXISTS (SELECT 1 FROM pipeline_access pa WHERE pa.pipeline_id=%[1]s.id AND pa.user_id=$%[2]d))`, alias, userParam)
+}
+
 func (s *Server) pipelineAccess(minimum string, next http.Handler) http.Handler {
-	rank := map[string]int{"viewer": 0, "editor": 1, "admin": 2}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tenant := tenantFrom(r)
 		if tenant.Role == "owner" {
 			next.ServeHTTP(w, r)
 			return
 		}
-		rowID := r.PathValue("rowId")
 		var createdBy, role *string
 		err := s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
 			return tx.QueryRow(r.Context(), `SELECT p.created_by,pa.role FROM pipelines p
         LEFT JOIN pipeline_access pa ON pa.pipeline_id=p.id AND pa.user_id=$2
-        WHERE p.id=$1 AND p.tenant_id=$3 LIMIT 1`, rowID, tenant.UserID, tenant.TenantID).Scan(&createdBy, &role)
+        WHERE p.id=$1 AND p.tenant_id=$3 LIMIT 1`, r.PathValue("rowId"), tenant.UserID, tenant.TenantID).Scan(&createdBy, &role)
 		})
 		if err != nil {
 			jsonError(w, http.StatusNotFound, ErrNotFound, "not found", nil)
 			return
 		}
-		if createdBy != nil && *createdBy == tenant.UserID {
+		if err := pipelineAccessError(tenant, createdBy, role, minimum); err != nil {
+			var httpErr *HTTPError
+			errors.As(err, &httpErr)
+			jsonError(w, httpErr.Status, httpErr.Code, httpErr.Message, nil)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// executionAccess guards /api/executions/{id} routes with the same pipeline
+// roles as the pipeline the execution belongs to.
+func (s *Server) executionAccess(minimum string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tenant := tenantFrom(r)
+		if tenant.Role == "owner" {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if role == nil {
+		var createdBy, role *string
+		err := s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
+			return tx.QueryRow(r.Context(), `SELECT p.created_by,pa.role FROM executions e
+        JOIN pipelines p ON p.id=e.pipeline_id
+        LEFT JOIN pipeline_access pa ON pa.pipeline_id=p.id AND pa.user_id=$2
+        WHERE e.id=$1 AND e.tenant_id=$3 LIMIT 1`, r.PathValue("id"), tenant.UserID, tenant.TenantID).Scan(&createdBy, &role)
+		})
+		if err != nil {
 			jsonError(w, http.StatusNotFound, ErrNotFound, "not found", nil)
 			return
 		}
-		if rank[*role] >= rank[minimum] {
-			next.ServeHTTP(w, r)
+		if err := pipelineAccessError(tenant, createdBy, role, minimum); err != nil {
+			var httpErr *HTTPError
+			errors.As(err, &httpErr)
+			jsonError(w, httpErr.Status, httpErr.Code, httpErr.Message, nil)
 			return
 		}
-		jsonError(w, http.StatusForbidden, ErrForbidden, "pipeline access requires "+minimum+" role", nil)
+		next.ServeHTTP(w, r)
 	})
 }
 
 func (s *Server) audit(ctx context.Context, tenant model.TenantContext, action, resource string, metadata interface{}, r *http.Request) {
-	_ = s.DB.TenantTx(ctx, tenant.TenantID, func(tx pgx.Tx) error {
+	metadata = auditMetadata(tenant, metadata)
+	err := s.DB.TenantTx(ctx, tenant.TenantID, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `INSERT INTO audit_log (tenant_id,user_id,action,resource,ip_address,user_agent,metadata)
       VALUES ($1,$2,$3,$4,$5,$6,$7)`, tenant.TenantID, nullString(tenant.UserID), action, resource, requestIP(r), r.UserAgent(), metadata)
 		return err
 	})
+	if err != nil {
+		// The audited action already happened; a lost audit row must be visible.
+		slog.Error("audit write failed", "action", action, "resource", resource, "tenant", tenant.TenantID, "error", err)
+	}
+}
+
+// auditMetadata records which API token acted, next to the user it acts for.
+func auditMetadata(tenant model.TenantContext, metadata interface{}) interface{} {
+	if tenant.TokenID == "" {
+		return metadata
+	}
+	merged := map[string]interface{}{}
+	switch value := metadata.(type) {
+	case nil:
+	case map[string]interface{}:
+		for k, v := range value {
+			merged[k] = v
+		}
+	case map[string]string:
+		for k, v := range value {
+			merged[k] = v
+		}
+	default:
+		merged["details"] = value
+	}
+	merged["tokenId"] = tenant.TokenID
+	return merged
 }
 
 func (s *Server) issueRefreshToken(ctx context.Context, userID string) (string, error) {

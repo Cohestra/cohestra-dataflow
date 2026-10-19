@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/dataflow-poc/workflow-go/internal/model"
 	"github.com/jackc/pgx/v5"
@@ -60,14 +59,9 @@ func (s *Server) executionSignal(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		control.State = target
-		// Service tokens use a token id, not a users FK. Keep their actor in metadata.
-		actor := nullString(tenant.UserID)
-		if strings.HasPrefix(tenant.Email, "sa:") {
-			actor = nil
-		}
 		_, err = tx.Exec(r.Context(), `INSERT INTO audit_log (tenant_id,user_id,action,resource,ip_address,user_agent,metadata)
-    VALUES ($1,$2,$3,$4,$5,$6,$7)`, tenant.TenantID, actor, "execution."+action, r.PathValue("id"), requestIP(r), r.UserAgent(),
-			map[string]interface{}{"actorId": tenant.UserID, "controlState": control.State, "controlRevision": control.Revision})
+    VALUES ($1,$2,$3,$4,$5,$6,$7)`, tenant.TenantID, nullString(tenant.UserID), "execution."+action, r.PathValue("id"), requestIP(r), r.UserAgent(),
+			auditMetadata(tenant, map[string]interface{}{"actorId": tenant.UserID, "controlState": control.State, "controlRevision": control.Revision}))
 		return err
 	})
 	if err != nil {

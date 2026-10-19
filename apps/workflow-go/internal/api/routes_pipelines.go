@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"github.com/dataflow-poc/workflow-go/internal/config"
 	"github.com/dataflow-poc/workflow-go/internal/model"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func (s *Server) registerPipelines(mux *http.ServeMux) {
@@ -83,12 +85,58 @@ func (s *Server) pipelineCreate(w http.ResponseWriter, r *http.Request) error {
 	var rowID string
 	version := 0
 	err = s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
+		// A new version of an existing pipeline needs editor access to its
+		// latest version; the client chooses the key, so this is the only guard.
+		var previousID string
+		var previousCreator, previousRole *string
+		var previousBody []byte
+		err := tx.QueryRow(r.Context(), `SELECT p.id,p.created_by,pa.role,p.definition FROM pipelines p
+      LEFT JOIN pipeline_access pa ON pa.pipeline_id=p.id AND pa.user_id=$2
+      WHERE p.pipeline_key=$1 ORDER BY p.version DESC LIMIT 1 FOR UPDATE OF p`, id, tenant.UserID).Scan(&previousID, &previousCreator, &previousRole, &previousBody)
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+		case err != nil:
+			return err
+		default:
+			if err := pipelineAccessError(tenant, previousCreator, previousRole, "editor"); err != nil {
+				return err
+			}
+			// Webhook secrets are write-only: reads return them blank, so a
+			// blank secret on save keeps the previous version's.
+			var previous model.PipelineDefinition
+			if def.Trigger.Type == "webhook" && def.Trigger.Secret == "" && json.Unmarshal(previousBody, &previous) == nil && previous.Trigger.Type == "webhook" {
+				def.Trigger.Secret = previous.Trigger.Secret
+			}
+		}
+		if err := validateWebhookTrigger(def.Trigger); err != nil {
+			return badRequest(ErrInvalidRequest, err.Error())
+		}
 		if err := tx.QueryRow(r.Context(), `SELECT coalesce(MAX(version),0)+1 FROM pipelines WHERE pipeline_key=$1`, id).Scan(&version); err != nil {
 			return err
 		}
 		def.Version = version
 		body, _ := json.Marshal(def)
-		return tx.QueryRow(r.Context(), `INSERT INTO pipelines (pipeline_key,version,tenant_id,name,definition,status,created_by) VALUES ($1,$2,$3,$4,$5,'draft',$6) RETURNING id`, id, version, tenant.TenantID, def.Name, body, tenant.UserID).Scan(&rowID)
+		if err := tx.QueryRow(r.Context(), `INSERT INTO pipelines (pipeline_key,version,tenant_id,name,definition,status,created_by) VALUES ($1,$2,$3,$4,$5,'draft',$6) RETURNING id`, id, version, tenant.TenantID, def.Name, body, tenant.UserID).Scan(&rowID); err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				return &HTTPError{Status: http.StatusConflict, Code: ErrConflict, Message: "this pipeline id is already in use; save it as a new pipeline"}
+			}
+			return err
+		}
+		if previousID == "" {
+			return nil
+		}
+		// Carry sharing forward so a save does not lock collaborators (or the
+		// previous author) out of the new version.
+		if _, err := tx.Exec(r.Context(), `INSERT INTO pipeline_access (pipeline_id,user_id,role,granted_by)
+      SELECT $2,user_id,role,granted_by FROM pipeline_access WHERE pipeline_id=$1 ON CONFLICT DO NOTHING`, previousID, rowID); err != nil {
+			return err
+		}
+		if previousCreator != nil && *previousCreator != tenant.UserID {
+			_, err := tx.Exec(r.Context(), `INSERT INTO pipeline_access (pipeline_id,user_id,role,granted_by) VALUES ($1,$2,'admin',$2) ON CONFLICT (pipeline_id,user_id) DO UPDATE SET role='admin'`, rowID, *previousCreator)
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return err
@@ -124,11 +172,23 @@ func (s *Server) pipelineActivate(w http.ResponseWriter, r *http.Request) error 
 	if err := s.enforcePipelineFeatures(r, def); err != nil {
 		return err
 	}
+	if err := validateWebhookTrigger(def.Trigger); err != nil {
+		return badRequest(ErrInvalidRequest, err.Error())
+	}
+	tenant := tenantFrom(r)
+	if def.Trigger.Type == "webhook" {
+		var taken bool
+		if err := s.DB.Pool.QueryRow(r.Context(), `SELECT webhook_path_taken($1,$2)`, def.Trigger.Path, tenant.TenantID).Scan(&taken); err != nil {
+			return err
+		}
+		if taken {
+			return &HTTPError{Status: http.StatusConflict, Code: ErrConflict, Message: "webhook path " + def.Trigger.Path + " is already in use; choose another path"}
+		}
+	}
 	env := model.Environment(stringValue(row["environment"]))
 	if env == "" {
 		env = model.EnvironmentTest
 	}
-	tenant := tenantFrom(r)
 	err = s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(r.Context(), `UPDATE pipelines SET status='archived' WHERE pipeline_key=$1 AND environment=$2 AND status='active'`, row["pipeline_key"], env); err != nil {
 			return err
