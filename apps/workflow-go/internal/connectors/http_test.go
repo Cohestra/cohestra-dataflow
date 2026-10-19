@@ -129,6 +129,8 @@ func TestWebhookSink(t *testing.T) {
 }
 
 func TestWebhookSinkSignsTimestampAndBody(t *testing.T) {
+	// A low-entropy fixture, so secret scanners do not mistake it for a credential.
+	webhookFixtureSecret := "cdcdcdcdcdcdcdcdcd"
 	var timestamp, signature string
 	var raw []byte
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -139,10 +141,10 @@ func TestWebhookSinkSignsTimestampAndBody(t *testing.T) {
 	defer ts.Close()
 	rt := &Runtime{SafeHTTP: ts.Client(), Sources: map[string]Source{}, Handlers: map[string]Handler{}}
 	rt.registerHTTP()
-	if _, _, err := rt.Handlers["sink.webhook"](context.Background(), []map[string]interface{}{{"id": 1}}, map[string]interface{}{"url": ts.URL, "secret": "s3cret-signing-key"}, HandlerContext{}); err != nil {
+	if _, _, err := rt.Handlers["sink.webhook"](context.Background(), []map[string]interface{}{{"id": 1}}, map[string]interface{}{"url": ts.URL, "secret": webhookFixtureSecret}, HandlerContext{}); err != nil {
 		t.Fatal(err)
 	}
-	mac := hmac.New(sha256.New, []byte("s3cret-signing-key"))
+	mac := hmac.New(sha256.New, []byte(webhookFixtureSecret))
 	_, _ = mac.Write([]byte(timestamp + "."))
 	_, _ = mac.Write(raw)
 	if timestamp == "" || signature != hex.EncodeToString(mac.Sum(nil)) {

@@ -8,3 +8,12 @@ eac5ff69ea6f8d36c0a79755f99102f52444f0ef:docs/plans/ai-agents/FRONTEND_ARCHITECT
 
 # The same prose was quoted in the original exemption comment.
 47ed4ad5473e9c0631e145350f3921a9573148a9:.gitleaksignore:generic-api-key:5
+
+# False positives: synthetic webhook signing secrets in tests (PR #67). The
+# literals were replaced with low-entropy fixtures; exempt only these commits.
+ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_secret_test.go:generic-api-key:15
+ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_secret_test.go:generic-api-key:18
+ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_secret_test.go:generic-api-key:42
+ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_secret_test.go:generic-api-key:46
+ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_secret_test.go:generic-api-key:47
+c3a37a6360a568233c330adf4f4bb22f2bfb9194:apps/workflow-go/internal/connectors/http_test.go:generic-api-key:142
