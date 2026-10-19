@@ -2,6 +2,7 @@ package connectors
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -36,7 +37,11 @@ func (r *Runtime) kafkaOptions(ctx context.Context, id string) ([]kgo.Opt, error
 	if len(brokers) == 0 {
 		return nil, fmt.Errorf("kafka connector requires brokers")
 	}
-	return []kgo.Opt{kgo.SeedBrokers(brokers...), kgo.DialTimeout(10 * time.Second)}, nil
+	options := []kgo.Opt{kgo.SeedBrokers(brokers...), kgo.DialTimeout(10 * time.Second)}
+	if truthy(cfg["tls"]) {
+		options = append(options, kgo.DialTLSConfig(&tls.Config{MinVersion: tls.VersionTLS12}))
+	}
+	return options, nil
 }
 func (r *Runtime) kafkaFetch(ctx context.Context, p SourceParams) (SourceResult, error) {
 	topic := stringValue(p.Config["topic"])
@@ -115,7 +120,7 @@ func (r *Runtime) kafkaFetch(ctx context.Context, p SourceParams) (SourceResult,
 	})
 	return SourceResult{Records: records, NextCursor: next, HasMore: len(records) >= page, LagRecords: lagRecords}, nil
 }
-func (r *Runtime) kafkaSink(ctx context.Context, input interface{}, cfg map[string]interface{}, _ HandlerContext) (interface{}, map[string]interface{}, error) {
+func (r *Runtime) kafkaSink(ctx context.Context, input interface{}, cfg map[string]interface{}, handler HandlerContext) (interface{}, map[string]interface{}, error) {
 	topic := stringValue(cfg["topic"])
 	if !kafkaTopic.MatchString(topic) {
 		return nil, nil, fmt.Errorf("invalid Kafka topic")
@@ -133,15 +138,28 @@ func (r *Runtime) kafkaSink(ctx context.Context, input interface{}, cfg map[stri
 		return nil, nil, err
 	}
 	defer client.Close()
-	for _, row := range rows {
-		body, _ := json.Marshal(row)
-		record := &kgo.Record{Topic: topic, Value: body}
-		if key := stringValue(cfg["keyField"]); key != "" {
-			record.Key = []byte(stringValue(row[key]))
-		}
-		if err = client.ProduceSync(ctx, record).FirstErr(); err != nil {
-			return nil, nil, err
-		}
+	// franz-go produces idempotently by default, which removes duplicates from
+	// its own network retries. A Temporal retry of this step re-sends the batch,
+	// so each record also carries a key that is stable across those retries.
+	records := kafkaSinkRecords(topic, stringValue(cfg["keyField"]), rows, handler)
+	if err = client.ProduceSync(ctx, records...).FirstErr(); err != nil {
+		return nil, nil, err
 	}
 	return nil, nil, nil
+}
+
+const kafkaIdempotencyHeader = "dataflow-idempotency-key"
+
+func kafkaSinkRecords(topic, keyField string, rows []map[string]interface{}, handler HandlerContext) []*kgo.Record {
+	base := idempotencyKey(handler, 0)
+	records := make([]*kgo.Record, 0, len(rows))
+	for i, row := range rows {
+		body, _ := json.Marshal(row)
+		record := &kgo.Record{Topic: topic, Value: body, Headers: []kgo.RecordHeader{{Key: kafkaIdempotencyHeader, Value: []byte(base + ":" + strconv.Itoa(i))}}}
+		if keyField != "" {
+			record.Key = []byte(stringValue(row[keyField]))
+		}
+		records = append(records, record)
+	}
+	return records
 }
