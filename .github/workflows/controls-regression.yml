@@ -53,10 +53,12 @@ jobs:
             TestControlActivityAdmissionAndFinalization
             TestControlFirstResumeWakesLegacyHistory
             TestControlWatcherSurvivesTransientReadFailure
+            TestPublicEntryPaymentWebhookCreditsTenantUnderRLS
+            TestPublicEntryOAuthSignupClaimsInvitationUnderRLS
         run: |
           set -o pipefail
           for tags in "" ee; do
-            go test -race -tags "$tags" ./internal/api ./internal/workflows -run '^Test(Agent|Control)' -count=1 -v | tee "/tmp/controls-${tags:-community}.log"
+            go test -race -tags "$tags" ./internal/api ./internal/workflows -run '^Test(Agent|Control|PublicEntry)' -count=1 -v | tee "/tmp/controls-${tags:-community}.log"
             for name in $REQUIRED_TESTS; do
               grep -q -- "--- PASS: $name " "/tmp/controls-${tags:-community}.log" || { echo "::error::$name did not pass (${tags:-community})"; exit 1; }
             done

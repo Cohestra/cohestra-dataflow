@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -249,7 +250,7 @@ func (s *Server) googleCallback(w http.ResponseWriter, r *http.Request) error {
 		Aud, Iss      string
 		EmailVerified interface{} `json:"email_verified"`
 	}
-	if idToken == "" || s.getJSON(r, "https://oauth2.googleapis.com/tokeninfo?id_token="+url.QueryEscape(idToken), &profile) != nil || profile.Sub == "" || profile.Email == "" || fmt.Sprint(profile.EmailVerified) == "false" {
+	if idToken == "" || s.getJSON(r, "https://oauth2.googleapis.com/tokeninfo?id_token="+url.QueryEscape(idToken), &profile) != nil || profile.Sub == "" || profile.Email == "" || !emailClaimVerified(profile.EmailVerified) {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oauth_profile", http.StatusFound)
 		return nil
 	}
@@ -257,6 +258,10 @@ func (s *Server) googleCallback(w http.ResponseWriter, r *http.Request) error {
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "Google id_token audience or issuer mismatch"}
 	}
 	userID, err := s.resolveIdentity(r, "google_sub", profile.Sub, strings.ToLower(profile.Email), "google")
+	if errors.Is(err, errUnverifiedAccount) {
+		http.Redirect(w, r, s.Config.AppURL+"/login?error=unverified_account", http.StatusFound)
+		return nil
+	}
 	if err != nil {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oauth_failed", http.StatusFound)
 		return nil
@@ -315,7 +320,7 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 		Sub, Email    string
 		EmailVerified interface{} `json:"email_verified"`
 	}
-	if s.doJSON(request, &info) != nil || info.Sub == "" || info.Email == "" || fmt.Sprint(info.EmailVerified) == "false" {
+	if s.doJSON(request, &info) != nil || info.Sub == "" || info.Email == "" || !emailClaimVerified(info.EmailVerified) {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oidc_profile", http.StatusFound)
 		return nil
 	}
@@ -324,6 +329,10 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "OIDC id_token verification failed"}
 	}
 	userID, err := s.resolveIdentity(r, "oidc_sub", info.Sub, strings.ToLower(info.Email), "oidc")
+	if errors.Is(err, errUnverifiedAccount) {
+		http.Redirect(w, r, s.Config.AppURL+"/login?error=unverified_account", http.StatusFound)
+		return nil
+	}
 	if err != nil {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oidc_failed", http.StatusFound)
 		return nil
@@ -354,6 +363,22 @@ func verifyOIDCIDToken(idToken, issuer, clientID, userinfoSub string) error {
 	).Validate(claims)
 }
 
+// emailClaimVerified accepts only an explicit true (Google's tokeninfo sends the
+// string "true"); a missing claim does not prove the user owns the address.
+func emailClaimVerified(value interface{}) bool {
+	switch v := value.(type) {
+	case bool:
+		return v
+	case string:
+		return strings.EqualFold(v, "true")
+	}
+	return false
+}
+
+// errUnverifiedAccount means an account exists for the email but nobody has
+// proven they own it, so a provider login must not be linked to it.
+var errUnverifiedAccount = errors.New("an unverified account already uses this email")
+
 func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider string) (string, error) {
 	if column != "google_sub" && column != "oidc_sub" {
 		return "", fmt.Errorf("unsupported identity column")
@@ -364,10 +389,19 @@ func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider s
 		s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.login", "", map[string]string{"provider": provider}, r)
 		return userID, nil
 	}
-	err = s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id FROM users WHERE email=$1`, email).Scan(&userID, &tenantID)
+	var verified bool
+	err = s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id,email_verified FROM users WHERE email=$1`, email).Scan(&userID, &tenantID, &verified)
 	if err == nil {
-		_, err = s.DB.Pool.Exec(r.Context(), `UPDATE users SET `+column+`=$1,email_verified=true WHERE id=$2`, sub, userID)
-		return userID, err
+		// Linking by email is only safe when the existing account's owner has
+		// proven the address too; otherwise anyone could pre-register it.
+		if !verified {
+			return "", errUnverifiedAccount
+		}
+		if _, err = s.DB.Pool.Exec(r.Context(), `UPDATE users SET `+column+`=$1 WHERE id=$2`, sub, userID); err != nil {
+			return "", err
+		}
+		s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.identity_linked", "", map[string]string{"provider": provider}, r)
+		return userID, nil
 	}
 	tx, err := s.DB.Pool.Begin(r.Context())
 	if err != nil {
@@ -375,10 +409,11 @@ func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider s
 	}
 	defer tx.Rollback(r.Context()) //nolint:errcheck
 	role := "owner"
-	err = tx.QueryRow(r.Context(), `SELECT tenant_id,role FROM user_invitations WHERE email=$1 AND accepted_at IS NULL AND expires_at>now() ORDER BY expires_at DESC LIMIT 1`, email).Scan(&tenantID, &role)
-	if err == nil {
-		_, err = tx.Exec(r.Context(), `UPDATE user_invitations SET accepted_at=now() WHERE email=$1 AND accepted_at IS NULL`, email)
-	} else {
+	// Invitations are tenant rows; claim one through the SECURITY DEFINER
+	// resolver because no tenant is set yet.
+	err = tx.QueryRow(r.Context(), `SELECT tenant_id,role FROM claim_email_invitation($1)`, email).Scan(&tenantID, &role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		role = "owner"
 		err = tx.QueryRow(r.Context(), `INSERT INTO tenants (name) VALUES ($1) RETURNING id`, strings.Split(email, "@")[0]).Scan(&tenantID)
 	}
 	if err != nil {

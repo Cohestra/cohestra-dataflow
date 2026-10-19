@@ -9,8 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -75,8 +78,61 @@ func (s *Server) storeOpenLineage(r *http.Request, tenantID, environment string,
 	})
 }
 
+// webhookSignatureMaxAge bounds how old a timestamped signature may be, and
+// how long a delivery's signature is remembered to reject replays.
+const webhookSignatureMaxAge = 5 * time.Minute
+
+// webhookSignature returns the expected HMAC-SHA256 for a delivery. Senders sign
+// "<unix seconds>.<raw body>" and send the seconds in X-Signature-Timestamp;
+// with WEBHOOK_LEGACY_SIGNATURES=true a signature over the raw body alone is
+// also accepted (no replay window).
+func webhookSignature(secret string, timestamp string, raw []byte) []byte {
+	mac := hmac.New(sha256.New, []byte(secret))
+	if timestamp != "" {
+		_, _ = mac.Write([]byte(timestamp + "."))
+	}
+	_, _ = mac.Write(raw)
+	return mac.Sum(nil)
+}
+
+func verifyWebhookSignature(r *http.Request, secret string, raw []byte, now time.Time, allowLegacy bool) error {
+	provided, err := hex.DecodeString(r.Header.Get("X-Signature-Sha256"))
+	if err != nil || len(provided) == 0 {
+		return &HTTPError{Status: http.StatusUnauthorized, Message: "bad signature"}
+	}
+	timestamp := strings.TrimSpace(r.Header.Get("X-Signature-Timestamp"))
+	if timestamp == "" {
+		if !allowLegacy {
+			return &HTTPError{Status: http.StatusUnauthorized, Message: "X-Signature-Timestamp is required; sign \"<timestamp>.<body>\""}
+		}
+	} else {
+		seconds, err := strconv.ParseInt(timestamp, 10, 64)
+		if err != nil {
+			return &HTTPError{Status: http.StatusUnauthorized, Message: "bad signature timestamp"}
+		}
+		if age := now.Sub(time.Unix(seconds, 0)); age > webhookSignatureMaxAge || age < -webhookSignatureMaxAge {
+			return &HTTPError{Status: http.StatusUnauthorized, Message: "signature timestamp outside the allowed window"}
+		}
+	}
+	if secret == "" || !hmac.Equal(provided, webhookSignature(secret, timestamp, raw)) {
+		return &HTTPError{Status: http.StatusUnauthorized, Message: "bad signature"}
+	}
+	return nil
+}
+
 func (s *Server) webhookTrigger(w http.ResponseWriter, r *http.Request) error {
-	rows, err := s.DB.Pool.Query(r.Context(), `SELECT * FROM pipelines WHERE status='active' AND definition->'trigger'->>'type'='webhook' AND definition->'trigger'->>'path'=$1 ORDER BY (environment='prod') DESC`, r.PathValue("path"))
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		return badRequest(ErrInvalidRequest, "request body too large or unreadable")
+	}
+	body := map[string]interface{}{}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return badRequest(ErrInvalidRequest, "invalid JSON body")
+	}
+	// The resolver runs before a tenant is known; under RLS a plain SELECT on
+	// pipelines would see nothing.
+	rows, err := s.DB.Pool.Query(r.Context(), `SELECT id,tenant_id,environment,definition FROM resolve_webhook_pipelines($1)`, r.PathValue("path"))
 	if err != nil {
 		return err
 	}
@@ -88,26 +144,34 @@ func (s *Server) webhookTrigger(w http.ResponseWriter, r *http.Request) error {
 		return notFound(ErrNotFound, "no active pipeline on this hook")
 	}
 	row := values[0]
-	body := map[string]interface{}{}
-	if !decodeJSON(w, r, &body) {
-		return nil
+	tenantID := stringValue(row["tenant_id"])
+	for _, other := range values[1:] {
+		if stringValue(other["tenant_id"]) != tenantID {
+			return &HTTPError{Status: http.StatusConflict, Message: "webhook path is claimed by more than one workspace"}
+		}
 	}
-	canonical, _ := json.Marshal(body)
 	definition, _ := json.Marshal(row["definition"])
 	var def model.PipelineDefinition
 	if err = json.Unmarshal(definition, &def); err != nil {
 		return err
 	}
-	mac := hmac.New(sha256.New, []byte(def.Trigger.Secret))
-	_, _ = mac.Write(canonical)
-	provided, err := hex.DecodeString(r.Header.Get("X-Signature-Sha256"))
-	if err != nil || !hmac.Equal(provided, mac.Sum(nil)) {
-		return &HTTPError{Status: http.StatusUnauthorized, Message: "bad signature"}
+	def.TenantID = tenantID
+	if err := verifyWebhookSignature(r, def.Trigger.Secret, raw, time.Now(), os.Getenv("WEBHOOK_LEGACY_SIGNATURES") == "true"); err != nil {
+		return err
+	}
+	if s.Redis != nil {
+		key := "dataflow:webhook-seen:" + sha256Hex(stringValue(row["id"])+":"+r.Header.Get("X-Signature-Timestamp")+":"+strings.ToLower(r.Header.Get("X-Signature-Sha256")))
+		fresh, err := s.Redis.SetNX(r.Context(), key, "1", 2*webhookSignatureMaxAge).Result()
+		if err != nil {
+			slog.Warn("webhook replay check unavailable", "error", err)
+		} else if !fresh {
+			return &HTTPError{Status: http.StatusConflict, Message: "duplicate webhook delivery"}
+		}
 	}
 	if err := model.ValidateAgentAdmission(def); err != nil {
 		return badRequest(ErrInvalidRequest, err.Error())
 	}
-	tenantID := stringValue(row["tenant_id"])
+	canonical, _ := json.Marshal(body)
 	environment := model.Environment(stringValue(row["environment"]))
 	var payload *model.DataRef
 	if len(canonical) <= 4096 {

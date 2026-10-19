@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -146,44 +147,47 @@ func (s *Server) billingWebhook(w http.ResponseWriter, r *http.Request) error {
 		if orderID == "" {
 			return badRequest(ErrInvalidRequest, "no order_id")
 		}
-		rows, err := s.DB.Pool.Query(r.Context(), `SELECT id,tenant_id,quota_units,status FROM payment_orders WHERE razorpay_order_id=$1`, orderID)
-		if err != nil {
+		// Razorpay calls before any tenant is known; resolve the order's tenant
+		// through the SECURITY DEFINER resolver, then work inside that tenant.
+		var orderRowID, tenantID string
+		if err := s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id FROM resolve_payment_order($1)`, orderID).Scan(&orderRowID, &tenantID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return notFound(ErrNotFound, "unknown order")
+			}
 			return err
 		}
-		values, err := rowsToMaps(rows)
-		if err != nil {
-			return err
-		}
-		if len(values) == 0 {
-			return notFound(ErrNotFound, "unknown order")
-		}
-		record := values[0]
-		if record["status"] == "paid" {
-			jsonResponse(w, http.StatusOK, map[string]bool{"ok": true, "idempotent": true})
-			return nil
-		}
-		tenantID := stringValue(record["tenant_id"])
+		var units int
+		alreadyPaid := false
 		err = s.DB.TenantTx(r.Context(), tenantID, func(tx pgx.Tx) error {
 			var status string
-			if err := tx.QueryRow(r.Context(), `SELECT status FROM payment_orders WHERE id=$1 FOR UPDATE`, record["id"]).Scan(&status); err != nil {
+			if err := tx.QueryRow(r.Context(), `SELECT status,quota_units FROM payment_orders WHERE id=$1 FOR UPDATE`, orderRowID).Scan(&status, &units); err != nil {
 				return err
 			}
 			if status == "paid" {
+				alreadyPaid = true
 				return nil
 			}
-			if _, err := tx.Exec(r.Context(), `UPDATE payment_orders SET status='paid',paid_at=now(),razorpay_payment_id=$2 WHERE id=$1`, record["id"], nullString(stringValue(payment["id"]))); err != nil {
+			if _, err := tx.Exec(r.Context(), `UPDATE payment_orders SET status='paid',paid_at=now(),razorpay_payment_id=$2 WHERE id=$1`, orderRowID, nullString(stringValue(payment["id"]))); err != nil {
 				return err
 			}
-			_, err := tx.Exec(r.Context(), `INSERT INTO billing_plans (tenant_id,extra_quota) VALUES ($1,$2) ON CONFLICT(tenant_id) DO UPDATE SET extra_quota=billing_plans.extra_quota+$2,updated_at=now()`, tenantID, numberInt(record["quota_units"])*5)
+			_, err := tx.Exec(r.Context(), `INSERT INTO billing_plans (tenant_id,extra_quota) VALUES ($1,$2) ON CONFLICT(tenant_id) DO UPDATE SET extra_quota=billing_plans.extra_quota+$2,updated_at=now()`, tenantID, units*5)
 			return err
 		})
 		if err != nil {
 			return err
 		}
-		s.audit(r.Context(), model.TenantContext{TenantID: tenantID}, "payment.captured", orderID, map[string]interface{}{"paymentId": payment["id"], "units": record["quota_units"]}, r)
+		if alreadyPaid {
+			jsonResponse(w, http.StatusOK, map[string]bool{"ok": true, "idempotent": true})
+			return nil
+		}
+		s.audit(r.Context(), model.TenantContext{TenantID: tenantID}, "payment.captured", orderID, map[string]interface{}{"paymentId": payment["id"], "units": units}, r)
 	case "payment.failed":
-		if orderID != "" {
-			_, _ = s.DB.Pool.Exec(r.Context(), `UPDATE payment_orders SET status='failed' WHERE razorpay_order_id=$1 AND status='created'`, orderID)
+		var tenantID string
+		if orderID != "" && s.DB.Pool.QueryRow(r.Context(), `SELECT tenant_id FROM resolve_payment_order($1)`, orderID).Scan(&tenantID) == nil {
+			_ = s.DB.TenantTx(r.Context(), tenantID, func(tx pgx.Tx) error {
+				_, err := tx.Exec(r.Context(), `UPDATE payment_orders SET status='failed' WHERE razorpay_order_id=$1 AND status='created'`, orderID)
+				return err
+			})
 		}
 	}
 	jsonResponse(w, http.StatusOK, map[string]bool{"ok": true})
