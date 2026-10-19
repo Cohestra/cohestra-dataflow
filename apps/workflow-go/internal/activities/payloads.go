@@ -7,12 +7,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dataflow-poc/workflow-go/internal/connectors"
 	"github.com/dataflow-poc/workflow-go/internal/database"
 	"github.com/dataflow-poc/workflow-go/internal/model"
 	"github.com/dataflow-poc/workflow-go/internal/objectstore"
 )
 
 const inlineMax = 4 * 1024
+
+// PayloadTooLargeError is the non-retryable error type for reads over MaxPayloadBytes.
+const PayloadTooLargeError = "PayloadTooLargeError"
 
 type Payloads struct {
 	DB          *database.DB
@@ -92,7 +96,8 @@ func (p *Payloads) Read(ctx context.Context, ref *model.DataRef, dek []byte) (in
 		return nil, nil
 	}
 	if p.MaxPayloadBytes > 0 && int64(ref.SizeBytes) > p.MaxPayloadBytes {
-		return nil, fmt.Errorf("payload %s is %d bytes, exceeds MAX_PAYLOAD_BYTES limit of %d", ref.Key, ref.SizeBytes, p.MaxPayloadBytes)
+		// Retrying cannot shrink the payload, so fail once with the fix.
+		return nil, &connectors.PermanentError{Type: PayloadTooLargeError, Err: fmt.Errorf("upstream output is %d bytes, over the MAX_PAYLOAD_BYTES limit of %d; raise MAX_PAYLOAD_BYTES on the activity worker or lower the source pageSize", ref.SizeBytes, p.MaxPayloadBytes)}
 	}
 	key := dek
 	if len(key) == 0 {

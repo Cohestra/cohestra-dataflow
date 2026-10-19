@@ -338,6 +338,7 @@ func runSource(ctx workflow.Context, input model.WorkflowInput, node model.Node)
 	total := 0
 	refs := make([]*model.DataRef, 0)
 	var checkpoint map[string]interface{}
+	truncated := false
 	connectionID := sourceConnectionID(input.Definition.ID, node)
 	for pageNumber := 1; ; pageNumber++ {
 		var page struct {
@@ -371,7 +372,15 @@ func runSource(ctx workflow.Context, input model.WorkflowInput, node model.Node)
 		if !page.HasMore {
 			break
 		}
-		if pageNumber >= 50 {
+		if pageNumber >= maxSourcePagesPerRun {
+			// A resumable source stops at this page boundary so the run can
+			// complete and commit its cursor; failing instead meant the next run
+			// restarted from the same cursor and failed again. Backfill
+			// partitions must cover their whole window, so they still fail.
+			if resumableSource(node, checkpoint) && workflow.GetVersion(ctx, "source-page-cap-resume-v1", workflow.DefaultVersion, 1) != workflow.DefaultVersion {
+				truncated = true
+				break
+			}
 			return failed(node.ID, fmt.Errorf("source partition exceeded 50 pages; reduce backfill partition size or increase pageSize")), nil
 		}
 	}
@@ -394,9 +403,27 @@ func runSource(ctx workflow.Context, input model.WorkflowInput, node model.Node)
 		meta["checkpoint"] = checkpoint
 		meta["connectionId"] = connectionID
 	}
+	if truncated {
+		meta["truncated"] = true
+		meta["warning"] = fmt.Sprintf("source stopped after %d pages in this run; the next run resumes from the saved cursor", maxSourcePagesPerRun)
+	}
 	return model.NodeResult{
 		NodeID: node.ID, Status: "success", OutputRef: outputRef, Meta: meta,
 	}, nil
+}
+
+// maxSourcePagesPerRun bounds the pages one source node reads per execution,
+// which bounds workflow history and the merged payload size.
+const maxSourcePagesPerRun = 50
+
+// resumableSource reports whether a source that hit the page cap can stop
+// early and continue next run: it must have a checkpoint to commit, and it must
+// not be a backfill partition, which has to read its whole window.
+func resumableSource(node model.Node, checkpoint map[string]interface{}) bool {
+	if len(checkpoint) == 0 {
+		return false
+	}
+	return node.Ingestion == nil || node.Ingestion.Mode != "backfill"
 }
 
 func sourceConnectionID(pipelineID string, node model.Node) string {

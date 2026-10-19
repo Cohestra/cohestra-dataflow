@@ -124,7 +124,7 @@ func (a *Activities) FetchSourcePage(ctx context.Context, p FetchSourceParams) (
 	result, err := a.Runtime.Fetch(ctx, p.ActivityType, connectors.SourceParams{Config: p.Config, Cursor: p.Cursor, Ingestion: p.Ingestion, TenantID: p.TenantID})
 	if err != nil {
 		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error(), false)
-		return FetchSourceResult{}, err
+		return FetchSourceResult{}, activityError(err)
 	}
 	dek, err := a.dek(p.EncryptedDEK)
 	if err != nil {
@@ -185,22 +185,51 @@ func (a *Activities) CommitSourceCursors(ctx context.Context, p CommitCursorPara
 type CommitDedupeParams struct {
 	TenantID    string `json:"tenantId"`
 	Checkpoints []struct {
-		PipelineID string   `json:"pipelineId"`
-		NodeID     string   `json:"nodeId"`
-		Hashes     []string `json:"hashes"`
+		PipelineID string `json:"pipelineId"`
+		NodeID     string `json:"nodeId"`
+		// Hashes is the inline form written by workers before hashesRef existed.
+		Hashes       []string       `json:"hashes,omitempty"`
+		HashesRef    *model.DataRef `json:"hashesRef,omitempty"`
+		EncryptedDEK string         `json:"encryptedDek,omitempty"`
 	} `json:"checkpoints"`
 }
 
 func (a *Activities) CommitDedupeKeys(ctx context.Context, p CommitDedupeParams) error {
 	for _, checkpoint := range p.Checkpoints {
-		if len(checkpoint.Hashes) == 0 {
+		hashes, err := a.dedupeHashes(ctx, checkpoint.Hashes, checkpoint.HashesRef, checkpoint.EncryptedDEK)
+		if err != nil {
+			return err
+		}
+		if len(hashes) == 0 {
 			continue
 		}
-		if _, err := a.DB.Pool.Exec(ctx, `INSERT INTO dedupe_keys (tenant_id,pipeline_id,node_id,key_hash) SELECT $1,$2,$3,hash FROM unnest($4::text[]) hash ON CONFLICT DO NOTHING`, p.TenantID, checkpoint.PipelineID, checkpoint.NodeID, checkpoint.Hashes); err != nil {
+		if _, err := a.DB.Pool.Exec(ctx, `INSERT INTO dedupe_keys (tenant_id,pipeline_id,node_id,key_hash) SELECT $1,$2,$3,hash FROM unnest($4::text[]) hash ON CONFLICT DO NOTHING`, p.TenantID, checkpoint.PipelineID, checkpoint.NodeID, hashes); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (a *Activities) dedupeHashes(ctx context.Context, inline []string, ref *model.DataRef, encryptedDEK string) ([]string, error) {
+	if ref == nil {
+		return inline, nil
+	}
+	dek, err := a.dek(encryptedDEK)
+	if err != nil {
+		return nil, err
+	}
+	value, err := a.Payloads.Read(ctx, ref, dek)
+	if err != nil {
+		return nil, err
+	}
+	items, _ := value.([]interface{})
+	hashes := make([]string, 0, len(items))
+	for _, item := range items {
+		if hash, ok := item.(string); ok {
+			hashes = append(hashes, hash)
+		}
+	}
+	return hashes, nil
 }
 
 type DispatchParams struct {
@@ -233,7 +262,8 @@ func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.
 	if p.InputRef != nil {
 		input, err = a.Payloads.Read(ctx, p.InputRef, dek)
 		if err != nil {
-			return model.NodeResult{}, err
+			_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error(), false)
+			return model.NodeResult{}, activityError(err)
 		}
 	}
 	if err := a.admitControlledActivity(ctx, p.TenantID, p.ExecutionID, p.ControlRequired); err != nil {
@@ -246,7 +276,7 @@ func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.
 	duration := time.Since(started)
 	if err != nil {
 		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, duration, 0, err.Error(), false)
-		return model.NodeResult{}, err
+		return model.NodeResult{}, activityError(err)
 	}
 	var ref *model.DataRef
 	if output != nil {
@@ -359,7 +389,17 @@ func (a *Activities) filterCrossRunDedupe(ctx context.Context, output interface{
 	if meta == nil {
 		meta = map[string]interface{}{}
 	}
-	meta["dedupeCheckpoint"] = map[string]interface{}{"pipelineId": pipelineID, "nodeId": p.NodeID, "hashes": fresh}
+	// The checkpoint travels through workflow history, so carry the new hashes
+	// by reference: inline they overflow Temporal's payload limit near 30k rows.
+	dek, err := a.dek(p.EncryptedDEK)
+	if err != nil {
+		return nil, nil, err
+	}
+	hashesRef, err := a.Payloads.Write(ctx, fresh, p.TenantID, p.ExecutionID, p.NodeID+"-dedupe-keys", dek)
+	if err != nil {
+		return nil, nil, err
+	}
+	meta["dedupeCheckpoint"] = map[string]interface{}{"pipelineId": pipelineID, "nodeId": p.NodeID, "hashesRef": hashesRef, "encryptedDek": p.EncryptedDEK}
 	return filtered, meta, nil
 }
 
@@ -416,7 +456,7 @@ func (a *Activities) MergeRefs(ctx context.Context, p MergeParams) (model.NodeRe
 	started := time.Now()
 	fail := func(err error) (model.NodeResult, error) {
 		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, time.Since(started), 0, err.Error(), false)
-		return model.NodeResult{}, err
+		return model.NodeResult{}, activityError(err)
 	}
 	dek, err := a.dek(p.EncryptedDEK)
 	if err != nil {
@@ -573,7 +613,7 @@ func (a *Activities) EvalEdgeCondition(ctx context.Context, p EdgeConditionParam
 	}
 	value, err := a.Payloads.Read(ctx, p.InputRef, dek)
 	if err != nil {
-		return false, err
+		return false, activityError(err)
 	}
 	return connectors.EvaluatePredicate(p.Condition, value)
 }
@@ -647,7 +687,7 @@ func redactError(value string) interface{} {
 	if value == "" {
 		return nil
 	}
-	return value
+	return redactText(value)
 }
 
 func Register(worker interface {
