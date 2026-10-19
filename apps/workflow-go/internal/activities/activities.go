@@ -27,6 +27,9 @@ type Activities struct {
 	// MaxMergeInMemoryBytes caps how much fan-in merge input can be held in memory at once
 	// before MergeRefs spills to a temp file instead; <= 0 means unlimited.
 	MaxMergeInMemoryBytes int64
+	// BillingEnabled enforces the monthly execution quota on scheduled runs.
+	// Usage is counted either way; self-hosted installs leave it off.
+	BillingEnabled bool
 }
 
 type ScheduledExecutionParams struct {
@@ -54,7 +57,7 @@ func (a *Activities) PrepareScheduledExecution(ctx context.Context, p ScheduledE
 	if err = tx.QueryRow(ctx, `SELECT bp.free_tier_limit+bp.extra_quota,uc.execution_count FROM billing_plans bp JOIN usage_counters uc ON uc.tenant_id=bp.tenant_id AND uc.month=date_trunc('month',now() at time zone 'utc')::date WHERE bp.tenant_id=$1 FOR UPDATE OF bp,uc`, p.TenantID).Scan(&limit, &used); err != nil {
 		return err
 	}
-	if used >= limit {
+	if a.BillingEnabled && used >= limit {
 		return temporal.NewNonRetryableApplicationError("scheduled execution quota exceeded", "QuotaExceededError", nil)
 	}
 	if _, err = tx.Exec(ctx, `UPDATE usage_counters SET execution_count=execution_count+1 WHERE tenant_id=$1 AND month=date_trunc('month',now() at time zone 'utc')::date`, p.TenantID); err != nil {

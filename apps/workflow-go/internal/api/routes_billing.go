@@ -45,7 +45,7 @@ func (s *Server) billingUsage(w http.ResponseWriter, r *http.Request) error {
 		}
 		used := 0
 		_ = tx.QueryRow(r.Context(), `SELECT execution_count FROM usage_counters WHERE tenant_id=$1 AND month=$2`, tenant.TenantID, monthStart()).Scan(&used)
-		out = map[string]interface{}{"used": used, "limit": free + extra, "free_tier": free, "extra_quota": extra, "daysUntilReset": daysUntilReset()}
+		out = map[string]interface{}{"used": used, "limit": free + extra, "free_tier": free, "extra_quota": extra, "daysUntilReset": daysUntilReset(), "metered": s.Config.BillingEnabled}
 		return nil
 	})
 	if err != nil {

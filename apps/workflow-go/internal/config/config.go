@@ -40,22 +40,25 @@ type Config struct {
 	OpenLineageAPIKey            string
 	Edition                      string
 	InternalDemoFeatures         bool
-	AuditRetentionDays           int
-	ExecutionRetentionDays       int
-	NodeRunRetentionDays         int
-	PayloadRetentionDays         int
-	OutboxRetentionDays          int
-	BackfillDispatchInterval     time.Duration
-	MaxPipelineListPageSize      int
-	MaxPipelineNodes             int
-	MaxPipelineEdges             int
-	MaxPipelineConfigBytes       int
-	MaxPipelineFanout            int
-	MaxPipelineMaxParallel       int
-	MaxPipelineNodePageSize      int
-	MaxBackfillPartitions        int
-	MaxPayloadBytes              int64
-	MaxMergeInMemoryBytes        int64
+	// BillingEnabled turns on the monthly execution quota and paid top-ups.
+	// Off by default: self-hosted installs are never metered.
+	BillingEnabled           bool
+	AuditRetentionDays       int
+	ExecutionRetentionDays   int
+	NodeRunRetentionDays     int
+	PayloadRetentionDays     int
+	OutboxRetentionDays      int
+	BackfillDispatchInterval time.Duration
+	MaxPipelineListPageSize  int
+	MaxPipelineNodes         int
+	MaxPipelineEdges         int
+	MaxPipelineConfigBytes   int
+	MaxPipelineFanout        int
+	MaxPipelineMaxParallel   int
+	MaxPipelineNodePageSize  int
+	MaxBackfillPartitions    int
+	MaxPayloadBytes          int64
+	MaxMergeInMemoryBytes    int64
 }
 
 func Load() Config {
@@ -92,6 +95,7 @@ func Load() Config {
 		OpenLineageAPIKey:            os.Getenv("OPENLINEAGE_API_KEY"),
 		Edition:                      env("EDITION", "community"),
 		InternalDemoFeatures:         boolEnv("INTERNAL_DEMO_FEATURES"),
+		BillingEnabled:               boolEnv("BILLING_ENABLED"),
 		AuditRetentionDays:           intEnv("AUDIT_RETENTION_DAYS", 90),
 		ExecutionRetentionDays:       intEnv("EXECUTION_RETENTION_DAYS", 90),
 		NodeRunRetentionDays:         intEnv("NODE_RUN_RETENTION_DAYS", 90),
