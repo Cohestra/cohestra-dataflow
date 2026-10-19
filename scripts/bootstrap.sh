@@ -125,8 +125,14 @@ if [ -n "$PUBLIC_IP" ]; then
   # helm's required() checks abort the install and the stack never comes up.
   if [ "${SECRETS_READY:-false}" = "true" ]; then
     HELM_RUNTIME_ARGS+=(--set runtime.production=true)
+  elif [ "${ALLOW_INSECURE_PUBLIC_INSTALL:-false}" = "true" ]; then
+    echo "⚠️ Secrets incomplete or unavailable — ALLOW_INSECURE_PUBLIC_INSTALL=true, installing WITHOUT runtime.production on public IP $PUBLIC_IP"
   else
-    echo "⚠️ Secrets incomplete or unavailable — installing WITHOUT runtime.production; rerun bootstrap once $GCP_SECRET_MANAGER_NAME is populated"
+    # A public IP without production mode means development secrets, non-Secure
+    # cookies and default database passwords on the internet. Stop instead.
+    echo "✖ Secrets incomplete or unavailable for $GCP_SECRET_MANAGER_NAME; refusing to install on public IP $PUBLIC_IP without runtime.production." >&2
+    echo "  Populate the secret and rerun bootstrap, or set ALLOW_INSECURE_PUBLIC_INSTALL=true for a throwaway demo." >&2
+    exit 1
   fi
   HELM_RUNTIME_ARGS+=(--set-string "secrets.appUrl=https://${PUBLIC_IP}.nip.io")
   if [ -n "${BACKUP_GCS_BUCKET:-}" ]; then

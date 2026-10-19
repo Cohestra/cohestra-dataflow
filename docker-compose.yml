@@ -533,14 +533,17 @@ services:
     profiles: [observability]
     image: grafana/grafana:11.1.0
     environment:
+      # Anonymous visitors may look, not edit data sources or run queries as
+      # admin; sign in as admin (password from GRAFANA_ADMIN_PASSWORD) to change things.
       - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
     volumes:
       - ./observability/grafana-datasources.yml:/etc/grafana/provisioning/datasources/ds.yml
       - ./observability/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/db.yml
       - ./observability/dashboard-dataflow.json:/var/lib/grafana/dashboards/dataflow.json
-    ports: ["3001:3000"]
+    ports: ["127.0.0.1:3001:3000"]
     depends_on: [prometheus]
     mem_limit: 256m
     networks: [dataflow]

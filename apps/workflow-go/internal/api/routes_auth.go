@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -27,6 +28,7 @@ func (s *Server) registerAuth(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/logout", handle(s.logout))
 	mux.Handle("GET /api/auth/me", s.protected(handle(s.me)))
 	mux.HandleFunc("GET /api/auth/accept-invite", handle(s.acceptInvite))
+	mux.Handle("GET /api/auth/verify-email", s.rateLimit("verify-email", 30, time.Minute, handle(s.verifyEmail)))
 }
 
 func (s *Server) registerPassword(w http.ResponseWriter, r *http.Request) error {
@@ -79,22 +81,74 @@ func (s *Server) registerPassword(w http.ResponseWriter, r *http.Request) error 
 			return err
 		}
 	}
+	// An invitation link proves the address; the first account on a fresh
+	// install has nobody to verify against. Everyone else confirms by email
+	// before the account can be used or linked to a Google/OIDC login.
+	verified := body.InviteToken != ""
+	if !verified {
+		if err := tx.QueryRow(r.Context(), `SELECT NOT EXISTS (SELECT 1 FROM users)`).Scan(&verified); err != nil {
+			return err
+		}
+	}
 	if err := tx.QueryRow(r.Context(), `INSERT INTO users (tenant_id,email,password_hash,role,email_verified)
-    VALUES ($1,$2,$3,$4,true) RETURNING id`, tenantID, body.Email, hash, role).Scan(&userID); err != nil {
+    VALUES ($1,$2,$3,$4,$5) RETURNING id`, tenantID, body.Email, hash, role, verified).Scan(&userID); err != nil {
 		return err
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		return err
+	}
+	s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.register", "", map[string]interface{}{"provider": "password", "emailVerified": verified}, r)
+	if !verified {
+		if err := s.sendEmailVerification(r, userID, body.Email); err != nil {
+			return err
+		}
+		jsonResponse(w, http.StatusCreated, map[string]bool{"ok": true, "verificationRequired": true})
+		return nil
 	}
 	refresh, err := s.issueRefreshToken(r.Context(), userID)
 	if err != nil {
 		return err
 	}
 	setRefreshCookie(w, refresh)
-	s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.register", "", map[string]string{"provider": "password"}, r)
 	jsonResponse(w, http.StatusCreated, map[string]bool{"ok": true})
 	return nil
 }
+
+// sendEmailVerification issues a 24-hour verification link. Without SMTP the
+// link is logged for the operator, so self-hosted installs are not stuck.
+func (s *Server) sendEmailVerification(r *http.Request, userID, email string) error {
+	token := randomToken()
+	if _, err := s.DB.Pool.Exec(r.Context(), `INSERT INTO email_verifications (token_hash,user_id,expires_at) VALUES ($1,$2,now()+interval '24 hours')`, sha256Hex(token), userID); err != nil {
+		return err
+	}
+	link := strings.TrimSuffix(s.Config.AppURL, "/") + "/api/auth/verify-email?token=" + url.QueryEscape(token)
+	if !s.Config.MailConfigured {
+		slog.Warn("SMTP is not configured; give this email verification link to the user", "email", email, "link", link)
+		return nil
+	}
+	if err := s.sendMail(email, "Confirm your DataFlow email", fmt.Sprintf(`<p>Confirm your email address to finish creating your DataFlow account.</p><p><a href="%s">Confirm email</a></p><p>The link expires in 24 hours.</p>`, link)); err != nil {
+		slog.Error("send verification email", "error", err)
+		return &HTTPError{Status: http.StatusBadGateway, Message: "could not send the verification email; try again later"}
+	}
+	return nil
+}
+
+func (s *Server) verifyEmail(w http.ResponseWriter, r *http.Request) error {
+	token := r.URL.Query().Get("token")
+	var userID string
+	err := s.DB.Pool.QueryRow(r.Context(), `UPDATE users u SET email_verified=true FROM email_verifications v
+    WHERE v.token_hash=$1 AND v.expires_at>now() AND u.id=v.user_id RETURNING u.id`, sha256Hex(token)).Scan(&userID)
+	if token == "" || err != nil {
+		http.Redirect(w, r, s.Config.AppURL+"/login?error=verification_invalid", http.StatusFound)
+		return nil
+	}
+	_, _ = s.DB.Pool.Exec(r.Context(), `DELETE FROM email_verifications WHERE user_id=$1`, userID)
+	http.Redirect(w, r, s.Config.AppURL+"/login?verified=1", http.StatusFound)
+	return nil
+}
+
+// dummyPasswordHash keeps login timing the same whether or not the email exists.
+var dummyPasswordHash, _ = hashPassword("dataflow-timing-equalizer")
 
 func (s *Server) loginPassword(w http.ResponseWriter, r *http.Request) error {
 	if os.Getenv("AUTH_PASSWORD_ENABLED") != "true" {
@@ -107,10 +161,22 @@ func (s *Server) loginPassword(w http.ResponseWriter, r *http.Request) error {
 	if body.Email == "" || body.Password == "" {
 		return badRequest(ErrInvalidRequest, "email and password are required")
 	}
-	var userID, tenantID, hash string
-	err := s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id,password_hash FROM users WHERE email=$1`, strings.ToLower(body.Email)).Scan(&userID, &tenantID, &hash)
-	if err != nil || !checkPassword(hash, body.Password) {
+	var userID, tenantID string
+	var hash *string
+	var verified bool
+	err := s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id,password_hash,email_verified FROM users WHERE email=$1`, strings.ToLower(body.Email)).Scan(&userID, &tenantID, &hash, &verified)
+	if err != nil || hash == nil {
+		checkPassword(dummyPasswordHash, body.Password)
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "invalid email or password"}
+	}
+	if !checkPassword(*hash, body.Password) {
+		return &HTTPError{Status: http.StatusUnauthorized, Message: "invalid email or password"}
+	}
+	if !verified {
+		if err := s.sendEmailVerification(r, userID, strings.ToLower(body.Email)); err != nil {
+			return err
+		}
+		return &HTTPError{Status: http.StatusForbidden, Code: ErrEmailNotVerified, Message: "confirm your email first: we sent you a new link"}
 	}
 	refresh, err := s.issueRefreshToken(r.Context(), userID)
 	if err != nil {

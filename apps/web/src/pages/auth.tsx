@@ -58,6 +58,8 @@ const OAUTH_ERRORS: Record<string, string> = {
   oidc_token: 'Could not complete SSO sign-in. Please try again.',
   oidc_userinfo: 'Could not retrieve your SSO profile. Please try again.',
   oidc_profile: 'Your SSO account did not return a verified email.',
+  unverified_account: 'An account with this email was registered but never confirmed. Confirm it from the email we sent, or ask your workspace administrator for help.',
+  verification_invalid: 'That confirmation link is invalid or has expired. Sign in with your password to get a new one.',
   oidc_failed: 'SSO sign-in failed. Please try again.',
 };
 
@@ -74,12 +76,14 @@ function PasswordForm({ initialEmail = '', inviteToken }: { initialEmail?: strin
   const [tenantName, setTenantName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [checkInbox, setCheckInbox] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
     try {
       if (mode === 'register') {
-        await api.registerWithPassword({ email, password, tenantName: tenantName || undefined, inviteToken });
+        const result = await api.registerWithPassword({ email, password, tenantName: tenantName || undefined, inviteToken });
+        if (result?.verificationRequired) { setCheckInbox(true); setBusy(false); return; }
       } else {
         await api.loginWithPassword({ email, password });
       }
@@ -93,6 +97,15 @@ function PasswordForm({ initialEmail = '', inviteToken }: { initialEmail?: strin
       setBusy(false);
     }
   };
+
+  if (checkInbox) {
+    return (
+      <div role="status" className="mt-5 space-y-2 border-t border-white/[0.07] pt-5 text-sm">
+        <p className="font-medium">Check your inbox</p>
+        <p className="text-xs text-white/60">We sent a confirmation link to {email}. Open it, then sign in.</p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={submit} className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
@@ -133,6 +146,9 @@ export function LoginPage() {
           </svg>
           Continue with SSO
         </a>
+      )}
+      {params.get('verified') === '1' && (
+        <p role="status" className="mt-4 text-xs text-emerald-300">Email confirmed. Sign in to continue.</p>
       )}
       {PASSWORD_AUTH_ENABLED && <PasswordForm />}
       <ErrorLine msg={errorCode ? (OAUTH_ERRORS[errorCode] ?? 'Sign-in failed.') : null} />

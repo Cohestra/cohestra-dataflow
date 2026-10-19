@@ -18,7 +18,16 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
-	server, err := backend.New(ctx, config.Load())
+	cfg := config.Load()
+	warnings, err := cfg.ValidateAPI()
+	if err != nil {
+		slog.Error("invalid configuration", "error", err)
+		os.Exit(1)
+	}
+	for _, warning := range warnings {
+		slog.Warn("insecure development configuration", "problem", warning)
+	}
+	server, err := backend.New(ctx, cfg)
 	if err != nil {
 		slog.Error("initialize API", "error", err)
 		os.Exit(1)

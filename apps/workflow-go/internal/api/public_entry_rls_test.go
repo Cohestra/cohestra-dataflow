@@ -147,3 +147,58 @@ func TestPublicEntryOAuthSignupClaimsInvitationUnderRLS(t *testing.T) {
 		t.Fatalf("unverified account was linked to a provider identity")
 	}
 }
+
+func TestPublicEntryPasswordSignupRequiresEmailVerification(t *testing.T) {
+	ctx, db, app := openPublicEntryFixture(t)
+	t.Setenv("AUTH_PASSWORD_ENABLED", "true")
+	email := "signup-" + uuid.NewString() + "@fixture.invalid"
+	t.Cleanup(func() {
+		var tenant string
+		if db.Pool.QueryRow(ctx, `SELECT tenant_id FROM users WHERE email=$1`, email).Scan(&tenant) == nil {
+			_, _ = db.Pool.Exec(ctx, `DELETE FROM audit_log WHERE tenant_id=$1`, tenant)
+			_, _ = db.Pool.Exec(ctx, `DELETE FROM users WHERE tenant_id=$1`, tenant)
+			_, _ = db.Pool.Exec(ctx, `DELETE FROM tenants WHERE id=$1`, tenant)
+		}
+	})
+	// Another account exists, so this is not the bootstrap user of a fresh install.
+	other := uuid.NewString()
+	t.Cleanup(func() { _, _ = db.Pool.Exec(ctx, `DELETE FROM tenants WHERE id=$1`, other) })
+	if _, err := db.Pool.Exec(ctx, `INSERT INTO tenants(id,name) VALUES($1,'signup neighbour')`, other); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Pool.Exec(ctx, `INSERT INTO users(tenant_id,email,role,email_verified) VALUES($1,$2,'owner',true)`, other, other+"@fixture.invalid"); err != nil {
+		t.Fatal(err)
+	}
+	server := &Server{DB: app}
+	call := func(handler func(http.ResponseWriter, *http.Request) error, method, target, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, target, strings.NewReader(body))
+		res := httptest.NewRecorder()
+		handle(handler)(res, req)
+		return res
+	}
+	credentials := `{"email":"` + email + `","password":"correct horse battery"}`
+	res := call(server.registerPassword, http.MethodPost, "/api/auth/register", credentials)
+	if res.Code != http.StatusCreated || !strings.Contains(res.Body.String(), "verificationRequired") || res.Header().Get("Set-Cookie") != "" {
+		t.Fatalf("register: status=%d cookie=%q body=%s", res.Code, res.Header().Get("Set-Cookie"), res.Body.String())
+	}
+	if res := call(server.loginPassword, http.MethodPost, "/api/auth/login", credentials); res.Code != http.StatusForbidden || !strings.Contains(res.Body.String(), "ERR_EMAIL_NOT_VERIFIED") {
+		t.Fatalf("unverified login: status=%d body=%s", res.Code, res.Body.String())
+	}
+	if res := call(server.loginPassword, http.MethodPost, "/api/auth/login", `{"email":"nobody-`+uuid.NewString()+`@fixture.invalid","password":"x"}`); res.Code != http.StatusUnauthorized {
+		t.Fatalf("unknown email login: status=%d", res.Code)
+	}
+	// The emailed link carries a token whose hash is stored; plant a known one.
+	token := "verify-" + uuid.NewString()
+	if _, err := db.Pool.Exec(ctx, `INSERT INTO email_verifications(token_hash,user_id,expires_at) SELECT $1,id,now()+interval '1 hour' FROM users WHERE email=$2`, sha256Hex(token), email); err != nil {
+		t.Fatal(err)
+	}
+	if res := call(server.verifyEmail, http.MethodGet, "/api/auth/verify-email?token="+token, ""); res.Code != http.StatusFound || !strings.Contains(res.Header().Get("Location"), "verified=1") {
+		t.Fatalf("verify: status=%d location=%q", res.Code, res.Header().Get("Location"))
+	}
+	if res := call(server.verifyEmail, http.MethodGet, "/api/auth/verify-email?token="+token, ""); !strings.Contains(res.Header().Get("Location"), "verification_invalid") {
+		t.Fatalf("a used verification link must not work twice: location=%q", res.Header().Get("Location"))
+	}
+	if res := call(server.loginPassword, http.MethodPost, "/api/auth/login", credentials); res.Code != http.StatusOK {
+		t.Fatalf("verified login: status=%d body=%s", res.Code, res.Body.String())
+	}
+}

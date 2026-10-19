@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -40,6 +41,14 @@ type Config struct {
 	OpenLineageAPIKey            string
 	Edition                      string
 	InternalDemoFeatures         bool
+	// Production is NODE_ENV=production (the Helm chart's runtime.production).
+	Production bool
+	// AppDatabaseURLSet records whether APP_DATABASE_URL was given explicitly;
+	// without it the API falls back to DATABASE_URL and RLS does not apply.
+	AppDatabaseURLSet bool
+	// MailConfigured is true when SMTP_HOST or SMTP_USER is set, so the API
+	// can send invitation and verification email.
+	MailConfigured bool
 	// BillingEnabled turns on the monthly execution quota and paid top-ups.
 	// Off by default: self-hosted installs are never metered.
 	BillingEnabled           bool
@@ -71,7 +80,7 @@ func Load() Config {
 		TemporalAddress:              env("TEMPORAL_ADDRESS", "localhost:7233"),
 		TemporalNamespace:            env("TEMPORAL_NAMESPACE", "default"),
 		TaskQueue:                    env("TASK_QUEUE", "dynamic-activities-test"),
-		JWTAccessSecret:              env("JWT_ACCESS_SECRET", "dev-access-secret-change-me"),
+		JWTAccessSecret:              env("JWT_ACCESS_SECRET", DefaultJWTAccessSecret),
 		SMTPHost:                     env("SMTP_HOST", "email-smtp.us-east-1.amazonaws.com"),
 		SMTPPort:                     env("SMTP_PORT", "465"),
 		SMTPFrom:                     env("SMTP_FROM", "noreply@dataflow.local"),
@@ -96,6 +105,9 @@ func Load() Config {
 		Edition:                      env("EDITION", "community"),
 		InternalDemoFeatures:         boolEnv("INTERNAL_DEMO_FEATURES"),
 		BillingEnabled:               boolEnv("BILLING_ENABLED"),
+		Production:                   os.Getenv("NODE_ENV") == "production",
+		AppDatabaseURLSet:            os.Getenv("APP_DATABASE_URL") != "",
+		MailConfigured:               os.Getenv("SMTP_HOST") != "" || os.Getenv("SMTP_USER") != "",
 		AuditRetentionDays:           intEnv("AUDIT_RETENTION_DAYS", 90),
 		ExecutionRetentionDays:       intEnv("EXECUTION_RETENTION_DAYS", 90),
 		NodeRunRetentionDays:         intEnv("NODE_RUN_RETENTION_DAYS", 90),
@@ -113,6 +125,28 @@ func Load() Config {
 		MaxPayloadBytes:              int64(intEnv("MAX_PAYLOAD_BYTES", 10*1024*1024)),
 		MaxMergeInMemoryBytes:        int64(intEnv("MAX_MERGE_INMEMORY_BYTES", 50*1024*1024)),
 	}
+}
+
+// DefaultJWTAccessSecret is the development fallback; production refuses it.
+const DefaultJWTAccessSecret = "dev-access-secret-change-me"
+
+// ValidateAPI checks settings the API must not run with. In production any
+// problem is an error; in development it is returned as a warning to log.
+func (c Config) ValidateAPI() (warnings []string, err error) {
+	var problems []string
+	if c.JWTAccessSecret == DefaultJWTAccessSecret || len(c.JWTAccessSecret) < 32 {
+		problems = append(problems, "JWT_ACCESS_SECRET must be a random value of at least 32 characters, not the development default")
+	}
+	if !c.AppDatabaseURLSet || c.AppDatabaseURL == c.DatabaseURL {
+		problems = append(problems, "APP_DATABASE_URL must name the RLS-bound dataflow_app role; without it tenant row-level security is not enforced")
+	}
+	if c.Production {
+		if len(problems) > 0 {
+			return nil, fmt.Errorf("refusing to start in production: %s", strings.Join(problems, "; "))
+		}
+		return nil, nil
+	}
+	return problems, nil
 }
 
 func env(name, fallback string) string {

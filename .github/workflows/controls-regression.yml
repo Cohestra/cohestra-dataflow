@@ -55,6 +55,7 @@ jobs:
             TestControlWatcherSurvivesTransientReadFailure
             TestPublicEntryPaymentWebhookCreditsTenantUnderRLS
             TestPublicEntryOAuthSignupClaimsInvitationUnderRLS
+            TestPublicEntryPasswordSignupRequiresEmailVerification
             TestQuotaEnforcedOnlyWhenBillingEnabled
             TestControlPipelineVersionAndExecutionAccess
             TestPipelineAccessWithApplicationRoleRLS

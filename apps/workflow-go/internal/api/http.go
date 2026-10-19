@@ -107,6 +107,7 @@ const (
 	ErrInternal           APIErrorCode = "ERR_INTERNAL"
 	ErrUnauthorized       APIErrorCode = "ERR_UNAUTHORIZED"
 	ErrForbidden          APIErrorCode = "ERR_FORBIDDEN"
+	ErrEmailNotVerified   APIErrorCode = "ERR_EMAIL_NOT_VERIFIED"
 	ErrConflict           APIErrorCode = "ERR_CONFLICT"
 	ErrValidation         APIErrorCode = "ERR_VALIDATION"
 	ErrInvalidEnvironment APIErrorCode = "ERR_INVALID_ENVIRONMENT"
