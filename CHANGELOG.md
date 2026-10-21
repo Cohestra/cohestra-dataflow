@@ -29,7 +29,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Preserve pipeline concurrency, node policies and asset bindings across canvas load/save, AI Apply/Undo and Mermaid structural edits; block AI proposals based on an older draft.
 - CI secret scanning exempts one exact historical documentation false positive; the external-service smoke workflow is manual-only.
 - Upgrade Go to 1.26.8 and the vendored SSH dependency to x/crypto 0.56.0 to clear reachable vulnerability findings.
-- Upgrade Go to 1.26.10 for GO-2026-6809 (crypto/x509 distrusts compromised intermediate certificates).
+- Upgrade Go to 1.26.10 for GO-2026-6809 (crypto/x509 distrusts compromised intermediate certificates) and klauspost/compress to 1.18.7 for CVE-2026-63209.
 - Upgrade Go to 1.26.9 and golang.org/x/net to 0.60.0 (with x/crypto 0.57.0, x/sys, x/text, x/term, x/sync) for the October 2026 net/http, crypto/tls, html/template, mime/multipart and x/net/http2 advisories.
 - Migrate the Snowflake driver to `github.com/snowflakedb/gosnowflake/v2` v2.3.0 (log secret masking, slog instead of logrus) and drop the GO-2026-6665 govulncheck exemption. AWS SDK modules move up with it.
 
