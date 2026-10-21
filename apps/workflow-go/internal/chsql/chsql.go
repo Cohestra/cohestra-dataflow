@@ -24,9 +24,13 @@ func Ident(name string) (Expr, error) {
 	return Expr("`" + name + "`"), nil
 }
 
+// ClickHouse treats backslash as an escape inside string literals, so it is
+// escaped first; doubling quotes alone lets `\'` close the literal.
+var stringEscaper = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
+
 // String renders a single-quoted, escaped string literal.
 func String(v string) Expr {
-	return Expr("'" + strings.ReplaceAll(v, "'", "''") + "'")
+	return Expr("'" + stringEscaper.Replace(v) + "'")
 }
 
 // Literal renders a value typed to the given schema kind, so comparisons

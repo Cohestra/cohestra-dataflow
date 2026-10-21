@@ -32,6 +32,9 @@ ollama:
 cohestraURL: http://cohestra-control-api.cohestra-system:8080
 # Enables internal demo-only features in the API. Keep false in production.
 internalDemoFeatures: false
+# Monthly execution quota and paid top-ups (hosted service only). When false,
+# runs are counted but never refused.
+billingEnabled: false
 
 web:
   nodePort: 30002

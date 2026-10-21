@@ -106,9 +106,17 @@ func (r *Runtime) fetchManifest(ctx context.Context, m model.ConnectorManifest, 
 			watermark = p.Ingestion.BackfillStart
 		}
 		if watermark == "" {
-			watermark = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+			initial, err := initialWatermark(m.Incremental["initialWatermark"], time.Now())
+			if err != nil {
+				return SourceResult{}, err
+			}
+			watermark = initial
 		}
-		query.Set(since, watermark)
+		// No saved or configured watermark: omit the parameter and read the
+		// full history once, instead of silently starting an hour ago.
+		if watermark != "" {
+			query.Set(since, watermark)
+		}
 	}
 	endpoint.RawQuery = query.Encode()
 	method := firstString(p.Config["method"], m.Method, "GET")
@@ -202,7 +210,38 @@ func (r *Runtime) fetchManifest(ctx context.Context, m model.ConnectorManifest, 
 	return SourceResult{Records: records, NextCursor: next, HasMore: hasMore}, nil
 }
 
-func (r *Runtime) webhookSink(ctx context.Context, input interface{}, cfg map[string]interface{}, _ HandlerContext) (interface{}, map[string]interface{}, error) {
+// initialWatermark resolves incremental.initialWatermark for a first run: an
+// RFC 3339 timestamp, "now", or "now-<duration>" such as "now-24h". Empty
+// means no starting point, so the first run reads the full history.
+func initialWatermark(value interface{}, now time.Time) (string, error) {
+	text := strings.TrimSpace(stringValue(value))
+	if text == "" {
+		return "", nil
+	}
+	if text == "now" {
+		return now.UTC().Format(time.RFC3339), nil
+	}
+	if rest, ok := strings.CutPrefix(text, "now-"); ok {
+		duration, err := time.ParseDuration(rest)
+		if err != nil || duration < 0 {
+			return "", configError(`http.fetch: initialWatermark %q must be an RFC 3339 time, "now" or "now-<duration>"`, text)
+		}
+		return now.Add(-duration).UTC().Format(time.RFC3339), nil
+	}
+	if _, err := time.Parse(time.RFC3339, text); err != nil {
+		return "", configError(`http.fetch: initialWatermark %q must be an RFC 3339 time, "now" or "now-<duration>"`, text)
+	}
+	return text, nil
+}
+
+// idempotencyKey is stable across Temporal retries of one sink step in one
+// execution, so receivers can drop a delivery they already processed.
+func idempotencyKey(handler HandlerContext, batch int) string {
+	sum := sha256.Sum256([]byte(handler.TenantID + "\x00" + handler.ExecutionID + "\x00" + handler.NodeID + "\x00" + strconv.Itoa(batch)))
+	return hex.EncodeToString(sum[:16])
+}
+
+func (r *Runtime) webhookSink(ctx context.Context, input interface{}, cfg map[string]interface{}, handler HandlerContext) (interface{}, map[string]interface{}, error) {
 	endpoint := stringValue(cfg["url"])
 	secret := stringValue(cfg["secret"])
 	if endpoint == "" && cfg["connectionId"] != nil {
@@ -224,9 +263,15 @@ func (r *Runtime) webhookSink(ctx context.Context, input interface{}, cfg map[st
 	body, _ := json.Marshal(map[string]interface{}{"records": input})
 	request, _ := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Idempotency-Key", idempotencyKey(handler, 0))
 	if secret != "" {
+		// Same scheme DataFlow's own webhook triggers verify: HMAC-SHA256 of
+		// "<unix seconds>.<body>", so a captured request cannot be replayed later.
+		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 		mac := hmac.New(sha256.New, []byte(secret))
+		_, _ = mac.Write([]byte(timestamp + "."))
 		_, _ = mac.Write(body)
+		request.Header.Set("X-Signature-Timestamp", timestamp)
 		request.Header.Set("X-Signature-SHA256", hex.EncodeToString(mac.Sum(nil)))
 	}
 	response, err := r.SafeHTTP.Do(request)

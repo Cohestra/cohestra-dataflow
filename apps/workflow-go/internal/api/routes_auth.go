@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,6 +28,7 @@ func (s *Server) registerAuth(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/logout", handle(s.logout))
 	mux.Handle("GET /api/auth/me", s.protected(handle(s.me)))
 	mux.HandleFunc("GET /api/auth/accept-invite", handle(s.acceptInvite))
+	mux.Handle("GET /api/auth/verify-email", s.rateLimit("verify-email", 30, time.Minute, handle(s.verifyEmail)))
 }
 
 func (s *Server) registerPassword(w http.ResponseWriter, r *http.Request) error {
@@ -40,13 +43,36 @@ func (s *Server) registerPassword(w http.ResponseWriter, r *http.Request) error 
 	if body.Email == "" || len(body.Password) < 8 {
 		return badRequest(ErrInvalidRequest, "email and a password of at least 8 characters are required")
 	}
-	var existing string
-	if err := s.DB.Pool.QueryRow(r.Context(), `SELECT id FROM users WHERE email=$1`, body.Email).Scan(&existing); err == nil {
-		return &HTTPError{Status: http.StatusConflict, Message: "an account with this email already exists"}
-	}
 	hash, err := hashPassword(body.Password)
 	if err != nil {
 		return err
+	}
+	var existing string
+	var existingVerified, linkPending bool
+	if err := s.DB.Pool.QueryRow(r.Context(), `SELECT u.id,u.email_verified,
+      EXISTS (SELECT 1 FROM email_verifications v WHERE v.user_id=u.id AND v.expires_at>now())
+      FROM users u WHERE u.email=$1`, body.Email).Scan(&existing, &existingVerified, &linkPending); err == nil {
+		if existingVerified || linkPending {
+			return &HTTPError{Status: http.StatusConflict, Message: "an account with this email already exists"}
+		}
+		// Nobody confirmed this account and its link has expired, so it was
+		// never usable: whoever signs up now sets the password, and only the
+		// owner of the inbox can confirm it. Without this, anyone could block
+		// an address forever by registering it.
+		if _, err := s.DB.Pool.Exec(r.Context(), `UPDATE users SET password_hash=$2 WHERE id=$1 AND email_verified=false`, existing, hash); err != nil {
+			return err
+		}
+		if _, err := s.DB.Pool.Exec(r.Context(), `DELETE FROM refresh_tokens WHERE user_id=$1`, existing); err != nil {
+			return err
+		}
+		var tenantID string
+		_ = s.DB.Pool.QueryRow(r.Context(), `SELECT tenant_id FROM users WHERE id=$1`, existing).Scan(&tenantID)
+		s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: existing}, "auth.register", "", map[string]interface{}{"provider": "password", "emailVerified": false, "replacedUnconfirmed": true}, r)
+		if err := s.sendEmailVerification(r, existing, body.Email); err != nil {
+			return err
+		}
+		jsonResponse(w, http.StatusCreated, map[string]bool{"ok": true, "verificationRequired": true})
+		return nil
 	}
 	tx, err := s.DB.Pool.Begin(r.Context())
 	if err != nil {
@@ -78,22 +104,74 @@ func (s *Server) registerPassword(w http.ResponseWriter, r *http.Request) error 
 			return err
 		}
 	}
+	// An invitation link proves the address; the first account on a fresh
+	// install has nobody to verify against. Everyone else confirms by email
+	// before the account can be used or linked to a Google/OIDC login.
+	verified := body.InviteToken != ""
+	if !verified {
+		if err := tx.QueryRow(r.Context(), `SELECT NOT EXISTS (SELECT 1 FROM users)`).Scan(&verified); err != nil {
+			return err
+		}
+	}
 	if err := tx.QueryRow(r.Context(), `INSERT INTO users (tenant_id,email,password_hash,role,email_verified)
-    VALUES ($1,$2,$3,$4,true) RETURNING id`, tenantID, body.Email, hash, role).Scan(&userID); err != nil {
+    VALUES ($1,$2,$3,$4,$5) RETURNING id`, tenantID, body.Email, hash, role, verified).Scan(&userID); err != nil {
 		return err
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		return err
+	}
+	s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.register", "", map[string]interface{}{"provider": "password", "emailVerified": verified}, r)
+	if !verified {
+		if err := s.sendEmailVerification(r, userID, body.Email); err != nil {
+			return err
+		}
+		jsonResponse(w, http.StatusCreated, map[string]bool{"ok": true, "verificationRequired": true})
+		return nil
 	}
 	refresh, err := s.issueRefreshToken(r.Context(), userID)
 	if err != nil {
 		return err
 	}
 	setRefreshCookie(w, refresh)
-	s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.register", "", map[string]string{"provider": "password"}, r)
 	jsonResponse(w, http.StatusCreated, map[string]bool{"ok": true})
 	return nil
 }
+
+// sendEmailVerification issues a 24-hour verification link. Without SMTP the
+// link is logged for the operator, so self-hosted installs are not stuck.
+func (s *Server) sendEmailVerification(r *http.Request, userID, email string) error {
+	token := randomToken()
+	if _, err := s.DB.Pool.Exec(r.Context(), `INSERT INTO email_verifications (token_hash,user_id,expires_at) VALUES ($1,$2,now()+interval '24 hours')`, sha256Hex(token), userID); err != nil {
+		return err
+	}
+	link := strings.TrimSuffix(s.Config.AppURL, "/") + "/api/auth/verify-email?token=" + url.QueryEscape(token)
+	if !s.Config.MailConfigured {
+		slog.Warn("SMTP is not configured; give this email verification link to the user", "email", email, "link", link)
+		return nil
+	}
+	if err := s.sendMail(email, "Confirm your DataFlow email", fmt.Sprintf(`<p>Confirm your email address to finish creating your DataFlow account.</p><p><a href="%s">Confirm email</a></p><p>The link expires in 24 hours.</p>`, link)); err != nil {
+		slog.Error("send verification email", "error", err)
+		return &HTTPError{Status: http.StatusBadGateway, Message: "could not send the verification email; try again later"}
+	}
+	return nil
+}
+
+func (s *Server) verifyEmail(w http.ResponseWriter, r *http.Request) error {
+	token := r.URL.Query().Get("token")
+	var userID string
+	err := s.DB.Pool.QueryRow(r.Context(), `UPDATE users u SET email_verified=true FROM email_verifications v
+    WHERE v.token_hash=$1 AND v.expires_at>now() AND u.id=v.user_id RETURNING u.id`, sha256Hex(token)).Scan(&userID)
+	if token == "" || err != nil {
+		http.Redirect(w, r, s.Config.AppURL+"/login?error=verification_invalid", http.StatusFound)
+		return nil
+	}
+	_, _ = s.DB.Pool.Exec(r.Context(), `DELETE FROM email_verifications WHERE user_id=$1`, userID)
+	http.Redirect(w, r, s.Config.AppURL+"/login?verified=1", http.StatusFound)
+	return nil
+}
+
+// dummyPasswordHash keeps login timing the same whether or not the email exists.
+var dummyPasswordHash, _ = hashPassword("dataflow-timing-equalizer")
 
 func (s *Server) loginPassword(w http.ResponseWriter, r *http.Request) error {
 	if os.Getenv("AUTH_PASSWORD_ENABLED") != "true" {
@@ -106,10 +184,22 @@ func (s *Server) loginPassword(w http.ResponseWriter, r *http.Request) error {
 	if body.Email == "" || body.Password == "" {
 		return badRequest(ErrInvalidRequest, "email and password are required")
 	}
-	var userID, tenantID, hash string
-	err := s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id,password_hash FROM users WHERE email=$1`, strings.ToLower(body.Email)).Scan(&userID, &tenantID, &hash)
-	if err != nil || !checkPassword(hash, body.Password) {
+	var userID, tenantID string
+	var hash *string
+	var verified bool
+	err := s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id,password_hash,email_verified FROM users WHERE email=$1`, strings.ToLower(body.Email)).Scan(&userID, &tenantID, &hash, &verified)
+	if err != nil || hash == nil {
+		checkPassword(dummyPasswordHash, body.Password)
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "invalid email or password"}
+	}
+	if !checkPassword(*hash, body.Password) {
+		return &HTTPError{Status: http.StatusUnauthorized, Message: "invalid email or password"}
+	}
+	if !verified {
+		if err := s.sendEmailVerification(r, userID, strings.ToLower(body.Email)); err != nil {
+			return err
+		}
+		return &HTTPError{Status: http.StatusForbidden, Code: ErrEmailNotVerified, Message: "confirm your email first: we sent you a new link"}
 	}
 	refresh, err := s.issueRefreshToken(r.Context(), userID)
 	if err != nil {
@@ -249,7 +339,7 @@ func (s *Server) googleCallback(w http.ResponseWriter, r *http.Request) error {
 		Aud, Iss      string
 		EmailVerified interface{} `json:"email_verified"`
 	}
-	if idToken == "" || s.getJSON(r, "https://oauth2.googleapis.com/tokeninfo?id_token="+url.QueryEscape(idToken), &profile) != nil || profile.Sub == "" || profile.Email == "" || fmt.Sprint(profile.EmailVerified) == "false" {
+	if idToken == "" || s.getJSON(r, "https://oauth2.googleapis.com/tokeninfo?id_token="+url.QueryEscape(idToken), &profile) != nil || profile.Sub == "" || profile.Email == "" || !emailClaimVerified(profile.EmailVerified) {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oauth_profile", http.StatusFound)
 		return nil
 	}
@@ -315,7 +405,7 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 		Sub, Email    string
 		EmailVerified interface{} `json:"email_verified"`
 	}
-	if s.doJSON(request, &info) != nil || info.Sub == "" || info.Email == "" || fmt.Sprint(info.EmailVerified) == "false" {
+	if s.doJSON(request, &info) != nil || info.Sub == "" || info.Email == "" || !emailClaimVerified(info.EmailVerified) {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oidc_profile", http.StatusFound)
 		return nil
 	}
@@ -354,6 +444,18 @@ func verifyOIDCIDToken(idToken, issuer, clientID, userinfoSub string) error {
 	).Validate(claims)
 }
 
+// emailClaimVerified accepts only an explicit true (Google's tokeninfo sends the
+// string "true"); a missing claim does not prove the user owns the address.
+func emailClaimVerified(value interface{}) bool {
+	switch v := value.(type) {
+	case bool:
+		return v
+	case string:
+		return strings.EqualFold(v, "true")
+	}
+	return false
+}
+
 func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider string) (string, error) {
 	if column != "google_sub" && column != "oidc_sub" {
 		return "", fmt.Errorf("unsupported identity column")
@@ -364,10 +466,31 @@ func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider s
 		s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.login", "", map[string]string{"provider": provider}, r)
 		return userID, nil
 	}
-	err = s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id FROM users WHERE email=$1`, email).Scan(&userID, &tenantID)
+	var verified bool
+	err = s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id,email_verified FROM users WHERE email=$1`, email).Scan(&userID, &tenantID, &verified)
 	if err == nil {
-		_, err = s.DB.Pool.Exec(r.Context(), `UPDATE users SET `+column+`=$1,email_verified=true WHERE id=$2`, sub, userID)
-		return userID, err
+		if !verified {
+			// The provider has verified the address and nobody confirmed the
+			// password account, so it was never usable: the provider login
+			// claims it, and the unconfirmed password and links stop working.
+			// Otherwise anyone could pre-register an address to block its owner.
+			if _, err = s.DB.Pool.Exec(r.Context(), `UPDATE users SET `+column+`=$1,email_verified=true,password_hash=NULL WHERE id=$2 AND email_verified=false`, sub, userID); err != nil {
+				return "", err
+			}
+			if _, err = s.DB.Pool.Exec(r.Context(), `DELETE FROM email_verifications WHERE user_id=$1`, userID); err != nil {
+				return "", err
+			}
+			if _, err = s.DB.Pool.Exec(r.Context(), `DELETE FROM refresh_tokens WHERE user_id=$1`, userID); err != nil {
+				return "", err
+			}
+			s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.unconfirmed_account_claimed", "", map[string]string{"provider": provider}, r)
+			return userID, nil
+		}
+		if _, err = s.DB.Pool.Exec(r.Context(), `UPDATE users SET `+column+`=$1 WHERE id=$2`, sub, userID); err != nil {
+			return "", err
+		}
+		s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.identity_linked", "", map[string]string{"provider": provider}, r)
+		return userID, nil
 	}
 	tx, err := s.DB.Pool.Begin(r.Context())
 	if err != nil {
@@ -375,10 +498,11 @@ func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider s
 	}
 	defer tx.Rollback(r.Context()) //nolint:errcheck
 	role := "owner"
-	err = tx.QueryRow(r.Context(), `SELECT tenant_id,role FROM user_invitations WHERE email=$1 AND accepted_at IS NULL AND expires_at>now() ORDER BY expires_at DESC LIMIT 1`, email).Scan(&tenantID, &role)
-	if err == nil {
-		_, err = tx.Exec(r.Context(), `UPDATE user_invitations SET accepted_at=now() WHERE email=$1 AND accepted_at IS NULL`, email)
-	} else {
+	// Invitations are tenant rows; claim one through the SECURITY DEFINER
+	// resolver because no tenant is set yet.
+	err = tx.QueryRow(r.Context(), `SELECT tenant_id,role FROM claim_email_invitation($1)`, email).Scan(&tenantID, &role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		role = "owner"
 		err = tx.QueryRow(r.Context(), `INSERT INTO tenants (name) VALUES ($1) RETURNING id`, strings.Split(email, "@")[0]).Scan(&tenantID)
 	}
 	if err != nil {

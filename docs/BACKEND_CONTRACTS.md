@@ -13,6 +13,28 @@ validate signed state and redirect to the existing frontend connector routes.
 The Razorpay webhook consumes the unmodified request bytes and validates
 `X-Razorpay-Signature` before decoding JSON.
 
+Pipeline webhook triggers (`POST /api/hooks/{path}`) verify
+`X-Signature-Sha256`: the hex HMAC-SHA256 of `"<X-Signature-Timestamp>.<raw
+body>"` under the trigger's signing secret, where the timestamp is Unix seconds
+within 5 minutes of the server clock. A repeated delivery (same signature) is
+rejected with 409. A delivery with an `Idempotency-Key` header that already
+started a run returns 200 with that run's `executionId` and `duplicate: true`
+(409 while the first delivery is still being processed); a delivery that fails
+before starting a run can be retried. Body-only signatures are accepted only with
+`WEBHOOK_LEGACY_SIGNATURES=true`. Signing secrets are write-only: API responses
+return `trigger.secret` blank with `secretSet: true`, and saving a version with
+a blank secret keeps the previous one. Secrets shorter than 16 characters or
+placeholders such as `change-me` are rejected, and a path already active in
+another workspace cannot be activated or promoted.
+
+Public lookups that run before a tenant is known (webhook triggers, payment
+webhooks, OAuth invitations, OpenLineage keys) go through `SECURITY DEFINER`
+resolvers so they work under row-level security as `dataflow_app`. Runs and
+logs (`/api/executions...`) need the same pipeline role as the pipeline: viewer
+to read, editor to retry or control. Saving a new version of an existing
+pipeline key needs editor access to its latest version, and carries that
+version's sharing forward.
+
 Public/operational routes:
 
 - `GET /health`, `GET /metrics`

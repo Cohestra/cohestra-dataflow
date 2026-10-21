@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/dataflow-poc/workflow-go/internal/enterprise"
@@ -211,4 +212,22 @@ func pipelineID(value string) (string, error) {
 		return "", fmt.Errorf("pipeline id must be a UUID")
 	}
 	return value, nil
+}
+
+var webhookPathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{2,127}$`)
+
+// validateWebhookTrigger rejects webhook triggers that anyone could call: a
+// missing or guessable signing secret, or a path that is not URL-safe.
+func validateWebhookTrigger(trigger model.Trigger) error {
+	if trigger.Type != "webhook" {
+		return nil
+	}
+	if !webhookPathPattern.MatchString(trigger.Path) {
+		return fmt.Errorf("webhook path must be 3-128 letters, digits, '-' or '_'")
+	}
+	secret := strings.TrimSpace(trigger.Secret)
+	if len(secret) < 16 || map[string]bool{"change-me": true, "changeme": true, "change-me-please": true}[strings.ToLower(secret)] {
+		return fmt.Errorf("webhook signing secret must be at least 16 characters and not a placeholder")
+	}
+	return nil
 }

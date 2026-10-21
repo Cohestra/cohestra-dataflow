@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -284,7 +285,12 @@ func (s *Server) inviteCreate(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) sendInvite(email, token, inviter string) error {
 	link := s.Config.AppURL + "/accept-invite?token=" + urlQueryEscape(token)
-	body := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: You're invited to DataFlow\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<p>%s invited you to DataFlow.</p><p><a href=\"%s\">Accept invitation</a></p>", s.Config.SMTPFrom, email, inviter, link)
+	return s.sendMail(email, "You're invited to DataFlow", fmt.Sprintf("<p>%s invited you to DataFlow.</p><p><a href=\"%s\">Accept invitation</a></p>", html.EscapeString(inviter), link))
+}
+
+// sendMail delivers one HTML email through the configured SMTP server.
+func (s *Server) sendMail(email, subject, htmlBody string) error {
+	body := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s", s.Config.SMTPFrom, email, subject, htmlBody)
 
 	addr := s.Config.SMTPHost + ":" + s.Config.SMTPPort
 

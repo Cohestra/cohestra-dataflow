@@ -11,8 +11,10 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dataflow-poc/workflow-go/internal/activities"
 	"github.com/dataflow-poc/workflow-go/internal/config"
@@ -94,18 +96,22 @@ func TestAgentAdmissionRejectsStoredDefinitionsBeforeWrites(t *testing.T) {
 				t.Fatalf("backfill status=%d body=%s", res.Code, res.Body.String())
 			}
 
-			// Signed public webhooks use the stored row selected before tenant context.
+			// Signed public webhooks resolve the stored row before tenant context,
+			// as the RLS-bound app role (a superuser here would hide a broken lookup).
 			// Configure a real PostgreSQL payload writer: a misplaced guard would leave
 			// an orphan payload for this >4 KiB request even though execution is denied.
-			webhook := &Server{DB: db, Payloads: &activities.Payloads{DB: db}}
+			webhook := &Server{DB: app, Payloads: &activities.Payloads{DB: db}}
 			payload, err := json.Marshal(map[string]interface{}{"synthetic": strings.Repeat("x", 5000)})
 			if err != nil {
 				t.Fatal(err)
 			}
 			req = httptest.NewRequest(http.MethodPost, "/webhooks/"+def.Trigger.Path, bytes.NewReader(payload))
 			req.SetPathValue("path", def.Trigger.Path)
+			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 			signature := hmac.New(sha256.New, []byte(def.Trigger.Secret))
+			_, _ = signature.Write([]byte(timestamp + "."))
 			_, _ = signature.Write(payload)
+			req.Header.Set("X-Signature-Timestamp", timestamp)
 			req.Header.Set("X-Signature-Sha256", hex.EncodeToString(signature.Sum(nil)))
 			res = httptest.NewRecorder()
 			handle(webhook.webhookTrigger)(res, req)

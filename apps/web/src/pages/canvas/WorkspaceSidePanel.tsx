@@ -116,7 +116,7 @@ export function WorkspaceSidePanel({
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-800 dark:text-white/80"><CreditCard size={14} /> Billing</div>
             <div className="mt-3 flex items-end justify-between">
               <div><p className="text-lg font-semibold text-gray-900 dark:text-white/90">{usage?.used ?? '—'}</p><p className="text-[10px] text-gray-400 dark:text-white/35">executions used</p></div>
-              <p className="text-[10px] text-gray-400 dark:text-white/35">limit {usage?.limit ?? '—'}</p>
+              <p className="text-[10px] text-gray-400 dark:text-white/35">{usage?.metered === false ? 'no limit' : `limit ${usage?.limit ?? '—'}`}</p>
             </div>
           </section>
           <section className="rounded-xl border border-gray-200 bg-white p-3 dark:border-white/[0.08] dark:bg-white/[0.035]">

@@ -23,11 +23,12 @@ func (s *Server) registerExecutions(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/executions", handle(s.executionList))
 	mux.HandleFunc("GET /api/executions/monitoring/overview", handle(s.monitoringOverview))
 	mux.HandleFunc("GET /api/executions/logs", handle(s.executionLogs))
-	mux.Handle("GET /api/executions/{id}/trace", s.requireFeature("deepObservability", handle(s.executionTrace)))
-	mux.HandleFunc("GET /api/executions/{id}/status", handle(s.executionStatus))
-	mux.HandleFunc("POST /api/executions/{id}/retry", handle(s.executionRetry))
+	mux.Handle("GET /api/executions/{id}/trace", s.requireFeature("deepObservability", s.executionAccess("viewer", handle(s.executionTrace))))
+	mux.Handle("GET /api/executions/{id}/status", s.executionAccess("viewer", handle(s.executionStatus)))
+	mux.Handle("POST /api/executions/{id}/retry", s.executionAccess("editor", handle(s.executionRetry)))
+	// executionSignal checks editor access inside its row-locking transaction.
 	mux.HandleFunc("POST /api/executions/{id}/{action}", handle(s.executionSignal))
-	mux.HandleFunc("GET /api/executions/{id}", handle(s.executionGet))
+	mux.Handle("GET /api/executions/{id}", s.executionAccess("viewer", handle(s.executionGet)))
 }
 
 // effectivePhaseSQL reports a durable pause/cancel request on a live execution
@@ -83,6 +84,11 @@ func (s *Server) executionList(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, value.StartedAt, value.ID)
 		where = append(where, fmt.Sprintf("(e.started_at,e.id)<($%d::timestamptz,$%d)", len(args)-1, len(args)))
 	}
+	tenant := tenantFrom(r)
+	if tenant.Role != "owner" {
+		args = append(args, tenant.UserID)
+		where = append(where, pipelineVisibleSQL("p", len(args)))
+	}
 	query := `SELECT e.*,` + effectivePhaseSQL("e") + ` AS effective_phase,p.name,p.version AS pipeline_version FROM executions e JOIN pipelines p ON p.id=e.pipeline_id`
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
@@ -91,7 +97,6 @@ func (s *Server) executionList(w http.ResponseWriter, r *http.Request) error {
 	if q.Get("paged") == "1" {
 		query = `SELECT * FROM (` + query + `) page LIMIT ` + strconv.Itoa(limit+1)
 	}
-	tenant := tenantFrom(r)
 	rows, err := tenantQueryRows(r.Context(), s.DB, tenant.TenantID, query, args...)
 	if err != nil {
 		return err
@@ -219,9 +224,13 @@ func (s *Server) executionLogs(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, "%"+q+"%")
 		where = append(where, fmt.Sprintf("(p.name ILIKE $%d OR nr.execution_id ILIKE $%d OR nr.node_id ILIKE $%d OR coalesce(nr.error,'') ILIKE $%d)", len(args), len(args), len(args), len(args)))
 	}
+	tenant := tenantFrom(r)
+	if tenant.Role != "owner" {
+		args = append(args, tenant.UserID)
+		where = append(where, pipelineVisibleSQL("p", len(args)))
+	}
 	args = append(args, limit)
 	sql := fmt.Sprintf(`SELECT nr.execution_id,nr.node_id,nr.status,nr.duration_ms,nr.record_count,nr.error,nr.finished_at,p.id AS pipeline_id,p.name,e.environment FROM node_runs nr JOIN executions e ON e.id=nr.execution_id JOIN pipelines p ON p.id=e.pipeline_id WHERE %s ORDER BY nr.finished_at DESC,nr.execution_id DESC,nr.node_id DESC LIMIT $%d`, strings.Join(where, " AND "), len(args))
-	tenant := tenantFrom(r)
 	rows, err := tenantQueryRows(r.Context(), s.DB, tenant.TenantID, sql, args...)
 	if err != nil {
 		return err

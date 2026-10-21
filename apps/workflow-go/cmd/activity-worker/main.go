@@ -53,7 +53,7 @@ func main() {
 	}
 	defer temporal.Close()
 	w := worker.New(temporal, cfg.TaskQueue, worker.Options{MaxConcurrentActivityExecutionSize: 20, MaxHeartbeatThrottleInterval: time.Second})
-	activities.Register(w, &activities.Activities{DB: db, Payloads: &activities.Payloads{DB: db, Store: store, PlatformKey: platformKey, MaxPayloadBytes: cfg.MaxPayloadBytes}, Runtime: runtime, PrivateKeyPath: cfg.WorkerPrivateKeyPath, MaxMergeInMemoryBytes: cfg.MaxMergeInMemoryBytes})
+	activities.Register(w, &activities.Activities{DB: db, Payloads: &activities.Payloads{DB: db, Store: store, PlatformKey: platformKey, MaxPayloadBytes: cfg.MaxPayloadBytes}, Runtime: runtime, PrivateKeyPath: cfg.WorkerPrivateKeyPath, MaxMergeInMemoryBytes: cfg.MaxMergeInMemoryBytes, BillingEnabled: cfg.BillingEnabled})
 	group, err := dispatchers.Start(ctx, db, runtime, cfg)
 	if err != nil {
 		slog.Error("dispatchers failed", "error", err)

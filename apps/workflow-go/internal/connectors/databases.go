@@ -19,11 +19,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/snowflakedb/gosnowflake"
+	"github.com/snowflakedb/gosnowflake/v2"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/dataflow-poc/workflow-go/internal/model"
 	"github.com/dataflow-poc/workflow-go/internal/security"
 )
 
@@ -200,14 +201,157 @@ func (r *Runtime) postgresConnection(ctx context.Context, id string) (*pgxpool.P
 	connectorPools.postgres[id] = pool
 	return pool, nil
 }
+
+// incrementalPlan is one page query for a cursor-paged SQL source.
+//
+// Paging on the cursor column alone with "cursor > last" drops rows that share
+// the last cursor value but did not fit in the page. Two strategies avoid that:
+//   - keyColumn set (a unique column such as the primary key): keyset paging on
+//     (cursor, key), so ties are ordered and resumed exactly.
+//   - no keyColumn: the page is cut before any rows that tie with the first
+//     row of the next page, so the next page re-reads those rows in full.
+//     More than pageSize rows sharing one cursor value then needs keyColumn.
+type incrementalPlan struct {
+	query string
+	args  []interface{}
+	keyed bool
+}
+
+type sqlDialect struct {
+	quote       func(string) (string, error)
+	placeholder func(n int) string
+}
+
+var postgresDialect = sqlDialect{quote: quoteIdentifier, placeholder: func(n int) string { return fmt.Sprintf("$%d", n) }}
+var mysqlDialect = sqlDialect{quote: func(value string) (string, error) {
+	if !identifier.MatchString(value) {
+		return "", fmt.Errorf("invalid identifier %q", value)
+	}
+	return "`" + value + "`", nil
+}, placeholder: func(int) string { return "?" }}
+
+func planIncrementalPage(d sqlDialect, columns, table, cursorColumn, keyColumn string, cursor map[string]interface{}, ingestion *model.IngestionConfig, page int) (incrementalPlan, error) {
+	quotedCursor, err := d.quote(cursorColumn)
+	if err != nil {
+		return incrementalPlan{}, configError("cursorColumn must be a column name")
+	}
+	quotedKey := ""
+	if keyColumn != "" {
+		if quotedKey, err = d.quote(keyColumn); err != nil {
+			return incrementalPlan{}, configError("keyColumn must be a column name")
+		}
+	}
+	args := []interface{}{}
+	arg := func(value interface{}) string {
+		args = append(args, value)
+		return d.placeholder(len(args))
+	}
+	where := []string{}
+	switch {
+	case cursor["value"] != nil && quotedKey != "" && cursor["key"] != nil:
+		where = append(where, fmt.Sprintf("(%s,%s)>(%s,%s)", quotedCursor, quotedKey, arg(cursor["value"]), arg(cursor["key"])))
+	case cursor["value"] != nil && quotedKey != "":
+		// First keyed page after an unkeyed checkpoint: re-read the boundary value
+		// rather than risk skipping rows that tie with it.
+		where = append(where, fmt.Sprintf("%s>=%s", quotedCursor, arg(cursor["value"])))
+	case cursor["value"] != nil:
+		where = append(where, fmt.Sprintf("%s>%s", quotedCursor, arg(cursor["value"])))
+	case ingestion != nil && ingestion.Mode == "backfill":
+		where = append(where, fmt.Sprintf("%s>=%s", quotedCursor, arg(ingestion.BackfillStart)))
+	}
+	if ingestion != nil && ingestion.BackfillEnd != "" {
+		where = append(where, fmt.Sprintf("%s<%s", quotedCursor, arg(ingestion.BackfillEnd)))
+	}
+	query := fmt.Sprintf("SELECT %s FROM %s", columns, table)
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+	order := quotedCursor + " ASC"
+	if quotedKey != "" {
+		order += "," + quotedKey + " ASC"
+	}
+	query += " ORDER BY " + order + " LIMIT " + arg(page+1)
+	return incrementalPlan{query: query, args: args, keyed: quotedKey != ""}, nil
+}
+
+// finishIncrementalPage turns a page+1 row result into the page to emit and
+// its checkpoint. Unkeyed pages are cut before trailing rows that tie with the
+// first row of the next page; those rows are read again by the next page.
+func finishIncrementalPage(values []interface{}, page int, cursorColumn, keyColumn string, cursor map[string]interface{}, keyed bool) ([]interface{}, map[string]interface{}, bool, error) {
+	hasMore := len(values) > page
+	if len(values) > 0 && !hasColumn(values[0], cursorColumn) {
+		return nil, nil, false, configError("cursorColumn %q is not in the query result", cursorColumn)
+	}
+	if hasMore {
+		lookahead := rowValue(values[page], cursorColumn)
+		values = values[:page]
+		if !keyed {
+			end := len(values)
+			for end > 0 && sameCursorValue(rowValue(values[end-1], cursorColumn), lookahead) {
+				end--
+			}
+			if end == 0 {
+				return nil, nil, false, configError("more than %d rows share %s value %v; set keyColumn to a unique column or raise pageSize", page, cursorColumn, lookahead)
+			}
+			values = values[:end]
+		}
+	}
+	next := cloneMap(cursor)
+	if len(values) > 0 {
+		last := values[len(values)-1]
+		next["value"] = rowValue(last, cursorColumn)
+		if keyed {
+			next["key"] = rowValue(last, keyColumn)
+		}
+	}
+	return values, next, hasMore, nil
+}
+
+// rowValue reads column from a result row. Snowflake reports unquoted
+// identifiers in upper case, so a name that does not match exactly is matched
+// case-insensitively.
+func rowValue(row interface{}, column string) interface{} {
+	object, _ := row.(map[string]interface{})
+	if value, ok := object[column]; ok {
+		return value
+	}
+	for name, value := range object {
+		if strings.EqualFold(name, column) {
+			return value
+		}
+	}
+	return nil
+}
+
+func hasColumn(row interface{}, column string) bool {
+	object, _ := row.(map[string]interface{})
+	for name := range object {
+		if name == column || strings.EqualFold(name, column) {
+			return true
+		}
+	}
+	return false
+}
+
+func sameCursorValue(a, b interface{}) bool {
+	if at, ok := a.(time.Time); ok {
+		bt, ok := b.(time.Time)
+		return ok && at.Equal(bt)
+	}
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return fmt.Sprint(a) == fmt.Sprint(b)
+}
+
 func (r *Runtime) postgresFetch(ctx context.Context, p SourceParams) (SourceResult, error) {
 	table, err := quotePath(stringValue(p.Config["table"]))
 	if err != nil {
-		return SourceResult{}, err
+		return SourceResult{}, configError("postgres.fetch: %v", err)
 	}
-	cursorColumn, err := quoteIdentifier(stringValue(p.Config["cursorColumn"]))
-	if err != nil {
-		return SourceResult{}, fmt.Errorf("postgres.fetch: cursorColumn required")
+	cursorColumn := stringValue(p.Config["cursorColumn"])
+	if cursorColumn == "" {
+		return SourceResult{}, configError("postgres.fetch: cursorColumn required")
 	}
 	page := boundedPageSize(func() interface{} {
 		if p.Ingestion != nil {
@@ -221,36 +365,22 @@ func (r *Runtime) postgresFetch(ctx context.Context, p SourceParams) (SourceResu
 		for _, item := range strings.Split(value, ",") {
 			quoted, err := quoteIdentifier(strings.TrimSpace(item))
 			if err != nil {
-				return SourceResult{}, err
+				return SourceResult{}, configError("postgres.fetch: %v", err)
 			}
 			items = append(items, quoted)
 		}
 		columns = strings.Join(items, ",")
 	}
-	args := []interface{}{}
-	where := []string{}
-	if p.Cursor["value"] != nil {
-		args = append(args, p.Cursor["value"])
-		where = append(where, fmt.Sprintf("%s>$%d", cursorColumn, len(args)))
-	} else if p.Ingestion != nil && p.Ingestion.Mode == "backfill" {
-		args = append(args, p.Ingestion.BackfillStart)
-		where = append(where, fmt.Sprintf("%s>=$%d", cursorColumn, len(args)))
+	keyColumn := stringValue(p.Config["keyColumn"])
+	plan, err := planIncrementalPage(postgresDialect, columns, table, cursorColumn, keyColumn, p.Cursor, p.Ingestion, page)
+	if err != nil {
+		return SourceResult{}, err
 	}
-	if p.Ingestion != nil && p.Ingestion.BackfillEnd != "" {
-		args = append(args, p.Ingestion.BackfillEnd)
-		where = append(where, fmt.Sprintf("%s<$%d", cursorColumn, len(args)))
-	}
-	query := fmt.Sprintf("SELECT %s FROM %s", columns, table)
-	if len(where) > 0 {
-		query += " WHERE " + strings.Join(where, " AND ")
-	}
-	args = append(args, page+1)
-	query += fmt.Sprintf(" ORDER BY %s ASC LIMIT $%d", cursorColumn, len(args))
 	pool, err := r.postgresConnection(ctx, stringValue(p.Config["connectionId"]))
 	if err != nil {
 		return SourceResult{}, err
 	}
-	rows, err := pool.Query(ctx, query, args...)
+	rows, err := pool.Query(ctx, plan.query, plan.args...)
 	if err != nil {
 		return SourceResult{}, err
 	}
@@ -258,13 +388,9 @@ func (r *Runtime) postgresFetch(ctx context.Context, p SourceParams) (SourceResu
 	if err != nil {
 		return SourceResult{}, err
 	}
-	hasMore := len(values) > page
-	if hasMore {
-		values = values[:page]
-	}
-	next := cloneMap(p.Cursor)
-	if len(values) > 0 {
-		next["value"] = values[len(values)-1].(map[string]interface{})[strings.Trim(cursorColumn, `"`)]
+	values, next, hasMore, err := finishIncrementalPage(values, page, cursorColumn, keyColumn, p.Cursor, plan.keyed)
+	if err != nil {
+		return SourceResult{}, err
 	}
 	return SourceResult{Records: values, NextCursor: next, HasMore: hasMore}, nil
 }
@@ -335,7 +461,13 @@ func (r *Runtime) postgresSink(ctx context.Context, input interface{}, cfg map[s
 		}
 	}
 	// Batch rows into multi-row INSERTs (dbBatchSize per statement) instead of
-	// one round trip per row.
+	// one round trip per row. All batches commit together, so a retried attempt
+	// never re-inserts batches an earlier failed attempt already wrote.
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
 	for start := 0; start < len(rows); start += batchSize {
 		end := start + batchSize
 		if end > len(rows) {
@@ -353,11 +485,11 @@ func (r *Runtime) postgresSink(ctx context.Context, input interface{}, cfg map[s
 			groups[i] = "(" + strings.Join(placeholders, ",") + ")"
 		}
 		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", table, strings.Join(quoted, ","), strings.Join(groups, ",")) + conflictClause
-		if _, err = pool.Exec(ctx, query, args...); err != nil {
+		if _, err = tx.Exec(ctx, query, args...); err != nil {
 			return nil, nil, err
 		}
 	}
-	return nil, nil, nil
+	return nil, nil, tx.Commit(ctx)
 }
 func allColumns(rows []map[string]interface{}) []string {
 	set := map[string]bool{}
@@ -412,22 +544,20 @@ func (r *Runtime) mysqlFetch(ctx context.Context, p SourceParams) (SourceResult,
 	table := stringValue(p.Config["table"])
 	column := stringValue(p.Config["cursorColumn"])
 	if !identifier.MatchString(table) || !identifier.MatchString(column) {
-		return SourceResult{}, fmt.Errorf("mysql.fetch: invalid table or cursor column")
+		return SourceResult{}, configError("mysql.fetch: invalid table or cursor column")
 	}
 	page := boundedPageSize(p.Config["pageSize"])
-	query := fmt.Sprintf("SELECT * FROM `%s`", table)
-	args := []interface{}{}
-	if p.Cursor["value"] != nil {
-		query += fmt.Sprintf(" WHERE `%s`>?", column)
-		args = append(args, p.Cursor["value"])
+	keyColumn := stringValue(p.Config["keyColumn"])
+	// mysql.fetch has no backfill window; it pages from the saved cursor only.
+	plan, err := planIncrementalPage(mysqlDialect, "*", "`"+table+"`", column, keyColumn, p.Cursor, nil, page)
+	if err != nil {
+		return SourceResult{}, err
 	}
-	query += fmt.Sprintf(" ORDER BY `%s` ASC LIMIT ?", column)
-	args = append(args, page+1)
 	db, err := r.mysqlDB(ctx, stringValue(p.Config["connectionId"]))
 	if err != nil {
 		return SourceResult{}, err
 	}
-	result, err := db.QueryContext(ctx, query, args...)
+	result, err := db.QueryContext(ctx, plan.query, plan.args...)
 	if err != nil {
 		return SourceResult{}, err
 	}
@@ -435,13 +565,9 @@ func (r *Runtime) mysqlFetch(ctx context.Context, p SourceParams) (SourceResult,
 	if err != nil {
 		return SourceResult{}, err
 	}
-	hasMore := len(values) > page
-	if hasMore {
-		values = values[:page]
-	}
-	next := cloneMap(p.Cursor)
-	if len(values) > 0 {
-		next["value"] = values[len(values)-1].(map[string]interface{})[column]
+	values, next, hasMore, err := finishIncrementalPage(values, page, column, keyColumn, p.Cursor, plan.keyed)
+	if err != nil {
+		return SourceResult{}, err
 	}
 	return SourceResult{Records: values, NextCursor: next, HasMore: hasMore}, nil
 }
@@ -503,12 +629,9 @@ func (r *Runtime) mysqlSink(ctx context.Context, input interface{}, cfg map[stri
 		updateClause = " ON DUPLICATE KEY UPDATE " + strings.Join(updates, ",")
 	}
 	// Batch rows into multi-row INSERTs (dbBatchSize per statement) instead of
-	// one round trip per row.
-	for start := 0; start < len(rows); start += dbBatchSize {
-		end := start + dbBatchSize
-		if end > len(rows) {
-			end = len(rows)
-		}
+	// one round trip per row, committed together so a retry cannot duplicate
+	// batches from an earlier failed attempt.
+	return nil, nil, insertBatchesInTx(ctx, db, len(rows), func(start, end int) (string, []interface{}) {
 		batch := rows[start:end]
 		groups := make([]string, len(batch))
 		args := make([]interface{}, 0, len(batch)*len(columns))
@@ -518,12 +641,26 @@ func (r *Runtime) mysqlSink(ctx context.Context, input interface{}, cfg map[stri
 				args = append(args, row[column])
 			}
 		}
-		query := fmt.Sprintf("INSERT INTO `%s` (%s) VALUES %s", table, strings.Join(quoted, ","), strings.Join(groups, ",")) + updateClause
-		if _, err = db.ExecContext(ctx, query, args...); err != nil {
-			return nil, nil, err
+		return fmt.Sprintf("INSERT INTO `%s` (%s) VALUES %s", table, strings.Join(quoted, ","), strings.Join(groups, ",")) + updateClause, args
+	})
+}
+
+// insertBatchesInTx runs one INSERT per dbBatchSize rows inside a single
+// database/sql transaction and commits only when every batch succeeded.
+func insertBatchesInTx(ctx context.Context, db *sql.DB, total int, statement func(start, end int) (string, []interface{})) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	for start := 0; start < total; start += dbBatchSize {
+		end := min(start+dbBatchSize, total)
+		query, args := statement(start, end)
+		if _, err = tx.ExecContext(ctx, query, args...); err != nil {
+			return err
 		}
 	}
-	return nil, nil, nil
+	return tx.Commit()
 }
 
 func (r *Runtime) mongoClient(ctx context.Context, id string) (*mongo.Client, string, error) {
@@ -582,12 +719,17 @@ func (r *Runtime) mongoFetch(ctx context.Context, p SourceParams) (SourceResult,
 	}
 	collection := client.Database(database).Collection(stringValue(p.Config["collection"]))
 	field := firstString(p.Config["cursorField"], "_id")
-	filter := bson.M{}
-	if p.Cursor["value"] != nil {
-		filter[field] = bson.M{"$gt": p.Cursor["value"]}
+	filter, err := mongoPageFilter(field, p.Cursor)
+	if err != nil {
+		return SourceResult{}, err
+	}
+	sort := bson.D{{Key: field, Value: 1}}
+	if field != "_id" {
+		// _id breaks ties so rows sharing a cursor value are paged in order.
+		sort = append(sort, bson.E{Key: "_id", Value: 1})
 	}
 	page := boundedPageSize(p.Config["pageSize"])
-	cursor, err := collection.Find(ctx, filter, options.Find().SetSort(bson.D{{Key: field, Value: 1}}).SetLimit(int64(page+1)))
+	cursor, err := collection.Find(ctx, filter, options.Find().SetSort(sort).SetLimit(int64(page+1)))
 	if err != nil {
 		return SourceResult{}, err
 	}
@@ -607,10 +749,66 @@ func (r *Runtime) mongoFetch(ctx context.Context, p SourceParams) (SourceResult,
 		values[i] = value
 	}
 	next := cloneMap(p.Cursor)
-	if len(values) > 0 {
+	if len(docs) > 0 {
+		last := docs[len(docs)-1]
 		next["value"] = values[len(values)-1].(map[string]interface{})[field]
+		if next["valueExtJson"], err = mongoExtJSON(last[field]); err != nil {
+			return SourceResult{}, err
+		}
+		if next["idExtJson"], err = mongoExtJSON(last["_id"]); err != nil {
+			return SourceResult{}, err
+		}
 	}
 	return SourceResult{Records: values, NextCursor: next, HasMore: hasMore}, nil
+}
+
+// mongoPageFilter resumes after the checkpointed (cursorField, _id) position.
+// The checkpoint keeps both values as Extended JSON so BSON types such as
+// ObjectID and dates compare correctly; the plain JSON "value" alone compares a
+// string against an ObjectID and matches nothing. Old checkpoints without the
+// Extended JSON fields fall back to that plain value.
+func mongoPageFilter(field string, cursor map[string]interface{}) (bson.M, error) {
+	valueJSON, idJSON := stringValue(cursor["valueExtJson"]), stringValue(cursor["idExtJson"])
+	if valueJSON == "" {
+		if cursor["value"] != nil {
+			value := cursor["value"]
+			if hex, ok := value.(string); ok && field == "_id" {
+				if id, err := bson.ObjectIDFromHex(hex); err == nil {
+					value = id
+				}
+			}
+			return bson.M{field: bson.M{"$gt": value}}, nil
+		}
+		return bson.M{}, nil
+	}
+	value, err := mongoFromExtJSON(valueJSON)
+	if err != nil {
+		return nil, err
+	}
+	if field == "_id" || idJSON == "" {
+		return bson.M{field: bson.M{"$gt": value}}, nil
+	}
+	id, err := mongoFromExtJSON(idJSON)
+	if err != nil {
+		return nil, err
+	}
+	return bson.M{"$or": bson.A{
+		bson.M{field: bson.M{"$gt": value}},
+		bson.M{field: value, "_id": bson.M{"$gt": id}},
+	}}, nil
+}
+
+func mongoExtJSON(value interface{}) (string, error) {
+	body, err := bson.MarshalExtJSON(bson.M{"v": value}, true, false)
+	return string(body), err
+}
+
+func mongoFromExtJSON(value string) (interface{}, error) {
+	var doc bson.M
+	if err := bson.UnmarshalExtJSON([]byte(value), true, &doc); err != nil {
+		return nil, fmt.Errorf("mongodb.fetch: invalid saved cursor: %w", err)
+	}
+	return doc["v"], nil
 }
 func (r *Runtime) mongoSink(ctx context.Context, input interface{}, cfg map[string]interface{}, _ HandlerContext) (interface{}, map[string]interface{}, error) {
 	rows, err := recordsMaps(input)
@@ -712,13 +910,17 @@ func (r *Runtime) snowflakeFetch(ctx context.Context, p SourceParams) (SourceRes
 	if err != nil {
 		return SourceResult{}, err
 	}
-	hasMore := len(values) > page
-	if hasMore {
-		values = values[:page]
+	if column == "" {
+		// Without a cursor column there is no stable order to resume from: the
+		// next page would re-read an arbitrary LIMIT window.
+		if len(values) > page {
+			return SourceResult{}, configError("snowflake.fetch: table has more than %d rows; set cursorColumn so pages can be read in order", page)
+		}
+		return SourceResult{Records: values, NextCursor: cloneMap(p.Cursor), HasMore: false}, nil
 	}
-	next := cloneMap(p.Cursor)
-	if len(values) > 0 && column != "" {
-		next["value"] = values[len(values)-1].(map[string]interface{})[column]
+	values, next, hasMore, err := finishIncrementalPage(values, page, column, "", p.Cursor, false)
+	if err != nil {
+		return SourceResult{}, err
 	}
 	return SourceResult{Records: values, NextCursor: next, HasMore: hasMore}, nil
 }
@@ -742,13 +944,9 @@ func (r *Runtime) snowflakeSink(ctx context.Context, input interface{}, cfg map[
 		return nil, nil, err
 	}
 	rowPlaceholder := "(" + strings.TrimRight(strings.Repeat("?,", len(columns)), ",") + ")"
-	// Batch rows into multi-row INSERTs (dbBatchSize per statement) instead of
-	// one round trip per row.
-	for start := 0; start < len(rows); start += dbBatchSize {
-		end := start + dbBatchSize
-		if end > len(rows) {
-			end = len(rows)
-		}
+	// Batch rows into multi-row INSERTs (dbBatchSize per statement) in one
+	// transaction, so a retried attempt does not duplicate committed batches.
+	return nil, nil, insertBatchesInTx(ctx, db, len(rows), func(start, end int) (string, []interface{}) {
 		batch := rows[start:end]
 		groups := make([]string, len(batch))
 		args := make([]interface{}, 0, len(batch)*len(columns))
@@ -758,12 +956,8 @@ func (r *Runtime) snowflakeSink(ctx context.Context, input interface{}, cfg map[
 				args = append(args, row[column])
 			}
 		}
-		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", table, strings.Join(columns, ","), strings.Join(groups, ","))
-		if _, err = db.ExecContext(ctx, query, args...); err != nil {
-			return nil, nil, err
-		}
-	}
-	return nil, nil, nil
+		return fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", table, strings.Join(columns, ","), strings.Join(groups, ",")), args
+	})
 }
 
 func (r *Runtime) clickhouseSink(ctx context.Context, input interface{}, cfg map[string]interface{}, _ HandlerContext) (interface{}, map[string]interface{}, error) {
