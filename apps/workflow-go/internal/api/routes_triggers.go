@@ -159,20 +159,19 @@ func (s *Server) webhookTrigger(w http.ResponseWriter, r *http.Request) error {
 	if err := verifyWebhookSignature(r, def.Trigger.Secret, raw, time.Now(), os.Getenv("WEBHOOK_LEGACY_SIGNATURES") == "true"); err != nil {
 		return err
 	}
+	var claim *webhookClaim
 	if s.Redis != nil {
-		// An Idempotency-Key (sent by DataFlow's webhook sink, stable across its
-		// retries) identifies a delivery better than its timestamped signature.
-		delivery := r.Header.Get("X-Signature-Timestamp") + ":" + strings.ToLower(r.Header.Get("X-Signature-Sha256"))
-		if idempotency := strings.TrimSpace(r.Header.Get("Idempotency-Key")); idempotency != "" {
-			delivery = "idem:" + idempotency
-		}
-		key := "dataflow:webhook-seen:" + sha256Hex(stringValue(row["id"])+":"+delivery)
-		fresh, err := s.Redis.SetNX(r.Context(), key, "1", 2*webhookSignatureMaxAge).Result()
+		var existing string
+		claim, existing, err = claimWebhookDelivery(r.Context(), s.Redis, stringValue(row["id"]), r.Header)
 		if err != nil {
-			slog.Warn("webhook replay check unavailable", "error", err)
-		} else if !fresh {
-			return &HTTPError{Status: http.StatusConflict, Message: "duplicate webhook delivery"}
+			return err
 		}
+		if existing != "" {
+			jsonResponse(w, http.StatusOK, map[string]interface{}{"executionId": existing, "duplicate": true})
+			return nil
+		}
+		// A delivery that does not start a run is released, so its retry can.
+		defer func() { claim.release(r.Context()) }()
 	}
 	if err := model.ValidateAgentAdmission(def); err != nil {
 		return badRequest(ErrInvalidRequest, err.Error())
@@ -196,8 +195,93 @@ func (s *Server) webhookTrigger(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	claim.complete(r.Context(), executionID)
 	jsonResponse(w, http.StatusOK, map[string]string{"executionId": executionID})
 	return nil
+}
+
+// webhookDeliveryStore is the part of Redis webhook deduplication uses.
+type webhookDeliveryStore interface {
+	SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd
+	Get(ctx context.Context, key string) *redis.StringCmd
+	SetXX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
+}
+
+const webhookClaimPending = "pending"
+
+// webhookClaim holds the Redis keys that mark one webhook delivery as seen.
+type webhookClaim struct {
+	store     webhookDeliveryStore
+	keys      []string
+	idemKey   string
+	completed bool
+}
+
+// claimWebhookDelivery rejects repeated deliveries. The signature (timestamp
+// plus HMAC) is always claimed, so a captured request cannot be replayed by
+// changing the unsigned Idempotency-Key header. An Idempotency-Key (stable
+// across DataFlow webhook-sink retries) is claimed as well: a retry of a
+// delivery that already started a run gets that run's execution ID back.
+// When Redis is unavailable the check is skipped, as before.
+func claimWebhookDelivery(ctx context.Context, store webhookDeliveryStore, pipelineID string, header http.Header) (*webhookClaim, string, error) {
+	claim := &webhookClaim{store: store}
+	signature := header.Get("X-Signature-Timestamp") + ":" + strings.ToLower(header.Get("X-Signature-Sha256"))
+	sigKey := "dataflow:webhook-seen:" + sha256Hex(pipelineID+":"+signature)
+	fresh, err := store.SetNX(ctx, sigKey, webhookClaimPending, 2*webhookSignatureMaxAge).Result()
+	if err != nil {
+		slog.Warn("webhook replay check unavailable", "error", err)
+		return claim, "", nil
+	}
+	if !fresh {
+		return nil, "", &HTTPError{Status: http.StatusConflict, Message: "duplicate webhook delivery"}
+	}
+	claim.keys = append(claim.keys, sigKey)
+	idempotency := strings.TrimSpace(header.Get("Idempotency-Key"))
+	if idempotency == "" {
+		return claim, "", nil
+	}
+	idemKey := "dataflow:webhook-idem:" + sha256Hex(pipelineID+":"+idempotency)
+	fresh, err = store.SetNX(ctx, idemKey, webhookClaimPending, 24*time.Hour).Result()
+	if err != nil {
+		slog.Warn("webhook idempotency check unavailable", "error", err)
+		return claim, "", nil
+	}
+	if !fresh {
+		claim.release(ctx)
+		existing, _ := store.Get(ctx, idemKey).Result()
+		if existing == "" || existing == webhookClaimPending {
+			return nil, "", &HTTPError{Status: http.StatusConflict, Message: "webhook delivery with this Idempotency-Key is still being processed"}
+		}
+		return nil, existing, nil
+	}
+	claim.keys = append(claim.keys, idemKey)
+	claim.idemKey = idemKey
+	return claim, "", nil
+}
+
+// complete records the run a delivery started, keeping its keys.
+func (c *webhookClaim) complete(ctx context.Context, executionID string) {
+	if c == nil {
+		return
+	}
+	c.completed = true
+	if c.idemKey != "" {
+		if err := c.store.SetXX(ctx, c.idemKey, executionID, 24*time.Hour).Err(); err != nil {
+			slog.Warn("webhook idempotency record failed", "error", err)
+		}
+	}
+}
+
+// release frees the keys of a delivery that did not start a run.
+func (c *webhookClaim) release(ctx context.Context) {
+	if c == nil || c.completed || len(c.keys) == 0 {
+		return
+	}
+	if err := c.store.Del(context.WithoutCancel(ctx), c.keys...).Err(); err != nil {
+		slog.Warn("webhook claim release failed", "error", err)
+	}
+	c.keys = nil
 }
 
 func (s *Server) assetEventSubscriber(ctx context.Context) {

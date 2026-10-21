@@ -25,7 +25,7 @@ var runtimePhases = map[string]bool{"running": true, "completed": true, "failed"
 func (s *Server) registerLineageRuntime(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/lineage/runtime/overview", handle(s.runtimeLineageOverview))
 	mux.HandleFunc("GET /api/lineage/runtime/runs", handle(s.runtimeLineageRuns))
-	mux.HandleFunc("GET /api/lineage/runtime/runs/{executionId}", handle(s.runtimeLineageRunDetail))
+	mux.Handle("GET /api/lineage/runtime/runs/{executionId}", s.executionAccess("viewer", handle(s.runtimeLineageRunDetail)))
 }
 
 // parseRuntimeWindow reads from/to (UTC RFC3339). Missing bounds default to
@@ -71,6 +71,7 @@ type runtimeFilters struct {
 	pipelineKey string // resolved from the pipeline row id filter
 	status      string
 	layer       string // medallion layer any of the pipeline's nodes touches
+	viewer      string // non-owner user id: only pipelines they may view
 }
 
 func (s *Server) parseRuntimeFilters(r *http.Request) (runtimeFilters, error) {
@@ -80,6 +81,9 @@ func (s *Server) parseRuntimeFilters(r *http.Request) (runtimeFilters, error) {
 		return runtimeFilters{}, err
 	}
 	filters := runtimeFilters{from: from, to: to, environment: q.Get("environment"), status: q.Get("status")}
+	if tenant := tenantFrom(r); tenant.Role != "owner" {
+		filters.viewer = tenant.UserID
+	}
 	if filters.environment != "" && filters.environment != "test" && filters.environment != "prod" {
 		return runtimeFilters{}, badRequest(ErrInvalidRequest, "environment must be test or prod")
 	}
@@ -109,6 +113,10 @@ func (s *Server) parseRuntimeFilters(r *http.Request) (runtimeFilters, error) {
 func (f runtimeFilters) executionWhere(args *[]interface{}) string {
 	*args = append(*args, f.from, f.to)
 	where := []string{fmt.Sprintf("e.started_at>=$%d AND e.started_at<$%d", len(*args)-1, len(*args))}
+	if f.viewer != "" {
+		*args = append(*args, f.viewer)
+		where = append(where, pipelineVisibleSQL("p", len(*args)))
+	}
 	if f.environment != "" {
 		*args = append(*args, f.environment)
 		where = append(where, fmt.Sprintf("e.environment=$%d", len(*args)))
@@ -138,6 +146,10 @@ func (s *Server) runtimeLineageOverview(w http.ResponseWriter, r *http.Request) 
 	var topology, pipelineMetrics, nodeMetrics []map[string]interface{}
 	err = s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
 		topologyWhere, topologyArgs := []string{"TRUE"}, []interface{}{}
+		if filters.viewer != "" {
+			topologyArgs = append(topologyArgs, filters.viewer)
+			topologyWhere = append(topologyWhere, pipelineVisibleSQL("p", len(topologyArgs)))
+		}
 		if filters.environment != "" {
 			topologyArgs = append(topologyArgs, filters.environment)
 			topologyWhere = append(topologyWhere, fmt.Sprintf("environment=$%d", len(topologyArgs)))
@@ -149,7 +161,7 @@ func (s *Server) runtimeLineageOverview(w http.ResponseWriter, r *http.Request) 
 		rows, err := tx.Query(r.Context(), fmt.Sprintf(`WITH ranked AS (
 			SELECT id,pipeline_key,version,name,status,environment,definition,
 			  row_number() OVER(PARTITION BY pipeline_key,environment ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END,version DESC) rank
-			FROM pipelines WHERE %s) SELECT id,pipeline_key,version,name,status,environment,definition FROM ranked WHERE rank=1 ORDER BY environment,name`,
+			FROM pipelines p WHERE %s) SELECT id,pipeline_key,version,name,status,environment,definition FROM ranked WHERE rank=1 ORDER BY environment,name`,
 			strings.Join(topologyWhere, " AND ")), topologyArgs...)
 		if err != nil {
 			return err

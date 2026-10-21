@@ -16,6 +16,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - In production (`NODE_ENV=production`) the API refuses to start with the default or a short `JWT_ACCESS_SECRET`, or when its database role bypasses row-level security; `bootstrap.sh` no longer installs without production mode on a public IP when secrets are missing (`ALLOW_INSECURE_PUBLIC_INSTALL=true` overrides).
 - Service-account API tokens act as the user who created them, so their writes and audit rows no longer fail on `users(id)` foreign keys; audit write failures are logged. Run errors shown to users are redacted (DSN credentials, key=value secrets, bearer tokens).
 - Compose Grafana gives anonymous users Viewer instead of Admin and listens on localhost only.
+- Review follow-ups: webhook replays are rejected even with a changed `Idempotency-Key`, and a retry of an accepted delivery returns its run; pipeline lists and runtime lineage follow pipeline roles; promoted prod versions keep their author and sharing and check webhook paths; a Google/OIDC login with a verified email claims an unconfirmed password account of the same address, and a new password sign-up replaces one whose link expired; run errors in Temporal history are redacted.
 
 ### Fixed
 - AI builder no longer returns "ready" for graphs the canvas cannot save (dead ends, orphans, under-connected fork/merge): it repairs, splices an unambiguously dangling step (noted as an assumption), or returns a warned draft.
@@ -38,6 +39,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Bad records, bad configuration and unknown steps fail once (`SchemaValidationError`, `InvalidConfigError`, `UnknownActivityError`) instead of being retried 5 times; non-object records no longer panic transform steps, and expressions compile once per step.
 - Cross-run dedupe keys travel by payload reference, not through Temporal history (which overflowed near 30k rows); over-size payload reads name `MAX_PAYLOAD_BYTES`.
 - nginx `proxy_read_timeout` is 540s, above the 480s AI model timeout.
+- Snowflake incremental paging matches `cursorColumn` against upper-case result columns, and a cursor column missing from the result fails clearly; truncated run errors stay valid UTF-8.
 
 ### Changed
 - **Upgrade notes:** apply `db/028_public_entry_resolvers.sql`. Webhook senders must add `X-Signature-Timestamp` and sign `"<timestamp>.<body>"` (or set `WEBHOOK_LEGACY_SIGNATURES=true` temporarily); webhook pipelines with a short or placeholder secret must be given a new one before they can be saved or activated. HTTP sources without a saved watermark now read full history on their first run unless `incremental.initialWatermark` is set (it used to start silently at now-1h). Hosted deployments that sell top-ups need `BILLING_ENABLED=true`.

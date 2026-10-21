@@ -240,3 +240,17 @@ func isPermanent(err error, kind string) bool {
 	var permanentErr *PermanentError
 	return errors.As(err, &permanentErr) && permanentErr.Type == kind
 }
+
+func TestFinishIncrementalPageMatchesUpperCaseSnowflakeColumns(t *testing.T) {
+	rows := []interface{}{}
+	for _, v := range []int{1, 2, 3, 4} {
+		rows = append(rows, map[string]interface{}{"UPDATED_AT": v})
+	}
+	values, next, hasMore, err := finishIncrementalPage(rows, 3, "updated_at", "", map[string]interface{}{}, false)
+	if err != nil || !hasMore || len(values) != 3 || next["value"] != 3 {
+		t.Fatalf("values = %d, next = %#v, hasMore = %v, err = %v", len(values), next, hasMore, err)
+	}
+	if _, _, _, err = finishIncrementalPage(rows, 3, "modified", "", map[string]interface{}{}, false); !isPermanent(err, InvalidConfigError) || !strings.Contains(err.Error(), "not in the query result") {
+		t.Fatalf("missing cursor column error = %v", err)
+	}
+}

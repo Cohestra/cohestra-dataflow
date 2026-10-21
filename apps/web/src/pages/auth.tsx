@@ -58,7 +58,6 @@ const OAUTH_ERRORS: Record<string, string> = {
   oidc_token: 'Could not complete SSO sign-in. Please try again.',
   oidc_userinfo: 'Could not retrieve your SSO profile. Please try again.',
   oidc_profile: 'Your SSO account did not return a verified email.',
-  unverified_account: 'An account with this email was registered but never confirmed. Confirm it from the email we sent, or ask your workspace administrator for help.',
   verification_invalid: 'That confirmation link is invalid or has expired. Sign in with your password to get a new one.',
   oidc_failed: 'SSO sign-in failed. Please try again.',
 };

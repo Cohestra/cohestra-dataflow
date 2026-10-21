@@ -43,13 +43,36 @@ func (s *Server) registerPassword(w http.ResponseWriter, r *http.Request) error 
 	if body.Email == "" || len(body.Password) < 8 {
 		return badRequest(ErrInvalidRequest, "email and a password of at least 8 characters are required")
 	}
-	var existing string
-	if err := s.DB.Pool.QueryRow(r.Context(), `SELECT id FROM users WHERE email=$1`, body.Email).Scan(&existing); err == nil {
-		return &HTTPError{Status: http.StatusConflict, Message: "an account with this email already exists"}
-	}
 	hash, err := hashPassword(body.Password)
 	if err != nil {
 		return err
+	}
+	var existing string
+	var existingVerified, linkPending bool
+	if err := s.DB.Pool.QueryRow(r.Context(), `SELECT u.id,u.email_verified,
+      EXISTS (SELECT 1 FROM email_verifications v WHERE v.user_id=u.id AND v.expires_at>now())
+      FROM users u WHERE u.email=$1`, body.Email).Scan(&existing, &existingVerified, &linkPending); err == nil {
+		if existingVerified || linkPending {
+			return &HTTPError{Status: http.StatusConflict, Message: "an account with this email already exists"}
+		}
+		// Nobody confirmed this account and its link has expired, so it was
+		// never usable: whoever signs up now sets the password, and only the
+		// owner of the inbox can confirm it. Without this, anyone could block
+		// an address forever by registering it.
+		if _, err := s.DB.Pool.Exec(r.Context(), `UPDATE users SET password_hash=$2 WHERE id=$1 AND email_verified=false`, existing, hash); err != nil {
+			return err
+		}
+		if _, err := s.DB.Pool.Exec(r.Context(), `DELETE FROM refresh_tokens WHERE user_id=$1`, existing); err != nil {
+			return err
+		}
+		var tenantID string
+		_ = s.DB.Pool.QueryRow(r.Context(), `SELECT tenant_id FROM users WHERE id=$1`, existing).Scan(&tenantID)
+		s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: existing}, "auth.register", "", map[string]interface{}{"provider": "password", "emailVerified": false, "replacedUnconfirmed": true}, r)
+		if err := s.sendEmailVerification(r, existing, body.Email); err != nil {
+			return err
+		}
+		jsonResponse(w, http.StatusCreated, map[string]bool{"ok": true, "verificationRequired": true})
+		return nil
 	}
 	tx, err := s.DB.Pool.Begin(r.Context())
 	if err != nil {
@@ -324,10 +347,6 @@ func (s *Server) googleCallback(w http.ResponseWriter, r *http.Request) error {
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "Google id_token audience or issuer mismatch"}
 	}
 	userID, err := s.resolveIdentity(r, "google_sub", profile.Sub, strings.ToLower(profile.Email), "google")
-	if errors.Is(err, errUnverifiedAccount) {
-		http.Redirect(w, r, s.Config.AppURL+"/login?error=unverified_account", http.StatusFound)
-		return nil
-	}
 	if err != nil {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oauth_failed", http.StatusFound)
 		return nil
@@ -395,10 +414,6 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "OIDC id_token verification failed"}
 	}
 	userID, err := s.resolveIdentity(r, "oidc_sub", info.Sub, strings.ToLower(info.Email), "oidc")
-	if errors.Is(err, errUnverifiedAccount) {
-		http.Redirect(w, r, s.Config.AppURL+"/login?error=unverified_account", http.StatusFound)
-		return nil
-	}
 	if err != nil {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oidc_failed", http.StatusFound)
 		return nil
@@ -441,10 +456,6 @@ func emailClaimVerified(value interface{}) bool {
 	return false
 }
 
-// errUnverifiedAccount means an account exists for the email but nobody has
-// proven they own it, so a provider login must not be linked to it.
-var errUnverifiedAccount = errors.New("an unverified account already uses this email")
-
 func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider string) (string, error) {
 	if column != "google_sub" && column != "oidc_sub" {
 		return "", fmt.Errorf("unsupported identity column")
@@ -458,10 +469,22 @@ func (s *Server) resolveIdentity(r *http.Request, column, sub, email, provider s
 	var verified bool
 	err = s.DB.Pool.QueryRow(r.Context(), `SELECT id,tenant_id,email_verified FROM users WHERE email=$1`, email).Scan(&userID, &tenantID, &verified)
 	if err == nil {
-		// Linking by email is only safe when the existing account's owner has
-		// proven the address too; otherwise anyone could pre-register it.
 		if !verified {
-			return "", errUnverifiedAccount
+			// The provider has verified the address and nobody confirmed the
+			// password account, so it was never usable: the provider login
+			// claims it, and the unconfirmed password and links stop working.
+			// Otherwise anyone could pre-register an address to block its owner.
+			if _, err = s.DB.Pool.Exec(r.Context(), `UPDATE users SET `+column+`=$1,email_verified=true,password_hash=NULL WHERE id=$2 AND email_verified=false`, sub, userID); err != nil {
+				return "", err
+			}
+			if _, err = s.DB.Pool.Exec(r.Context(), `DELETE FROM email_verifications WHERE user_id=$1`, userID); err != nil {
+				return "", err
+			}
+			if _, err = s.DB.Pool.Exec(r.Context(), `DELETE FROM refresh_tokens WHERE user_id=$1`, userID); err != nil {
+				return "", err
+			}
+			s.audit(r.Context(), model.TenantContext{TenantID: tenantID, UserID: userID}, "auth.unconfirmed_account_claimed", "", map[string]string{"provider": provider}, r)
+			return userID, nil
 		}
 		if _, err = s.DB.Pool.Exec(r.Context(), `UPDATE users SET `+column+`=$1 WHERE id=$2`, sub, userID); err != nil {
 			return "", err

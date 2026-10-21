@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -119,5 +120,72 @@ func TestControlPipelineVersionAndExecutionAccess(t *testing.T) {
 	}
 	if !strings.Contains(list(member("viewer")), f.execution) {
 		t.Fatal("execution list hides runs from a viewer")
+	}
+
+	// Pipeline lists and run lineage follow the same roles.
+	pipelines := func(actor model.TenantContext) string {
+		req := withTenant(httptest.NewRequest(http.MethodGet, "/api/pipelines", nil), actor)
+		res := httptest.NewRecorder()
+		handle(s.pipelineList)(res, req)
+		if res.Code != http.StatusOK {
+			t.Fatalf("pipeline list status=%d body=%s", res.Code, res.Body.String())
+		}
+		return res.Body.String()
+	}
+	if strings.Contains(pipelines(member("")), f.pipeline) {
+		t.Fatal("pipeline list shows a pipeline the member cannot view")
+	}
+	if !strings.Contains(pipelines(member("viewer")), f.pipeline) {
+		t.Fatal("pipeline list hides a pipeline from its viewer")
+	}
+	lineage := s.executionAccess("viewer", reached)
+	req := httptest.NewRequest(http.MethodGet, "/api/lineage/runtime/runs/"+f.execution, nil)
+	req.SetPathValue("executionId", f.execution)
+	lineageRes := httptest.NewRecorder()
+	lineage.ServeHTTP(lineageRes, withTenant(req, member("")))
+	if lineageRes.Code != http.StatusNotFound {
+		t.Fatalf("run lineage without a grant: status=%d", lineageRes.Code)
+	}
+
+	// Promotion keeps the author and sharing, so editors can still save.
+	if _, err := f.db.Pool.Exec(ctx, `INSERT INTO executions(id,pipeline_id,tenant_id,trigger_type,environment,workflow_id,run_id,phase) VALUES($1,$2,$3,'manual','test',$1,'fixture-run-2','completed')`, "control-test-"+uuid.NewString(), saved.RowID, f.tenant); err != nil {
+		t.Fatal(err)
+	}
+	owner := model.TenantContext{TenantID: f.tenant, UserID: f.user, Role: "owner"}
+	promoteRow := map[string]interface{}{"id": saved.RowID, "environment": "test", "pipeline_key": f.pipeline, "name": "rbac fixture", "version": 2}
+	promoteDef := model.PipelineDefinition{ID: f.pipeline, Name: "rbac fixture", Trigger: model.Trigger{Type: "manual"},
+		Nodes: []model.Node{{ID: "source", Type: "source", ActivityType: "http.fetch"}, {ID: "sink", Type: "sink", ActivityType: "sink.records"}},
+		Edges: []model.Edge{{ID: "edge", Source: "source", Target: "sink"}}}
+	promoted, err := s.createProductionVersion(withTenant(httptest.NewRequest(http.MethodPost, "/", nil), owner), promoteRow, promoteDef, false)
+	if err != nil {
+		t.Fatalf("promote: %v", err)
+	}
+	var prodCreator *string
+	var prodGrants int
+	if err := f.db.Pool.QueryRow(ctx, `SELECT created_by,(SELECT count(*) FROM pipeline_access WHERE pipeline_id=p.id) FROM pipelines p WHERE id=$1`, promoted["rowId"]).Scan(&prodCreator, &prodGrants); err != nil {
+		t.Fatal(err)
+	}
+	if prodCreator == nil || *prodCreator != editor.UserID || prodGrants == 0 {
+		t.Fatalf("prod version: created_by=%v grants=%d, want the promoted version's author and sharing", prodCreator, prodGrants)
+	}
+	if res := save(editor, f.pipeline); res.Code != http.StatusOK {
+		t.Fatalf("editor save after promotion: status=%d body=%s", res.Code, res.Body.String())
+	}
+
+	// Promotion refuses a webhook path another workspace has active.
+	other := uuid.NewString()
+	t.Cleanup(func() { _, _ = f.db.Pool.Exec(ctx, `DELETE FROM tenants WHERE id=$1`, other) })
+	path := "shared-" + uuid.NewString()[:8]
+	if _, err := f.db.Pool.Exec(ctx, `INSERT INTO tenants(id,name) VALUES($1,'webhook neighbour')`, other); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.db.Pool.Exec(ctx, `INSERT INTO pipelines(pipeline_key,tenant_id,name,definition,status) VALUES($1,$2,'neighbour',$3,'active')`, uuid.NewString(), other, `{"trigger":{"type":"webhook","path":"`+path+`"}}`); err != nil {
+		t.Fatal(err)
+	}
+	promoteDef.Trigger = model.Trigger{Type: "webhook", Path: path, Secret: strings.Repeat("ab", 10)}
+	_, err = s.createProductionVersion(withTenant(httptest.NewRequest(http.MethodPost, "/", nil), owner), promoteRow, promoteDef, false)
+	var httpErr *HTTPError
+	if !errors.As(err, &httpErr) || httpErr.Status != http.StatusConflict || !strings.Contains(httpErr.Message, "already in use") {
+		t.Fatalf("promoting onto another workspace's webhook path: err=%v", err)
 	}
 }

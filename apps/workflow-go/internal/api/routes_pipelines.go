@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -87,12 +88,14 @@ func (s *Server) pipelineCreate(w http.ResponseWriter, r *http.Request) error {
 	err = s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
 		// A new version of an existing pipeline needs editor access to its
 		// latest version; the client chooses the key, so this is the only guard.
+		// Saves are Integration (test) versions, so the latest one is the
+		// reference, not a promoted prod copy.
 		var previousID string
 		var previousCreator, previousRole *string
 		var previousBody []byte
 		err := tx.QueryRow(r.Context(), `SELECT p.id,p.created_by,pa.role,p.definition FROM pipelines p
       LEFT JOIN pipeline_access pa ON pa.pipeline_id=p.id AND pa.user_id=$2
-      WHERE p.pipeline_key=$1 ORDER BY p.version DESC LIMIT 1 FOR UPDATE OF p`, id, tenant.UserID).Scan(&previousID, &previousCreator, &previousRole, &previousBody)
+      WHERE p.pipeline_key=$1 AND p.environment='test' ORDER BY p.version DESC LIMIT 1 FOR UPDATE OF p`, id, tenant.UserID).Scan(&previousID, &previousCreator, &previousRole, &previousBody)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 		case err != nil:
@@ -176,20 +179,14 @@ func (s *Server) pipelineActivate(w http.ResponseWriter, r *http.Request) error 
 		return badRequest(ErrInvalidRequest, err.Error())
 	}
 	tenant := tenantFrom(r)
-	if def.Trigger.Type == "webhook" {
-		var taken bool
-		if err := s.DB.Pool.QueryRow(r.Context(), `SELECT webhook_path_taken($1,$2)`, def.Trigger.Path, tenant.TenantID).Scan(&taken); err != nil {
-			return err
-		}
-		if taken {
-			return &HTTPError{Status: http.StatusConflict, Code: ErrConflict, Message: "webhook path " + def.Trigger.Path + " is already in use; choose another path"}
-		}
-	}
 	env := model.Environment(stringValue(row["environment"]))
 	if env == "" {
 		env = model.EnvironmentTest
 	}
 	err = s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
+		if err := claimWebhookPath(r.Context(), tx, def.Trigger, tenant.TenantID); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(r.Context(), `UPDATE pipelines SET status='archived' WHERE pipeline_key=$1 AND environment=$2 AND status='active'`, row["pipeline_key"], env); err != nil {
 			return err
 		}
@@ -263,6 +260,10 @@ func (s *Server) pipelineList(w http.ResponseWriter, r *http.Request) error {
 
 	where := []string{}
 	args := []interface{}{}
+	if tenant.Role != "owner" {
+		args = append(args, tenant.UserID)
+		where = append(where, pipelineVisibleSQL("p", len(args)))
+	}
 	if search := strings.TrimSpace(q.Get("search")); search != "" {
 		args = append(args, search)
 		where = append(where, fmt.Sprintf("p.name ILIKE '%%'||$%d||'%%'", len(args)))
@@ -310,7 +311,7 @@ func (s *Server) pipelineList(w http.ResponseWriter, r *http.Request) error {
 		// Stage reflects any active version; last run spans every version.
 		// active_id lets Run/Backfill target the active version rather than a
 		// newer unactivated draft (at most one active row per key/environment).
-		from = `(SELECT c.id,c.pipeline_key,c.version,c.name,c.environment,c.promoted_from_version,c.created_at,c.definition,
+		from = `(SELECT c.id,c.pipeline_key,c.version,c.name,c.environment,c.promoted_from_version,c.created_at,c.created_by,c.definition,
     CASE WHEN av.version IS NOT NULL THEN 'active' ELSE c.status END AS status,av.id AS active_id,av.version AS active_version,vc.n AS version_count
     FROM (SELECT DISTINCT ON (pipeline_key,environment) * FROM pipelines ORDER BY pipeline_key,environment,version DESC) c
     LEFT JOIN LATERAL (SELECT id,version FROM pipelines a WHERE a.pipeline_key=c.pipeline_key AND a.environment=c.environment AND a.status='active' ORDER BY version DESC LIMIT 1) av ON true
@@ -496,9 +497,15 @@ func (s *Server) createProductionVersion(r *http.Request, row map[string]interfa
 	if stringValue(row["environment"]) != "test" {
 		return nil, &HTTPError{Status: http.StatusConflict, Message: "only Integration versions can be promoted"}
 	}
+	if err := validateWebhookTrigger(def.Trigger); err != nil {
+		return nil, badRequest(ErrInvalidRequest, err.Error())
+	}
 	tenant := tenantFrom(r)
 	var out = map[string]interface{}{}
 	err := s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
+		if err := claimWebhookPath(r.Context(), tx, def.Trigger, tenant.TenantID); err != nil {
+			return err
+		}
 		var one int
 		if err := tx.QueryRow(r.Context(), `SELECT 1 FROM executions WHERE pipeline_id=$1 AND environment='test' AND phase='completed' LIMIT 1`, row["id"]).Scan(&one); err != nil {
 			return &HTTPError{Status: http.StatusConflict, Message: "promotion gate: this version has no successful Integration run"}
@@ -533,7 +540,14 @@ func (s *Server) createProductionVersion(r *http.Request, row map[string]interfa
 			return err
 		}
 		var id string
-		if err := tx.QueryRow(r.Context(), `INSERT INTO pipelines (pipeline_key,version,tenant_id,name,definition,status,environment,promoted_from_version) VALUES ($1,$2,$3,$4,$5,'active','prod',$6) RETURNING id`, row["pipeline_key"], version, tenant.TenantID, row["name"], body, row["version"]).Scan(&id); err != nil {
+		// The prod version keeps the promoted version's author and sharing, so
+		// pipeline roles mean the same in both environments.
+		if err := tx.QueryRow(r.Context(), `INSERT INTO pipelines (pipeline_key,version,tenant_id,name,definition,status,environment,promoted_from_version,created_by)
+      SELECT $1,$2,$3,$4,$5,'active','prod',$6,created_by FROM pipelines WHERE id=$7 RETURNING id`, row["pipeline_key"], version, tenant.TenantID, row["name"], body, row["version"], row["id"]).Scan(&id); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(r.Context(), `INSERT INTO pipeline_access (pipeline_id,user_id,role,granted_by)
+      SELECT $2,user_id,role,granted_by FROM pipeline_access WHERE pipeline_id=$1 ON CONFLICT DO NOTHING`, row["id"], id); err != nil {
 			return err
 		}
 		out = map[string]interface{}{"rowId": id, "version": version, "fromVersion": row["version"], "def": def, "env": model.EnvironmentProd, "stage": "production", "contractOverride": allowBreakingContract}
@@ -1068,4 +1082,24 @@ func buildWorkspaceLineage(rows []map[string]interface{}) map[string]interface{}
 		"nodes": nodes, "edges": edges, "columnEdges": columnEdges,
 		"stats": map[string]int{"pipelines": len(rows), "assets": len(assetOrder), "links": len(edges), "sharedAssets": sharedAssets, "columnLinks": len(columnEdges), "externalJobs": 0},
 	}
+}
+
+// claimWebhookPath refuses a webhook path that another workspace has active.
+// It runs in the activating transaction under a lock on the path, so two
+// workspaces activating the same path at once cannot both pass.
+func claimWebhookPath(ctx context.Context, tx pgx.Tx, trigger model.Trigger, tenantID string) error {
+	if trigger.Type != "webhook" {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('dataflow:webhook-path:'||$1, 0))`, trigger.Path); err != nil {
+		return err
+	}
+	var taken bool
+	if err := tx.QueryRow(ctx, `SELECT webhook_path_taken($1,$2)`, trigger.Path, tenantID).Scan(&taken); err != nil {
+		return err
+	}
+	if taken {
+		return &HTTPError{Status: http.StatusConflict, Code: ErrConflict, Message: "webhook path " + trigger.Path + " is already in use; choose another path"}
+	}
+	return nil
 }

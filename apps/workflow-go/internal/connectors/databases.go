@@ -279,6 +279,9 @@ func planIncrementalPage(d sqlDialect, columns, table, cursorColumn, keyColumn s
 // first row of the next page; those rows are read again by the next page.
 func finishIncrementalPage(values []interface{}, page int, cursorColumn, keyColumn string, cursor map[string]interface{}, keyed bool) ([]interface{}, map[string]interface{}, bool, error) {
 	hasMore := len(values) > page
+	if len(values) > 0 && !hasColumn(values[0], cursorColumn) {
+		return nil, nil, false, configError("cursorColumn %q is not in the query result", cursorColumn)
+	}
 	if hasMore {
 		lookahead := rowValue(values[page], cursorColumn)
 		values = values[:page]
@@ -304,9 +307,30 @@ func finishIncrementalPage(values []interface{}, page int, cursorColumn, keyColu
 	return values, next, hasMore, nil
 }
 
+// rowValue reads column from a result row. Snowflake reports unquoted
+// identifiers in upper case, so a name that does not match exactly is matched
+// case-insensitively.
 func rowValue(row interface{}, column string) interface{} {
 	object, _ := row.(map[string]interface{})
-	return object[column]
+	if value, ok := object[column]; ok {
+		return value
+	}
+	for name, value := range object {
+		if strings.EqualFold(name, column) {
+			return value
+		}
+	}
+	return nil
+}
+
+func hasColumn(row interface{}, column string) bool {
+	object, _ := row.(map[string]interface{})
+	for name := range object {
+		if name == column || strings.EqualFold(name, column) {
+			return true
+		}
+	}
+	return false
 }
 
 func sameCursorValue(a, b interface{}) bool {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/dataflow-poc/workflow-go/internal/connectors"
 	"github.com/dataflow-poc/workflow-go/internal/model"
@@ -19,9 +20,12 @@ func TestActivityErrorMarksPermanentConnectorErrorsNonRetryable(t *testing.T) {
 	if !errors.As(activityError(err), &appErr) || !appErr.NonRetryable() || appErr.Type() != connectors.UnknownActivityError {
 		t.Fatalf("activityError(%v) = %#v", err, appErr)
 	}
-	transient := fmt.Errorf("connection reset by peer")
-	if activityError(transient) != transient {
-		t.Fatal("transient errors must stay retryable")
+	transient := fmt.Errorf("dial postgres://app:hunter2@db:5432/x: connection reset by peer")
+	if !errors.As(activityError(transient), &appErr) || appErr.NonRetryable() || strings.Contains(appErr.Error(), "hunter2") || errors.Unwrap(appErr) != nil {
+		t.Fatalf("transient errors must stay retryable, redacted and without the raw cause: %#v", appErr)
+	}
+	if activityError(context.Canceled) != context.Canceled {
+		t.Fatal("cancellation must pass through unchanged")
 	}
 	if activityError(nil) != nil {
 		t.Fatal("nil must stay nil")
@@ -74,5 +78,20 @@ func TestDedupeHashesReadFromRefOrLegacyInline(t *testing.T) {
 	hashes, err = a.dedupeHashes(context.Background(), []string{"legacy"}, nil, "")
 	if err != nil || strings.Join(hashes, ",") != "legacy" {
 		t.Fatalf("legacy inline hashes = %v, %v", hashes, err)
+	}
+}
+
+func TestActivityErrorDoesNotLeakPermanentCause(t *testing.T) {
+	err := activityError(&connectors.PermanentError{Type: connectors.InvalidConfigError, Err: errors.New("postgres.fetch: bad dsn postgres://app:hunter2@db/x")})
+	var appErr *temporal.ApplicationError
+	if !errors.As(err, &appErr) || !appErr.NonRetryable() || strings.Contains(appErr.Error(), "hunter2") || errors.Unwrap(appErr) != nil {
+		t.Fatalf("permanent error leaked its raw cause: %v", err)
+	}
+}
+
+func TestRedactTextCutsOnRuneBoundary(t *testing.T) {
+	value := redactText(strings.Repeat("a", maxErrorTextLength-1) + "é" + strings.Repeat("b", 10))
+	if !utf8.ValidString(value) || !strings.HasSuffix(value, "a…") {
+		t.Fatalf("truncated text is not valid UTF-8 or cut wrongly: %q", value[len(value)-8:])
 	}
 }

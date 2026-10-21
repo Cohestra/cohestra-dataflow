@@ -165,8 +165,8 @@ func (s *Server) pipelineAccess(minimum string, next http.Handler) http.Handler 
 	})
 }
 
-// executionAccess guards /api/executions/{id} routes with the same pipeline
-// roles as the pipeline the execution belongs to.
+// executionAccess guards execution routes ({id} or {executionId}) with the
+// same pipeline roles as the pipeline the execution belongs to.
 func (s *Server) executionAccess(minimum string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tenant := tenantFrom(r)
@@ -174,12 +174,16 @@ func (s *Server) executionAccess(minimum string, next http.Handler) http.Handler
 			next.ServeHTTP(w, r)
 			return
 		}
+		executionID := r.PathValue("id")
+		if executionID == "" {
+			executionID = r.PathValue("executionId")
+		}
 		var createdBy, role *string
 		err := s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
 			return tx.QueryRow(r.Context(), `SELECT p.created_by,pa.role FROM executions e
         JOIN pipelines p ON p.id=e.pipeline_id
         LEFT JOIN pipeline_access pa ON pa.pipeline_id=p.id AND pa.user_id=$2
-        WHERE e.id=$1 AND e.tenant_id=$3 LIMIT 1`, r.PathValue("id"), tenant.UserID, tenant.TenantID).Scan(&createdBy, &role)
+        WHERE e.id=$1 AND e.tenant_id=$3 LIMIT 1`, executionID, tenant.UserID, tenant.TenantID).Scan(&createdBy, &role)
 		})
 		if err != nil {
 			jsonError(w, http.StatusNotFound, ErrNotFound, "not found", nil)

@@ -108,7 +108,7 @@ func TestPublicEntryOAuthSignupClaimsInvitationUnderRLS(t *testing.T) {
 	}{
 		{`INSERT INTO tenants(id,name) VALUES($1,'invite fixture')`, []interface{}{tenant}},
 		{`INSERT INTO users(id,tenant_id,email,role,email_verified) VALUES($1,$2,$3,'owner',true)`, []interface{}{inviter, tenant, inviter + "@fixture.invalid"}},
-		{`INSERT INTO users(tenant_id,email,role,email_verified) VALUES($1,$2,'owner',false)`, []interface{}{tenant, unverified}},
+		{`INSERT INTO users(tenant_id,email,role,email_verified,password_hash) VALUES($1,$2,'owner',false,'squatter-hash')`, []interface{}{tenant, unverified}},
 		{`INSERT INTO user_invitations(token_hash,tenant_id,invited_by,email,role,expires_at) VALUES($1,$2,$3,$4,'member',now()+interval '1 hour')`, []interface{}{uuid.NewString(), tenant, inviter, invited}},
 	} {
 		if _, err := db.Pool.Exec(ctx, statement.sql, statement.args...); err != nil {
@@ -135,16 +135,24 @@ func TestPublicEntryOAuthSignupClaimsInvitationUnderRLS(t *testing.T) {
 	if pending != 0 {
 		t.Fatalf("invitation still pending after OAuth sign-up")
 	}
-	// A provider login must not be linked to an account nobody verified.
-	if _, err := server.resolveIdentity(req, "google_sub", "sub-"+uuid.NewString(), unverified, "google"); err != errUnverifiedAccount {
-		t.Fatalf("linking to unverified account: err=%v, want errUnverifiedAccount", err)
-	}
-	var linked *string
-	if err := db.Pool.QueryRow(ctx, `SELECT google_sub FROM users WHERE email=$1`, unverified).Scan(&linked); err != nil {
+	// An account nobody confirmed was never usable: a provider login with a
+	// verified email claims it, and its unconfirmed password stops working.
+	var squatter string
+	if err := db.Pool.QueryRow(ctx, `SELECT id FROM users WHERE email=$1`, unverified).Scan(&squatter); err != nil {
 		t.Fatal(err)
 	}
-	if linked != nil {
-		t.Fatalf("unverified account was linked to a provider identity")
+	sub := "sub-" + uuid.NewString()
+	claimed, err := server.resolveIdentity(req, "google_sub", sub, unverified, "google")
+	if err != nil || claimed != squatter {
+		t.Fatalf("provider login on an unconfirmed account: user=%s err=%v, want %s", claimed, err, squatter)
+	}
+	var linked, passwordHash *string
+	var verified bool
+	if err := db.Pool.QueryRow(ctx, `SELECT google_sub,password_hash,email_verified FROM users WHERE id=$1`, squatter).Scan(&linked, &passwordHash, &verified); err != nil {
+		t.Fatal(err)
+	}
+	if linked == nil || *linked != sub || passwordHash != nil || !verified {
+		t.Fatalf("claimed account: google_sub=%v password_hash=%v verified=%v", linked, passwordHash, verified)
 	}
 }
 
@@ -187,6 +195,20 @@ func TestPublicEntryPasswordSignupRequiresEmailVerification(t *testing.T) {
 	if res := call(server.loginPassword, http.MethodPost, "/api/auth/login", `{"email":"nobody-`+uuid.NewString()+`@fixture.invalid","password":"x"}`); res.Code != http.StatusUnauthorized {
 		t.Fatalf("unknown email login: status=%d", res.Code)
 	}
+	// While its link is valid, the unconfirmed account cannot be taken over.
+	owner := `{"email":"` + email + `","password":"the real owner's password"}`
+	if res := call(server.registerPassword, http.MethodPost, "/api/auth/register", owner); res.Code != http.StatusConflict {
+		t.Fatalf("re-register while a link is pending: status=%d body=%s", res.Code, res.Body.String())
+	}
+	// Once the link expires, signing up again resets the password and sends a
+	// new link; the first password no longer works.
+	if _, err := db.Pool.Exec(ctx, `UPDATE email_verifications SET expires_at=now()-interval '1 minute' WHERE user_id=(SELECT id FROM users WHERE email=$1)`, email); err != nil {
+		t.Fatal(err)
+	}
+	if res := call(server.registerPassword, http.MethodPost, "/api/auth/register", owner); res.Code != http.StatusCreated || !strings.Contains(res.Body.String(), "verificationRequired") {
+		t.Fatalf("re-register after the link expired: status=%d body=%s", res.Code, res.Body.String())
+	}
+	credentials = owner
 	// The emailed link carries a token whose hash is stored; plant a known one.
 	token := "verify-" + uuid.NewString()
 	if _, err := db.Pool.Exec(ctx, `INSERT INTO email_verifications(token_hash,user_id,expires_at) SELECT $1,id,now()+interval '1 hour' FROM users WHERE email=$2`, sha256Hex(token), email); err != nil {
