@@ -29,7 +29,7 @@ const PHASE_STYLE: Record<string, string> = {
   completed: 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-500/10',
   failed: 'text-red-700 bg-red-50 dark:text-red-300 dark:bg-red-500/10',
   running: 'text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-500/10',
-  cancelled: 'text-gray-600 bg-gray-100 dark:text-white/50 dark:bg-white/[0.06]',
+  cancelled: 'text-gray-600 bg-gray-100 dark:text-white/50 dark:bg-white/6',
 };
 
 type RuntimeOverview = {
@@ -193,7 +193,7 @@ function ExecutionDrawer({ executionId, onClose }: { executionId: string; onClos
                         {run ? <PhasePill phase={run.status === 'success' ? 'completed' : run.status} /> : <span className="text-gray-300 dark:text-white/25">not run</span>}
                       </span>
                     </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/6">
                       {run && <div className="h-full rounded-full" style={{ marginLeft: `${offset}%`, width: `${width}%`, background: barColor }} />}
                     </div>
                     {quality && <p className={`mt-1 text-[10px] font-semibold ${quality.status === 'passed' ? 'text-emerald-600 dark:text-emerald-400' : quality.status === 'failed' ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>
@@ -448,7 +448,7 @@ export default function RuntimeLineage() {
             { label: 'Running', value: stats.running, tone: stats.running > 0 ? 'text-blue-500' : '' },
             { label: 'Active pipelines', value: `${stats.activePipelines}/${stats.pipelines}`, tone: '' },
           ].map(tile => (
-            <div key={tile.label} className="rounded-lg border border-gray-100 bg-white/60 px-3 py-1.5 dark:border-white/[0.07] dark:bg-white/[0.03]">
+            <div key={tile.label} className="rounded-lg border border-gray-100 bg-white/60 px-3 py-1.5 dark:border-white/[0.07] dark:bg-white/3">
               <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">{tile.label}</p>
               <p className={`text-base font-semibold leading-tight text-gray-900 dark:text-white/90 ${tile.tone}`}>{tile.value}</p>
             </div>
@@ -458,9 +458,9 @@ export default function RuntimeLineage() {
       {error && <div className="m-4"><ApiError message={error} onRetry={refresh} /></div>}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col">
-          <div className="relative min-h-0 flex-[3] overflow-hidden">
+          <div className="relative min-h-0 flex-3 overflow-hidden">
             {loading && <div role="status" aria-live="polite" className={`pointer-events-none absolute z-30 flex items-center justify-center ${overview ? 'left-1/2 top-12 -translate-x-1/2' : 'inset-0 bg-white/65 dark:bg-[#080a10]/65'}`}>
-              <span className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3 py-1.5 text-xs text-gray-600 shadow-sm dark:border-white/10 dark:bg-[#11141d]/95 dark:text-white/65">
+              <span className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3 py-1.5 text-xs text-gray-600 shadow-xs dark:border-white/10 dark:bg-[#11141d]/95 dark:text-white/65">
                 <RefreshCw size={13} className="animate-spin" /> {overview ? 'Refreshing…' : 'Loading runtime lineage…'}
               </span>
             </div>}
@@ -478,7 +478,7 @@ export default function RuntimeLineage() {
               <Controls showInteractive={false} />
             </ReactFlow>
           </div>
-          <div className="min-h-0 flex-[2] overflow-auto border-t border-gray-100 dark:border-white/[0.07]" aria-label="Runs and traces">
+          <div className="min-h-0 flex-2 overflow-auto border-t border-gray-100 dark:border-white/[0.07]" aria-label="Runs and traces">
             <table className="w-full min-w-[960px] text-left text-[11px]">
               <thead className="sticky top-0 z-10 bg-white text-[10px] uppercase tracking-wide text-gray-400 dark:bg-[#0b0e15]">
                 <tr>{['Started', 'Pipeline', 'Env', 'Status', 'Duration', 'Execution ID', 'Run ID', 'Trace ID', 'Records / errors'].map(header =>
@@ -487,7 +487,7 @@ export default function RuntimeLineage() {
               <tbody>
                 {runs.map(run => (
                   <tr key={run.id}
-                    className={`cursor-pointer border-t border-gray-50 hover:bg-gray-50 dark:border-white/[0.04] dark:hover:bg-white/[0.03] ${selectedRunId === run.id ? 'bg-brand-50 dark:bg-brand-500/10' : ''}`}
+                    className={`cursor-pointer border-t border-gray-50 hover:bg-gray-50 dark:border-white/4 dark:hover:bg-white/3 ${selectedRunId === run.id ? 'bg-brand-50 dark:bg-brand-500/10' : ''}`}
                     onClick={() => setSelectedRunId(run.id)}>
                     <td className="whitespace-nowrap px-3 py-1.5 text-gray-600 dark:text-white/60">{new Date(run.started_at).toLocaleString()}</td>
                     <td className="max-w-40 truncate px-3 py-1.5 font-medium text-gray-800 dark:text-white/80" title={run.name}>{run.name}</td>
@@ -507,7 +507,7 @@ export default function RuntimeLineage() {
             {!loading && runs.length === 0 && <p className="p-6 text-center text-xs text-gray-400">
               {debouncedSearch ? 'No execution matches that ID inside the selected window.' : 'No runs in the selected window.'}
             </p>}
-            {nextCursor && <div className="flex justify-center border-t border-gray-50 py-2 dark:border-white/[0.04]">
+            {nextCursor && <div className="flex justify-center border-t border-gray-50 py-2 dark:border-white/4">
               <button className="glass-btn-ghost px-3 py-1.5 text-xs" onClick={loadMore} disabled={loadingRuns}>
                 {loadingRuns ? 'Loading…' : 'Load more runs'}
               </button>

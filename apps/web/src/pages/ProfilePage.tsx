@@ -27,11 +27,11 @@ export default function ProfilePage() {
         <p className="page-subtitle mt-1">Your account and workspace details.</p>
       </div>
 
-      <div className="glass-card divide-y divide-gray-100 dark:divide-white/[0.06] overflow-hidden">
+      <div className="glass-card divide-y divide-gray-100 dark:divide-white/6 overflow-hidden">
         {/* Avatar row */}
         <div className="flex items-center gap-4 p-5">
           <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full
-            bg-gradient-to-br from-brand-400 to-brand-600 text-[18px] font-bold text-white
+            bg-linear-to-br from-brand-400 to-brand-600 text-[18px] font-bold text-white
             shadow-lg shadow-brand-500/20">
             {initials}
             <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-[#0a0c12] bg-emerald-400" />

@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - run: npm ci
       - uses: actions/setup-go@v5
@@ -40,7 +40,7 @@ jobs:
         run: python3 tests/ai-evals/run.py --self-test --strict
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - run: npm ci
       - uses: actions/setup-go@v5
@@ -75,7 +75,7 @@ jobs:
           git --redact=100 --verbose --no-banner .
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - name: Audit production npm dependencies
         run: npm audit --omit=dev --audit-level=high
