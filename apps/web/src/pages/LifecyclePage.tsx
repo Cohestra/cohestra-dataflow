@@ -88,7 +88,7 @@ function BackfillPanel({ pipeline, close }: { pipeline: Pipeline; close: () => v
   };
 
   return (
-    <div className="border-t border-gray-100 bg-gray-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+    <div className="border-t border-gray-100 bg-gray-50/60 p-4 dark:border-white/5 dark:bg-white/2">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="font-medium text-gray-900 dark:text-white/90">Historical backfill · {pipeline.name}</p>

@@ -52,24 +52,24 @@ export function AppShell() {
         <div className="fixed inset-0 z-50 sm:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
           <aside className="absolute left-0 top-0 bottom-0 flex w-[200px] flex-col items-center gap-1 py-3
-            border-r border-gray-200 dark:border-white/[0.08]
+            border-r border-gray-200 dark:border-white/8
             bg-white/98 dark:bg-[#0d0f17]/98 backdrop-blur-lg">
             <button aria-label="Close menu" onClick={() => setSidebarOpen(false)}
-              className="relative self-end mr-2 mb-2 flex h-8 w-8 items-center justify-center rounded-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.08] before:absolute before:-inset-[6px] before:content-['']">
+              className="relative self-end mr-2 mb-2 flex h-8 w-8 items-center justify-center rounded-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-white/8 before:absolute before:inset-[-6px] before:content-['']">
               <X size={15} />
             </button>
             {NAV.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) => `flex w-[180px] items-center gap-3 px-3 h-11 rounded-[10px] border transition-all ${
-                  isActive ? 'border-brand-300/20 bg-brand-500/15 text-brand-500 dark:text-brand-300' : 'border-transparent text-gray-600 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/[0.055]'
+                  isActive ? 'border-brand-300/20 bg-brand-500/15 text-brand-500 dark:text-brand-300' : 'border-transparent text-gray-600 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/5.5'
                 }`}>
                 <Icon size={17} strokeWidth={1.75} />
                 <span className="text-sm font-medium">{label}</span>
               </NavLink>
             ))}
-            <div className="my-1 h-px w-[180px] bg-gray-200 dark:bg-white/[0.08]" />
+            <div className="my-1 h-px w-[180px] bg-gray-200 dark:bg-white/8" />
             <button onClick={doLogout}
-              className="flex w-[180px] items-center gap-3 px-3 h-11 rounded-[10px] border border-transparent text-gray-600 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/[0.055] hover:text-red-500 dark:hover:text-red-400 transition-all">
+              className="flex w-[180px] items-center gap-3 px-3 h-11 rounded-[10px] border border-transparent text-gray-600 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/5.5 hover:text-red-500 dark:hover:text-red-400 transition-all">
               <LogOut size={17} strokeWidth={1.75} />
               <span className="text-sm font-medium">Sign out</span>
             </button>
@@ -79,15 +79,15 @@ export function AppShell() {
 
       {/* ── sidebar: 52px compact glass, matches canvas ── */}
       <aside className="relative z-40 hidden sm:flex w-[52px] flex-none flex-col items-center gap-1 overflow-visible py-3
-        border-r border-gray-200 dark:border-white/[0.08]
+        border-r border-gray-200 dark:border-white/8
         bg-white/95 dark:bg-[#0d0f17]/95 backdrop-blur-lg shrink-0">
 
         {/* brand mark */}
         <NavLink to="/pipelines" aria-label="DataFlow home" className="mb-2 flex h-9 w-9 items-center justify-center rounded-[10px]
-          border border-gray-200 bg-white shadow-md dark:border-white/[0.12]">
+          border border-gray-200 bg-white shadow-md dark:border-white/12">
           <AtomMark size={22} />
         </NavLink>
-        <div className="my-1 h-px w-8 bg-gray-200 dark:bg-white/[0.08]" />
+        <div className="my-1 h-px w-8 bg-gray-200 dark:bg-white/8" />
 
         {/* nav */}
         <nav className="flex flex-col gap-1">
@@ -97,7 +97,7 @@ export function AppShell() {
                 `group relative flex h-9 w-9 items-center justify-center rounded-[10px] border transition-all ${
                   isActive
                     ? 'border-brand-300/20 bg-brand-500/15 text-brand-500 dark:text-brand-300 shadow-[0_0_24px_rgba(124,108,242,.12)]'
-                    : 'border-transparent text-gray-400 dark:text-white/40 hover:border-gray-200 dark:hover:border-white/[0.08] hover:bg-gray-100 dark:hover:bg-white/[0.055] hover:text-gray-700 dark:hover:text-white/85'
+                    : 'border-transparent text-gray-400 dark:text-white/40 hover:border-gray-200 dark:hover:border-white/8 hover:bg-gray-100 dark:hover:bg-white/5.5 hover:text-gray-700 dark:hover:text-white/85'
                 }`
               }>
               <Icon size={17} strokeWidth={1.75} />
@@ -109,13 +109,13 @@ export function AppShell() {
         </nav>
 
         <div className="flex-1" />
-        <div className="my-1 h-px w-8 bg-gray-200 dark:bg-white/[0.08]" />
+        <div className="my-1 h-px w-8 bg-gray-200 dark:bg-white/8" />
 
         {/* bottom */}
         <button onClick={toggle} title={dark ? 'Light mode' : 'Dark mode'}
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-gray-200 dark:border-white/[0.08]
-            bg-gray-50 dark:bg-white/[0.04] text-gray-400 dark:text-white/40
-            hover:bg-gray-100 dark:hover:bg-white/[0.08] hover:text-gray-700 dark:hover:text-white transition-all">
+          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-gray-200 dark:border-white/8
+            bg-gray-50 dark:bg-white/4 text-gray-400 dark:text-white/40
+            hover:bg-gray-100 dark:hover:bg-white/8 hover:text-gray-700 dark:hover:text-white transition-all">
           {dark ? <Sun size={15} /> : <Moon size={15} />}
         </button>
         <NavLink to="/settings" title="Settings"
@@ -123,7 +123,7 @@ export function AppShell() {
             `group relative flex h-9 w-9 items-center justify-center rounded-[10px] border transition-all ${
               isActive
                 ? 'border-brand-300/20 bg-brand-500/15 text-brand-500 dark:text-brand-300'
-                : 'border-transparent text-gray-400 dark:text-white/30 hover:bg-gray-100 dark:hover:bg-white/[0.08] hover:text-gray-700 dark:hover:text-white'
+                : 'border-transparent text-gray-400 dark:text-white/30 hover:bg-gray-100 dark:hover:bg-white/8 hover:text-gray-700 dark:hover:text-white'
             }`
           }>
           <Settings size={15} />
@@ -136,7 +136,7 @@ export function AppShell() {
             `group relative flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-semibold transition-all ${
               isActive
                 ? 'border-brand-400/40 bg-brand-500/15 text-brand-500 dark:text-brand-300'
-                : 'border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-white/[0.06] text-gray-600 dark:text-white/70 hover:border-gray-300 dark:hover:border-white/20 hover:text-gray-900 dark:hover:text-white'
+                : 'border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/6 text-gray-600 dark:text-white/70 hover:border-gray-300 dark:hover:border-white/20 hover:text-gray-900 dark:hover:text-white'
             }`
           }>
           {initials}
@@ -161,14 +161,14 @@ export function AppShell() {
             bg-amber-100 dark:bg-amber-500/15 text-[11px] font-medium text-amber-900 dark:text-amber-200">
             <span>Pre-release demo — single-zone deployment, not highly available. Data may be reset.</span>
             <button onClick={() => setBannerDismissed(true)} aria-label="Dismiss demo notice"
-              className="flex h-5 w-5 items-center justify-center rounded hover:bg-amber-200 dark:hover:bg-amber-400/20">
+              className="flex h-5 w-5 items-center justify-center rounded-sm hover:bg-amber-200 dark:hover:bg-amber-400/20">
               <X size={12} />
             </button>
           </div>
         )}
-        <header className="flex items-center px-4 sm:px-6 h-14 border-b border-gray-200 dark:border-white/[0.06]
+        <header className="flex items-center px-4 sm:px-6 h-14 border-b border-gray-200 dark:border-white/6
           bg-white/90 dark:bg-black/20 backdrop-blur-lg shrink-0">
-          <button className="flex sm:hidden h-8 w-8 items-center justify-center rounded-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.08] mr-2" onClick={() => setSidebarOpen(true)} aria-label="Menu">
+          <button className="flex sm:hidden h-8 w-8 items-center justify-center rounded-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-white/8 mr-2" onClick={() => setSidebarOpen(true)} aria-label="Menu">
             <Menu size={18} />
           </button>
           <div>

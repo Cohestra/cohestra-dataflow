@@ -58,7 +58,7 @@ export function ConfigPanel({ node, onChange, onDelete }: {
   return (
     <div>
       <div className="mb-5 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-100 bg-gray-50 dark:border-white/[0.08] dark:bg-white/[0.05]" style={{ color: entry.color }}>
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-100 bg-gray-50 dark:border-white/8 dark:bg-white/5" style={{ color: entry.color }}>
           <Settings2 size={18} />
         </span>
         <div>
@@ -102,7 +102,7 @@ export function ConfigPanel({ node, onChange, onDelete }: {
         );
       })}
       {entry.supportsIngestion && cfg.syncMode !== 'cdc' && (
-        <fieldset className="my-4 rounded-[14px] border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-black/10 p-3">
+        <fieldset className="my-4 rounded-[14px] border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-black/10 p-3">
           <legend className="text-[11px] text-gray-500 dark:opacity-70 px-1">Ingestion mode</legend>
           <select className="glass-select" aria-label="Ingestion mode" value={ing.mode}
             onChange={e => onChange(node.id, { ingestion: { ...ing, mode: e.target.value } })}>

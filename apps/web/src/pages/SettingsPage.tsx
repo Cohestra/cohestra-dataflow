@@ -34,15 +34,15 @@ export default function SettingsPage() {
       {/* Appearance */}
       <section>
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.12em] text-gray-400 dark:text-white/35 px-1">Appearance</p>
-        <div className="glass-card divide-y divide-gray-100 dark:divide-white/[0.06] overflow-hidden">
+        <div className="glass-card divide-y divide-gray-100 dark:divide-white/6 overflow-hidden">
           <Row label="Theme" sublabel="Controls light/dark mode across the UI">
-            <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.09]">
+            <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-white/9">
               {themeOptions.map(({ value, label, icon }) => (
                 <button key={value} onClick={() => setMode(value)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium transition-colors ${
                     mode === value
-                      ? 'bg-gray-900 text-white dark:bg-white/[0.15] dark:text-white'
-                      : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-transparent dark:text-white/45 dark:hover:bg-white/[0.05] dark:hover:text-white/75'
+                      ? 'bg-gray-900 text-white dark:bg-white/15 dark:text-white'
+                      : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-transparent dark:text-white/45 dark:hover:bg-white/5 dark:hover:text-white/75'
                   }`}>
                   {icon}{label}
                 </button>
@@ -55,7 +55,7 @@ export default function SettingsPage() {
       {/* Date & Time */}
       <section>
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.12em] text-gray-400 dark:text-white/35 px-1">Date & Time</p>
-        <div className="glass-card divide-y divide-gray-100 dark:divide-white/[0.06] overflow-hidden">
+        <div className="glass-card divide-y divide-gray-100 dark:divide-white/6 overflow-hidden">
           <Row
             label="Timezone"
             sublabel="All dates and times use your browser's local timezone">
@@ -69,7 +69,7 @@ export default function SettingsPage() {
       {/* About */}
       <section>
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.12em] text-gray-400 dark:text-white/35 px-1">About</p>
-        <div className="glass-card divide-y divide-gray-100 dark:divide-white/[0.06] overflow-hidden">
+        <div className="glass-card divide-y divide-gray-100 dark:divide-white/6 overflow-hidden">
           {[
             { label: 'Version', value: 'v0.1.0-dev' },
             { label: 'License', value: 'AGPL-3.0' },

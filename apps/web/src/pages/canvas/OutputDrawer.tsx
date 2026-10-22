@@ -45,7 +45,7 @@ export function OutputDrawer({
   if (!drawerOpen) {
     return (
       <button title="Open output panel" onClick={() => openDrawer(bottomTab)}
-        className={`absolute left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-gray-200 bg-white/95 px-3 py-1.5 text-[11px] text-gray-500 shadow-sm backdrop-blur dark:border-white/[0.08] dark:bg-[#11141d]/90 dark:text-white/45 ${MOBILE_RAIL_CLEARANCE}`}>
+        className={`absolute left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-gray-200 bg-white/95 px-3 py-1.5 text-[11px] text-gray-500 shadow-xs backdrop-blur-sm dark:border-white/8 dark:bg-[#11141d]/90 dark:text-white/45 ${MOBILE_RAIL_CLEARANCE}`}>
         <ChevronUp size={13} /> Output
       </button>
     );
@@ -53,20 +53,20 @@ export function OutputDrawer({
 
   return (
     <div className="absolute z-20 flex flex-col overflow-hidden rounded-2xl
-      border border-gray-200 dark:border-white/[0.08]
+      border border-gray-200 dark:border-white/8
       bg-white/97 dark:bg-[#0d1018]/96 backdrop-blur-xl
       shadow-[0_-4px_24px_rgba(0,0,0,.08)] dark:shadow-[0_-8px_32px_rgba(0,0,0,.4)]
       inset-x-3 bottom-24 sm:inset-x-auto sm:left-[68px] sm:right-3 sm:bottom-3"
       style={{ height: drawerExpanded ? '52vh' : drawerHeight }}>
       <button aria-label="Resize output panel" onPointerDown={startResize}
         className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize bg-transparent" />
-      <div className="flex h-10 flex-none items-center gap-1 border-b border-gray-100 px-3 dark:border-white/[0.06]">
+      <div className="flex h-10 flex-none items-center gap-1 border-b border-gray-100 px-3 dark:border-white/6">
         {([
           ['runs', History, 'Runs'], ['logs', Terminal, 'Logs'],
           ['lifecycle', Activity, 'Lifecycle'], ['mermaid', Code2, 'Mermaid'],
         ] as const).map(([id, Icon, label]) => (
           <button key={id} onClick={() => setBottomTab(id)}
-            className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition ${bottomTab === id ? 'bg-gray-100 text-gray-800 dark:bg-white/[0.08] dark:text-white/80' : 'text-gray-400 hover:text-gray-700 dark:text-white/35 dark:hover:text-white/65'}`}>
+            className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition ${bottomTab === id ? 'bg-gray-100 text-gray-800 dark:bg-white/8 dark:text-white/80' : 'text-gray-400 hover:text-gray-700 dark:text-white/35 dark:hover:text-white/65'}`}>
             <Icon size={12} /> {label}
           </button>
         ))}
@@ -90,7 +90,7 @@ export function OutputDrawer({
         {bottomTab === 'runs' && !runsLoading && recentRuns.length > 0 && (
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-100 dark:border-white/[0.06]">
+              <tr className="border-b border-gray-100 dark:border-white/6">
                 <th className="px-4 py-1.5 text-left font-medium text-gray-400 dark:text-white/30">Pipeline</th>
                 <th className="px-4 py-1.5 text-left font-medium text-gray-400 dark:text-white/30">Status</th>
                 <th className="px-4 py-1.5 text-left font-medium text-gray-400 dark:text-white/30">Started</th>
@@ -105,7 +105,7 @@ export function OutputDrawer({
                   : 'text-gray-400 dark:text-white/40';
                 return (
                   <tr key={r.id}
-                    className="border-b border-gray-50 dark:border-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.03] cursor-pointer"
+                    className="border-b border-gray-50 dark:border-white/4 hover:bg-gray-50 dark:hover:bg-white/3 cursor-pointer"
                     onClick={() => selectRun(r)}>
                     <td className="px-4 py-2 text-gray-700 dark:text-white/70 truncate max-w-[200px]">{r.name}</td>
                     <td className={`px-4 py-2 font-medium ${statusColor}`}>{r.phase ?? '—'}</td>
@@ -124,14 +124,14 @@ export function OutputDrawer({
             {executionId && !selectedRun && <p><span className="text-amber-500">RUNNING</span> {executionId}</p>}
             {selectedRun && <div className="mb-3 flex items-center gap-3 font-sans"><span className="font-semibold text-gray-800 dark:text-white/80">{selectedRun.name}</span><span className="glass-badge">{selectedRun.phase}</span></div>}
             {selectedRun && !runDetail && <p className="text-gray-400 dark:text-white/30">Loading execution detail…</p>}
-            {runDetail && <pre className="whitespace-pre-wrap break-words leading-relaxed">{runDetail.error ?? JSON.stringify(runDetail, null, 2)}</pre>}
+            {runDetail && <pre className="whitespace-pre-wrap wrap-break-word leading-relaxed">{runDetail.error ?? JSON.stringify(runDetail, null, 2)}</pre>}
           </div>
         )}
         {bottomTab === 'lifecycle' && (
           <div className="grid h-full gap-3 p-4 sm:grid-cols-3">
             {(['draft', 'testing', 'production'] as Stage[]).map((stage, index) => (
-              <div key={stage} className={`rounded-xl border p-3 ${pipelineStage === stage ? 'border-brand-400/50 bg-brand-500/[0.06]' : 'border-gray-200 dark:border-white/[0.07]'}`}>
-                <div className="flex items-center gap-2"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${pipelineStage === stage ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-400 dark:bg-white/[0.06] dark:text-white/30'}`}>{index + 1}</span><p className="text-xs font-semibold capitalize text-gray-800 dark:text-white/80">{stage === 'testing' ? 'Integration' : stage}</p></div>
+              <div key={stage} className={`rounded-xl border p-3 ${pipelineStage === stage ? 'border-brand-400/50 bg-brand-500/6' : 'border-gray-200 dark:border-white/[0.07]'}`}>
+                <div className="flex items-center gap-2"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${pipelineStage === stage ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-400 dark:bg-white/6 dark:text-white/30'}`}>{index + 1}</span><p className="text-xs font-semibold capitalize text-gray-800 dark:text-white/80">{stage === 'testing' ? 'Integration' : stage}</p></div>
                 <p className="mt-2 text-[10px] text-gray-400 dark:text-white/30">{pipelineStage === stage ? 'Current pipeline stage' : stage === 'production' ? 'Promote after green Integration run' : 'Saved pipeline version'}</p>
               </div>
             ))}

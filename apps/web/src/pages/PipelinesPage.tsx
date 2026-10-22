@@ -181,7 +181,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
 
   return (
     <div className="fixed inset-y-0 right-0 z-40 flex w-[85vw] max-w-[380px] flex-none flex-col border-l border-gray-200 bg-white
-      dark:border-white/[0.08] dark:bg-white/[0.04] dark:backdrop-blur-xl overflow-hidden
+      dark:border-white/8 dark:bg-white/4 dark:backdrop-blur-xl overflow-hidden
       shadow-[-18px_0_50px_rgba(0,0,0,.08)] dark:shadow-[-18px_0_50px_rgba(0,0,0,.28)]
       sm:static sm:z-auto sm:w-[380px] sm:max-w-none">
 
@@ -193,9 +193,9 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
           <button onClick={onClose} aria-label="Close pipeline details"
             className="relative ml-auto flex h-[22px] w-[22px] items-center justify-center rounded-[6px] shrink-0
               bg-gray-100 border border-gray-200 text-gray-400 hover:bg-gray-200 hover:text-gray-700
-              dark:bg-white/[0.04] dark:border-white/[0.07] dark:text-white/40
-              dark:hover:bg-white/[0.08] dark:hover:text-white transition-all
-              before:absolute before:-inset-[11px] before:content-['']">
+              dark:bg-white/4 dark:border-white/[0.07] dark:text-white/40
+              dark:hover:bg-white/8 dark:hover:text-white transition-all
+              before:absolute before:inset-[-11px] before:content-['']">
             <X size={13} />
           </button>
         </div>
@@ -214,8 +214,8 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
             <button key={key} onClick={action}
               className="flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11px] font-medium transition-all
                 bg-gray-100 border border-gray-200 text-gray-600 hover:bg-gray-200 hover:text-gray-900
-                dark:bg-white/[0.045] dark:border-white/[0.08] dark:text-white/65
-                dark:hover:bg-white/[0.085] dark:hover:text-white">
+                dark:bg-white/4.5 dark:border-white/8 dark:text-white/65
+                dark:hover:bg-white/8.5 dark:hover:text-white">
               {icon} {label}
             </button>
           ))}
@@ -229,7 +229,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
           { val: String(runs.length),                            lbl: 'Runs (recent)', hi: false },
           { val: pipeline.last_run_at ? reltime(pipeline.last_run_at) : '—', lbl: 'Last run', hi: false },
         ].map(({ val, lbl, hi }) => (
-          <div key={lbl} className="py-3 text-center border-r border-gray-100 dark:border-white/[0.06] last:border-r-0">
+          <div key={lbl} className="py-3 text-center border-r border-gray-100 dark:border-white/6 last:border-r-0">
             <div className={`text-[17px] font-semibold tracking-tight ${hi ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white/90'}`}>{val}</div>
             <div className="text-[10px] uppercase tracking-[.08em] text-gray-400 dark:text-white/40 mt-0.5">{lbl}</div>
           </div>
@@ -258,15 +258,15 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
             ? <div className="flex items-center justify-center h-32 text-[12px] text-gray-400 dark:text-white/40">No runs yet</div>
             : runs.map(run => (
               <div key={run.id}
-                className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 dark:border-white/[0.05]
-                  hover:bg-gray-50 dark:hover:bg-white/[0.025] cursor-pointer">
+                className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 dark:border-white/5
+                  hover:bg-gray-50 dark:hover:bg-white/2.5 cursor-pointer">
                 <span aria-hidden className={`flex h-[26px] w-[26px] items-center justify-center rounded-[7px] border shrink-0 text-[12px] font-semibold ${
                   run.phase === 'completed'
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
                     : run.phase === 'failed'
                     ? 'bg-red-50 border-red-200 text-red-500 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400'
                     : run.phase === 'cancelled'
-                    ? 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-white/[0.05] dark:border-white/10 dark:text-white/60'
+                    ? 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-white/5 dark:border-white/10 dark:text-white/60'
                     : 'bg-blue-50 border-blue-200 text-blue-500 dark:bg-cyan-500/10 dark:border-cyan-500/20 dark:text-cyan-400'
                 }`}>
                   {run.phase === 'completed' ? '✓' : run.phase === 'failed' ? '✕' : run.phase === 'cancelled' ? '⊘' : '↻'}
@@ -293,7 +293,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
       {/* version history */}
       {versions.length > 1 && (
         <div className="max-h-40 overflow-y-auto border-t border-gray-100 px-4 py-3 dark:border-white/[0.07] shrink-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-gray-600 dark:text-white/60 mb-1.5">Versions</div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-600 dark:text-white/60 mb-1.5">Versions</div>
           <ul>
             {versions.map(v => (
               <li key={v.id} className="flex items-center gap-2 py-1 text-[11px] text-gray-700 dark:text-white/75">
@@ -310,14 +310,14 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
       {/* mini topology */}
       {nodes.length > 0 && (
         <div className="px-4 py-3 border-t border-gray-100 dark:border-white/[0.07] shrink-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[.1em] text-gray-400 dark:text-white/40 mb-2">Topology</div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/40 mb-2">Topology</div>
           <div className="flex flex-wrap items-center gap-1.5">
             {nodes.map((n, i) => {
               const entry = byType[n.activityType];
               return (
                 <div key={i} className="flex items-center gap-1.5">
                   <span className="flex items-center gap-1 px-2 py-1 rounded-[6px] border text-[11px] font-medium
-                    border-gray-200 bg-gray-50 dark:border-white/[0.1] dark:bg-white/[0.05]"
+                    border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5"
                     style={{ color: entry?.color ?? '#7c6cf2' }}>
                     <ActivityIcon activityType={n.activityType} nodeType={n.nodeType} size={11} />
                     {entry?.label ?? n.activityType}
@@ -439,15 +439,15 @@ export default function PipelinesPage() {
     <div className="flex h-full">
       <div className="flex flex-1 flex-col min-w-0 min-h-0">
         {/* toolbar */}
-        <div className="flex flex-col gap-2 px-6 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
+        <div className="flex flex-col gap-2 px-6 py-2.5 border-b border-gray-100 dark:border-white/6 shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-[.06em] text-gray-400 dark:text-white/30">Stage</span>
             {FILTERS.map(({ key, label, dot }) => (
               <button key={key} onClick={() => setFilter(key)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition-all ${
                   filter === key
-                    ? 'bg-gray-900 border-gray-900 text-white dark:bg-white/[0.12] dark:border-white/[0.2] dark:text-white'
-                    : 'bg-transparent border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:border-white/[0.07] dark:text-white/45 dark:hover:bg-white/[0.065] dark:hover:text-white/75'
+                    ? 'bg-gray-900 border-gray-900 text-white dark:bg-white/12 dark:border-white/20 dark:text-white'
+                    : 'bg-transparent border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:border-white/[0.07] dark:text-white/45 dark:hover:bg-white/6.5 dark:hover:text-white/75'
                 }`}>
                 {dot && <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />}
                 {label}
@@ -468,8 +468,8 @@ export default function PipelinesPage() {
             {TRIGGER_FILTERS.map(({ key, label }) => (
               <button key={key} onClick={() => setTriggerFilter(key)}
                 className={`px-3 py-1 rounded-full text-[11px] font-medium border transition-all ${triggerFilter === key
-                  ? 'bg-gray-900 border-gray-900 text-white dark:bg-white/[0.12] dark:border-white/[0.2] dark:text-white'
-                  : 'bg-transparent border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-white/[0.07] dark:text-white/45 dark:hover:bg-white/[0.065] dark:hover:text-white/75'}`}>
+                  ? 'bg-gray-900 border-gray-900 text-white dark:bg-white/12 dark:border-white/20 dark:text-white'
+                  : 'bg-transparent border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-white/[0.07] dark:text-white/45 dark:hover:bg-white/6.5 dark:hover:text-white/75'}`}>
                 {label}
               </button>
             ))}
@@ -477,7 +477,7 @@ export default function PipelinesPage() {
           <button type="button" aria-pressed={failedOnly} onClick={() => setFailedOnly(v => !v)}
             className={`flex w-fit items-center gap-2 py-0.5 text-[12px] font-medium transition-colors ${failedOnly ? 'text-red-500' : 'text-gray-500 dark:text-white/55'}`}>
             <span className={`relative h-[17px] w-[30px] rounded-full transition-colors ${failedOnly ? 'bg-red-500' : 'bg-gray-200 dark:bg-white/[0.14]'}`}>
-              <span className={`absolute top-0.5 h-[13px] w-[13px] rounded-full bg-white shadow-sm transition-[left] ${failedOnly ? 'left-[15px]' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 h-[13px] w-[13px] rounded-full bg-white shadow-xs transition-[left] ${failedOnly ? 'left-[15px]' : 'left-0.5'}`} />
             </span>
             Only show last-run failures
           </button>
@@ -508,8 +508,8 @@ export default function PipelinesPage() {
             const sel = selected?.id === p.id;
             return (
               <button type="button" key={p.id} onClick={() => setSelected(sel ? null : p)}
-                className={`group flex w-full items-stretch border-b border-gray-100 text-left text-gray-900 dark:border-white/[0.05] dark:text-white/90 cursor-pointer transition-colors ${
-                  sel ? 'bg-brand-50 dark:bg-brand-500/[0.06]' : 'hover:bg-gray-50 dark:hover:bg-white/[0.025]'
+                className={`group flex w-full items-stretch border-b border-gray-100 text-left text-gray-900 dark:border-white/5 dark:text-white/90 cursor-pointer transition-colors ${
+                  sel ? 'bg-brand-50 dark:bg-brand-500/6' : 'hover:bg-gray-50 dark:hover:bg-white/2.5'
                 }`}>
                 <div className={`w-[3px] shrink-0 ${cfg.bar}`} />
                 <div className="flex flex-1 flex-wrap items-center gap-3.5 px-5 py-3 min-w-0">
@@ -535,7 +535,7 @@ export default function PipelinesPage() {
         </div>
 
         {/* footer */}
-        <div className="flex items-center gap-3 px-6 py-2 border-t border-gray-100 dark:border-white/[0.06] shrink-0">
+        <div className="flex items-center gap-3 px-6 py-2 border-t border-gray-100 dark:border-white/6 shrink-0">
           <span className="text-[11px] text-gray-600 dark:text-white/60">{visible.length} pipeline{visible.length !== 1 ? 's' : ''} loaded</span>
           {nextCursor && (
             <button onClick={loadMore} disabled={loadingMore}

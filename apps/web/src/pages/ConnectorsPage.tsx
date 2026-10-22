@@ -50,7 +50,7 @@ function ProviderIcon({ provider }: { provider: Provider }) {
   };
   const { icon: Icon, bg } = cfg[provider];
   return (
-    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center text-white shadow-lg flex-shrink-0`}>
+    <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${bg} flex items-center justify-center text-white shadow-lg shrink-0`}>
       <Icon size={18} strokeWidth={1.8} />
     </div>
   );
@@ -382,7 +382,7 @@ function ConnectorCard({ provider, label, connections, onDisconnect, onConnect }
                 )}
               </div>
               <button
-                className="glass-btn-danger ml-3 px-2 py-1 text-[10px] flex-shrink-0"
+                className="glass-btn-danger ml-3 px-2 py-1 text-[10px] shrink-0"
                 disabled={disconnecting === conn.id}
                 onClick={() => handleDisconnect(conn.id)}
                 title="Disconnect"
@@ -561,7 +561,7 @@ export function ConnectorsPage() {
                 onClick={() => available ? setCredentialProvider(key) : navigate('/billing')}
                 className="glass-card-interactive group flex min-h-[126px] flex-col p-4 text-left">
                 <div className="flex items-start gap-3">
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${color} text-white shadow-lg`}>
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br ${color} text-white shadow-lg`}>
                     <Icon size={18} strokeWidth={1.8} />
                   </span>
                   <span className="min-w-0 flex-1">
