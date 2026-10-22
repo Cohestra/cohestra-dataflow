@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -75,8 +76,42 @@ func SubmitSparkJob(ctx context.Context, db *database.DB, rt *connectors.Runtime
 	metadata := spec["metadata"].(map[string]interface{})
 	ref.Name = metadata["name"].(string)
 	body, _ := json.Marshal(spec)
-	_, err = kubernetesRequest(ctx, http.MethodPost, "/apis/sparkoperator.k8s.io/v1beta2/namespaces/"+namespace+"/sparkapplications", body)
+	collection := "/apis/sparkoperator.k8s.io/v1beta2/namespaces/" + namespace + "/sparkapplications"
+	_, err = kubernetesRequest(ctx, http.MethodPost, collection, body)
+	var statusErr *kubernetesStatusError
+	if errors.As(err, &statusErr) && statusErr.code == http.StatusConflict {
+		// The name is derived from the execution, so a retry of this activity
+		// after an earlier attempt created the application gets 409. Attach to
+		// that application instead of failing the run.
+		existing, getErr := kubernetesRequest(ctx, http.MethodGet, collection+"/"+ref.Name, nil)
+		if getErr == nil && sparkApplicationOwnedBy(existing, p.ExecutionID) {
+			return ref, nil
+		}
+	}
 	return ref, err
+}
+
+// sparkApplicationOwnedBy reports whether a SparkApplication was created for
+// this execution, using the execution-id label BuildApplication sets.
+func sparkApplicationOwnedBy(body []byte, executionID string) bool {
+	var app struct {
+		Metadata struct {
+			Labels map[string]string `json:"labels"`
+		} `json:"metadata"`
+	}
+	if json.Unmarshal(body, &app) != nil || executionID == "" {
+		return false
+	}
+	return app.Metadata.Labels["dataflow.io/execution-id"] == executionID
+}
+
+type kubernetesStatusError struct {
+	code int
+	body []byte
+}
+
+func (e *kubernetesStatusError) Error() string {
+	return fmt.Sprintf("Kubernetes API returned %d: %s", e.code, e.body)
 }
 
 func SparkJobStatus(ctx context.Context, ref SparkJobRef) (map[string]string, error) {
@@ -153,7 +188,7 @@ func kubernetesRequest(ctx context.Context, method, path string, body []byte) ([
 	defer res.Body.Close()
 	payload, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if res.StatusCode >= 300 {
-		return nil, fmt.Errorf("Kubernetes API returned %d: %s", res.StatusCode, payload)
+		return nil, &kubernetesStatusError{code: res.StatusCode, body: payload}
 	}
 	return payload, nil
 }

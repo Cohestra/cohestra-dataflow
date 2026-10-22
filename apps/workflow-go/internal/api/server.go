@@ -43,6 +43,10 @@ func New(ctx context.Context, cfg config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := checkRLSRole(ctx, db, cfg.Production); err != nil {
+		db.Close()
+		return nil, err
+	}
 	redisOptions, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		db.Close()
@@ -176,4 +180,25 @@ func (s *Server) purgeAgedData(ctx context.Context) {
 	if err != nil {
 		slog.Error("data retention purge failed", "error", err)
 	}
+}
+
+// checkRLSRole makes sure the API's database role is subject to row-level
+// security. A superuser or BYPASSRLS role (e.g. APP_DATABASE_URL unset, so it
+// falls back to DATABASE_URL) silently removes tenant isolation: production
+// refuses to start, development logs a warning.
+func checkRLSRole(ctx context.Context, db *database.DB, production bool) error {
+	var role string
+	var bypass bool
+	if err := db.Pool.QueryRow(ctx, `SELECT current_user, rolsuper OR rolbypassrls FROM pg_roles WHERE rolname=current_user`).Scan(&role, &bypass); err != nil {
+		return fmt.Errorf("check database role: %w", err)
+	}
+	if !bypass {
+		return nil
+	}
+	problem := fmt.Sprintf("API database role %q bypasses row-level security; set APP_DATABASE_URL to the dataflow_app role", role)
+	if production {
+		return fmt.Errorf("refusing to start in production: %s", problem)
+	}
+	slog.Warn("tenant isolation is not enforced", "problem", problem)
+	return nil
 }

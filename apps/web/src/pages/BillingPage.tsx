@@ -11,6 +11,8 @@ type Usage = {
   free_tier: number;
   extra_quota: number;
   daysUntilReset: number;
+  /** False on self-hosted installs: usage is counted but never limited. */
+  metered?: boolean;
 };
 
 type Payment = {
@@ -75,7 +77,8 @@ export function BillingPage() {
 
   const used = usage?.used ?? 0;
   const limit = usage?.limit ?? 0;
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const metered = usage?.metered !== false;
+  const pct = metered && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
 
   async function toggleFeature(feature: PaidFeatureKey, enabled: boolean) {
     setFeatureBusy(feature); setError(null);
@@ -129,7 +132,7 @@ export function BillingPage() {
           />
         </div>
         <div className="text-sm opacity-80 mb-6">
-          {used} / {limit} executions
+          {metered ? `${used} / ${limit} executions` : `${used} executions this month · no limit on this install`}
         </div>
 
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">

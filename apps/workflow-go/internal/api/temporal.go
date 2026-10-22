@@ -52,7 +52,9 @@ func (s *Server) consumeQuota(ctx context.Context, tenantID string) error {
       JOIN usage_counters uc ON uc.tenant_id=bp.tenant_id AND uc.month=$2 WHERE bp.tenant_id=$1 FOR UPDATE OF bp,uc`, tenantID, monthStart()).Scan(&limit, &used); err != nil {
 			return err
 		}
-		if used >= limit {
+		// Usage is always counted; the limit applies only where billing is on
+		// (the hosted service), never to self-hosted installs.
+		if s.Config.BillingEnabled && used >= limit {
 			return &quotaExceeded{Used: used, Limit: limit}
 		}
 		_, err := tx.Exec(ctx, `UPDATE usage_counters SET execution_count=execution_count+1 WHERE tenant_id=$1 AND month=$2`, tenantID, monthStart())

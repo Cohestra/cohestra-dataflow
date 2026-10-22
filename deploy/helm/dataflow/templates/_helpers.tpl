@@ -4,6 +4,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "dataflow.appEnv" -}}
+- name: BILLING_ENABLED
+  value: {{ .Values.billingEnabled | default false | quote }}
 - name: DATABASE_URL
   valueFrom: {secretKeyRef: {name: dataflow-secrets, key: databaseUrl}}
 - name: APP_DATABASE_URL

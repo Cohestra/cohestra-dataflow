@@ -1,4 +1,4 @@
-FROM golang:1.26.9-alpine AS build
+FROM golang:1.26.10-alpine AS build
 WORKDIR /src
 COPY apps/workflow-go/go.mod apps/workflow-go/go.sum* ./
 COPY apps/workflow-go/vendor ./vendor

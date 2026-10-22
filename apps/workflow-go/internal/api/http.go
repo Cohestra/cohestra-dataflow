@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,10 +38,63 @@ func withTenant(r *http.Request, tenant model.TenantContext) *http.Request {
 
 func jsonResponse(w http.ResponseWriter, status int, value interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	if value != nil {
-		_ = json.NewEncoder(w).Encode(value)
+	if value == nil {
+		w.WriteHeader(status)
+		return
 	}
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(value); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	out := body.Bytes()
+	if bytes.Contains(out, []byte(`"secret"`)) {
+		out = redactTriggerSecrets(out)
+	}
+	w.WriteHeader(status)
+	_, _ = w.Write(out)
+}
+
+// redactTriggerSecrets blanks every pipeline trigger's signing secret in a JSON
+// response. Webhook secrets are write-only: many routes return definitions to
+// any member, and only the sender of the webhook needs the secret.
+func redactTriggerSecrets(body []byte) []byte {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	var value interface{}
+	if decoder.Decode(&value) != nil {
+		return body
+	}
+	if !blankTriggerSecrets(value) {
+		return body
+	}
+	var out bytes.Buffer
+	if json.NewEncoder(&out).Encode(value) != nil {
+		return body
+	}
+	return out.Bytes()
+}
+
+func blankTriggerSecrets(value interface{}) bool {
+	changed := false
+	switch v := value.(type) {
+	case map[string]interface{}:
+		if trigger, ok := v["trigger"].(map[string]interface{}); ok {
+			if secret, ok := trigger["secret"].(string); ok && secret != "" {
+				trigger["secret"] = ""
+				trigger["secretSet"] = true
+				changed = true
+			}
+		}
+		for _, child := range v {
+			changed = blankTriggerSecrets(child) || changed
+		}
+	case []interface{}:
+		for _, child := range v {
+			changed = blankTriggerSecrets(child) || changed
+		}
+	}
+	return changed
 }
 
 type APIErrorCode string
@@ -53,6 +107,7 @@ const (
 	ErrInternal           APIErrorCode = "ERR_INTERNAL"
 	ErrUnauthorized       APIErrorCode = "ERR_UNAUTHORIZED"
 	ErrForbidden          APIErrorCode = "ERR_FORBIDDEN"
+	ErrEmailNotVerified   APIErrorCode = "ERR_EMAIL_NOT_VERIFIED"
 	ErrConflict           APIErrorCode = "ERR_CONFLICT"
 	ErrValidation         APIErrorCode = "ERR_VALIDATION"
 	ErrInvalidEnvironment APIErrorCode = "ERR_INVALID_ENVIRONMENT"

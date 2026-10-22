@@ -2,7 +2,6 @@ package connectors
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -74,14 +73,14 @@ func (r *Runtime) Fetch(ctx context.Context, name string, p SourceParams) (Sourc
 		if manifest, ok := r.Registry.Manifests[name]; ok && manifest.Kind == "source" {
 			return r.fetchManifest(ctx, manifest, p)
 		}
-		return SourceResult{}, fmt.Errorf("Unknown source: %s", name)
+		return SourceResult{}, permanent(UnknownActivityError, "Unknown source: %s", name)
 	}
 	return source(ctx, p)
 }
 func (r *Runtime) Handle(ctx context.Context, name string, input interface{}, config map[string]interface{}, handlerCtx HandlerContext) (interface{}, map[string]interface{}, error) {
 	handler := r.Handlers[name]
 	if handler == nil {
-		return nil, nil, fmt.Errorf("Unknown activity: %s", name)
+		return nil, nil, permanent(UnknownActivityError, "Unknown activity: %s", name)
 	}
 	return handler(ctx, input, config, handlerCtx)
 }

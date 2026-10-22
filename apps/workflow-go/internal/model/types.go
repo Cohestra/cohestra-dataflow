@@ -184,6 +184,9 @@ type TenantContext struct {
 	Email         string `json:"email"`
 	Role          string `json:"role"`
 	EmailVerified bool   `json:"emailVerified"`
+	// TokenID is set when a service-account API token made the request; UserID
+	// is then the user who created the token, so writes keep a real principal.
+	TokenID string `json:"tokenId,omitempty"`
 }
 
 type CatalogField struct {

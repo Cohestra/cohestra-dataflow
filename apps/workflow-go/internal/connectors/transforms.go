@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -46,12 +47,48 @@ func normalizeExpression(value string) string {
 	value = strings.ReplaceAll(value, "records.length", "len(records)")
 	return value
 }
-func evalExpression(value string, record interface{}, records []interface{}) (interface{}, error) {
-	program, err := expr.Compile(normalizeExpression(value), expr.Env(expressionEnv(record, records)))
+
+// compiledPrograms caches compiled expressions as runners, so a step compiles
+// its expression once instead of once per record. expr type-checks against the
+// environment, so the key includes the record's dynamic type.
+type expressionRunner func(env interface{}) (interface{}, error)
+
+var compiledPrograms = struct {
+	sync.Mutex
+	runners map[string]expressionRunner
+}{runners: map[string]expressionRunner{}}
+
+const maxCompiledPrograms = 1024
+
+func compileExpression(value string, record interface{}, records []interface{}) (expressionRunner, error) {
+	normalized := normalizeExpression(value)
+	key := fmt.Sprintf("%T\x00%s", record, normalized)
+	compiledPrograms.Lock()
+	runner := compiledPrograms.runners[key]
+	compiledPrograms.Unlock()
+	if runner != nil {
+		return runner, nil
+	}
+	program, err := expr.Compile(normalized, expr.Env(expressionEnv(record, records)))
 	if err != nil {
 		return nil, err
 	}
-	return expr.Run(program, expressionEnv(record, records))
+	runner = func(env interface{}) (interface{}, error) { return expr.Run(program, env) }
+	compiledPrograms.Lock()
+	if len(compiledPrograms.runners) >= maxCompiledPrograms {
+		compiledPrograms.runners = map[string]expressionRunner{}
+	}
+	compiledPrograms.runners[key] = runner
+	compiledPrograms.Unlock()
+	return runner, nil
+}
+
+func evalExpression(value string, record interface{}, records []interface{}) (interface{}, error) {
+	runner, err := compileExpression(value, record, records)
+	if err != nil {
+		return nil, err
+	}
+	return runner(expressionEnv(record, records))
 }
 func EvaluatePredicate(value string, data interface{}) (bool, error) {
 	records, ok := data.([]interface{})
@@ -170,7 +207,7 @@ func (r *Runtime) registerTransforms() {
 		for _, raw := range rows {
 			row, ok := raw.(map[string]interface{})
 			if !ok {
-				return nil, nil, fmt.Errorf("formula input must be objects")
+				return nil, nil, schemaError("formula input must be objects")
 			}
 			value, err := evalExpression(stringValue(cfg["expression"]), row, nil)
 			if err != nil {
@@ -206,9 +243,19 @@ func (r *Runtime) registerTransforms() {
 func records(input interface{}) ([]interface{}, error) {
 	rows, ok := input.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("input must be an array")
+		return nil, schemaError("input must be an array")
 	}
 	return rows, nil
+}
+
+// objectRow returns row i as an object, or a SchemaValidationError naming the
+// step, instead of panicking on a scalar or array record.
+func objectRow(raw interface{}, step string, i int) (map[string]interface{}, error) {
+	row, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, schemaError("%s: record %d must be an object", step, i+1)
+	}
+	return row, nil
 }
 func cloneMap(value map[string]interface{}) map[string]interface{} {
 	out := map[string]interface{}{}
@@ -226,16 +273,19 @@ func renameHandler(_ context.Context, input interface{}, cfg map[string]interfac
 	switch value := cfg["mapping"].(type) {
 	case string:
 		if json.Unmarshal([]byte(value), &mapping) != nil {
-			return nil, nil, fmt.Errorf("transform.rename: mapping must be a JSON object")
+			return nil, nil, configError("transform.rename: mapping must be a JSON object")
 		}
 	case map[string]interface{}:
 		mapping = value
 	default:
-		return nil, nil, fmt.Errorf("transform.rename: mapping must be a JSON object")
+		return nil, nil, configError("transform.rename: mapping must be a JSON object")
 	}
 	out := []interface{}{}
-	for _, raw := range rows {
-		row := raw.(map[string]interface{})
+	for i, raw := range rows {
+		row, err := objectRow(raw, "transform.rename", i)
+		if err != nil {
+			return nil, nil, err
+		}
 		copy := cloneMap(row)
 		for from, to := range mapping {
 			copy[stringValue(to)] = row[from]
@@ -347,9 +397,13 @@ func flattenHandler(_ context.Context, input interface{}, cfg map[string]interfa
 		policy = "index"
 	}
 	out := []interface{}{}
-	for _, raw := range rows {
+	for i, raw := range rows {
+		row, err := objectRow(raw, "transform.flatten", i)
+		if err != nil {
+			return nil, nil, err
+		}
 		result := map[string]interface{}{}
-		flattenValue(raw.(map[string]interface{}), delimiter, max, policy, "", 0, result)
+		flattenValue(row, delimiter, max, policy, "", 0, result)
 		out = append(out, result)
 	}
 	return out, nil, nil
@@ -362,8 +416,12 @@ func parseHandler(_ context.Context, input interface{}, cfg map[string]interface
 	fields := keyFields(cfg["fields"])
 	mode := stringValue(cfg["onError"])
 	out := []interface{}{}
-	for _, raw := range rows {
-		row := cloneMap(raw.(map[string]interface{}))
+	for i, raw := range rows {
+		object, err := objectRow(raw, "transform.parse", i)
+		if err != nil {
+			return nil, nil, err
+		}
+		row := cloneMap(object)
 		for _, field := range fields {
 			value, ok := row[field].(string)
 			if !ok {
@@ -372,7 +430,7 @@ func parseHandler(_ context.Context, input interface{}, cfg map[string]interface
 			var parsed interface{}
 			if err := json.Unmarshal([]byte(value), &parsed); err != nil {
 				if mode == "fail" {
-					return nil, nil, fmt.Errorf("transform.parse: field %q is not valid JSON", field)
+					return nil, nil, schemaError("transform.parse: field %q is not valid JSON", field)
 				}
 				if mode == "null" {
 					row[field] = nil
@@ -400,13 +458,20 @@ func contractHandler(_ context.Context, input interface{}, cfg map[string]interf
 		err = fmt.Errorf("schemaJson must be object")
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("transform.contract: schemaJson must be a JSON object")
+		return nil, nil, configError("transform.contract: schemaJson must be a JSON object")
 	}
 	valid := []interface{}{}
 	rejected := 0
 	for i, raw := range rows {
-		row := raw.(map[string]interface{})
+		row, ok := raw.(map[string]interface{})
+		if !ok {
+			// A non-object record fails every field check; treat it as a violation.
+			row = nil
+		}
 		problems := []string{}
+		if !ok {
+			problems = append(problems, "record must be an object")
+		}
 		for field, specValue := range schema {
 			spec := stringValue(specValue)
 			optional := strings.HasSuffix(spec, "?")
@@ -425,7 +490,7 @@ func contractHandler(_ context.Context, input interface{}, cfg map[string]interf
 		if len(problems) > 0 {
 			rejected++
 			if cfg["onViolation"] == "fail" || cfg["onViolation"] == nil {
-				return nil, nil, fmt.Errorf("transform.contract: row %d: %s", i+1, strings.Join(problems, "; "))
+				return nil, nil, schemaError("transform.contract: row %d: %s", i+1, strings.Join(problems, "; "))
 			}
 		} else {
 			valid = append(valid, row)
@@ -528,8 +593,12 @@ func MergeArrays(strategy string, arrays [][]interface{}, joinKey string) ([]int
 	if strategy == "appendWithSourceTag" {
 		out := []interface{}{}
 		for i, array := range arrays {
-			for _, raw := range array {
-				row := cloneMap(raw.(map[string]interface{}))
+			for j, raw := range array {
+				object, err := objectRow(raw, "merge", j)
+				if err != nil {
+					return nil, err
+				}
+				row := cloneMap(object)
 				row["_source"] = i
 				out = append(out, row)
 			}
@@ -537,7 +606,7 @@ func MergeArrays(strategy string, arrays [][]interface{}, joinKey string) ([]int
 		return out, nil
 	}
 	if joinKey == "" {
-		return nil, fmt.Errorf("merge strategy %q requires a joinKey", strategy)
+		return nil, configError("merge strategy %q requires a joinKey", strategy)
 	}
 	a, b := []interface{}{}, []interface{}{}
 	if len(arrays) > 0 {
@@ -546,15 +615,25 @@ func MergeArrays(strategy string, arrays [][]interface{}, joinKey string) ([]int
 	if len(arrays) > 1 {
 		b = arrays[1]
 	}
-	index := func(rows []interface{}) map[string]map[string]interface{} {
+	index := func(rows []interface{}) (map[string]map[string]interface{}, error) {
 		out := map[string]map[string]interface{}{}
-		for _, raw := range rows {
-			row := raw.(map[string]interface{})
+		for i, raw := range rows {
+			row, err := objectRow(raw, "merge", i)
+			if err != nil {
+				return nil, err
+			}
 			out[stringValue(row[joinKey])] = row
 		}
-		return out
+		return out, nil
 	}
-	ai, bi := index(a), index(b)
+	ai, err := index(a)
+	if err != nil {
+		return nil, err
+	}
+	bi, err := index(b)
+	if err != nil {
+		return nil, err
+	}
 	keys := []string{}
 	if strategy == "outerJoin" {
 		for key := range ai {
@@ -568,7 +647,7 @@ func MergeArrays(strategy string, arrays [][]interface{}, joinKey string) ([]int
 		sort.Strings(keys)
 	} else {
 		for _, raw := range a {
-			keys = append(keys, stringValue(raw.(map[string]interface{})[joinKey]))
+			keys = append(keys, stringValue(raw.(map[string]interface{})[joinKey])) // index(a) checked every row
 		}
 	}
 	out := []interface{}{}
