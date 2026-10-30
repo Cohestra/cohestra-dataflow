@@ -57,6 +57,8 @@ jobs:
             TestPublicEntryOAuthSignupClaimsInvitationUnderRLS
             TestPublicEntryPasswordSignupRequiresEmailVerification
             TestPublicEntryAPIRefusesRLSBypassRoleInProduction
+            TestPublicEntryPasswordResetIsSingleUseAndSignsOut
+            TestPublicEntryRefreshRotationIsAtomic
             TestQuotaEnforcedOnlyWhenBillingEnabled
             TestControlPipelineVersionAndExecutionAccess
             TestPipelineAccessWithApplicationRoleRLS

@@ -28,6 +28,8 @@ func (s *Server) registerAuth(mux *http.ServeMux) {
 	mux.Handle("GET /api/auth/me", s.protected(handle(s.me)))
 	mux.HandleFunc("GET /api/auth/accept-invite", handle(s.acceptInvite))
 	mux.Handle("GET /api/auth/verify-email", s.rateLimit("verify-email", 30, time.Minute, handle(s.verifyEmail)))
+	mux.Handle("POST /api/auth/forgot-password", s.rateLimit("password-forgot", 5, time.Minute, handle(s.forgotPassword)))
+	mux.Handle("POST /api/auth/reset-password", s.rateLimit("password-reset", 10, time.Minute, handle(s.resetPassword)))
 }
 
 func (s *Server) registerPassword(w http.ResponseWriter, r *http.Request) error {
@@ -210,28 +212,41 @@ func (s *Server) loginPassword(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// refreshReuseGrace is how long a just-rotated refresh token is treated as a
+// concurrent refresh (two tabs, a retried request) rather than as theft.
+const refreshReuseGrace = 10 * time.Second
+
 func (s *Server) refresh(w http.ResponseWriter, r *http.Request) error {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
 		return &HTTPError{Status: http.StatusUnauthorized, Message: "no refresh token"}
 	}
-	var id, userID string
-	var revokedAt *time.Time
-	var expiresAt time.Time
-	if err := s.DB.Pool.QueryRow(r.Context(), `SELECT id,user_id,revoked_at,expires_at FROM refresh_tokens WHERE token_hash=$1`, sha256Hex(cookie.Value)).Scan(&id, &userID, &revokedAt, &expiresAt); err != nil {
-		return &HTTPError{Status: http.StatusUnauthorized, Message: "invalid refresh token"}
-	}
-	if revokedAt != nil {
-		_, _ = s.DB.Pool.Exec(r.Context(), `UPDATE refresh_tokens SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL`, userID)
-		return &HTTPError{Status: http.StatusUnauthorized, Message: "refresh token reuse detected"}
-	}
-	if expiresAt.Before(time.Now()) {
-		return &HTTPError{Status: http.StatusUnauthorized, Message: "refresh token expired"}
-	}
-	if _, err := s.DB.Pool.Exec(r.Context(), `UPDATE refresh_tokens SET revoked_at=now() WHERE id=$1`, id); err != nil {
+	tokenHash := sha256Hex(cookie.Value)
+	tx, err := s.DB.Pool.Begin(r.Context())
+	if err != nil {
 		return err
 	}
-	rows, err := s.DB.Pool.Query(r.Context(), `SELECT id,tenant_id,email,role,email_verified FROM users WHERE id=$1`, userID)
+	defer tx.Rollback(r.Context()) //nolint:errcheck
+	// Revoking and reading in one statement means only one request can rotate
+	// a given token; a second, concurrent one finds it already revoked.
+	var userID string
+	err = tx.QueryRow(r.Context(), `UPDATE refresh_tokens SET revoked_at=now()
+    WHERE token_hash=$1 AND revoked_at IS NULL AND expires_at>now() RETURNING user_id`, tokenHash).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return rejectRefresh(r, tx, tokenHash)
+	}
+	if err != nil {
+		return err
+	}
+	newRefresh := randomToken()
+	if _, err := tx.Exec(r.Context(), `INSERT INTO refresh_tokens (user_id,token_hash,expires_at) VALUES ($1,$2,$3)`,
+		userID, sha256Hex(newRefresh), time.Now().Add(refreshTTLDays*24*time.Hour)); err != nil {
+		return err
+	}
+	// Everything runs on the transaction's connection: requests queued on the
+	// row lock each hold a pooled connection, so asking the pool for another
+	// one here could deadlock under concurrent refreshes.
+	rows, err := tx.Query(r.Context(), `SELECT id,tenant_id,email,role,email_verified FROM users WHERE id=$1`, userID)
 	if err != nil {
 		return err
 	}
@@ -243,13 +258,36 @@ func (s *Server) refresh(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	newRefresh, err := s.issueRefreshToken(r.Context(), userID)
-	if err != nil {
+	if err := tx.Commit(r.Context()); err != nil {
 		return err
 	}
 	setRefreshCookie(w, newRefresh)
 	jsonResponse(w, http.StatusOK, map[string]interface{}{"accessToken": access, "user": user})
 	return nil
+}
+
+// rejectRefresh explains why a token could not be rotated. Presenting a token
+// revoked longer ago than the grace window means it was copied, so every
+// session of that user is revoked.
+func rejectRefresh(r *http.Request, tx pgx.Tx, tokenHash string) error {
+	var userID string
+	var revokedAt *time.Time
+	if err := tx.QueryRow(r.Context(), `SELECT user_id,revoked_at FROM refresh_tokens WHERE token_hash=$1`, tokenHash).Scan(&userID, &revokedAt); err != nil {
+		return &HTTPError{Status: http.StatusUnauthorized, Message: "invalid refresh token"}
+	}
+	if revokedAt == nil {
+		return &HTTPError{Status: http.StatusUnauthorized, Message: "refresh token expired"}
+	}
+	if time.Since(*revokedAt) < refreshReuseGrace {
+		return &HTTPError{Status: http.StatusUnauthorized, Message: "refresh token already used"}
+	}
+	if _, err := tx.Exec(r.Context(), `UPDATE refresh_tokens SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL`, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		return err
+	}
+	return &HTTPError{Status: http.StatusUnauthorized, Message: "refresh token reuse detected"}
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {

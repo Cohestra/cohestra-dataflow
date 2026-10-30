@@ -12,7 +12,8 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
       <div className="absolute left-[12%] top-[-12%] h-[420px] w-[420px] rounded-full bg-brand-500/15 blur-[110px]" />
       <div className="absolute bottom-[-15%] right-[8%] h-[360px] w-[360px] rounded-full bg-cyan/10 blur-[120px]" />
       <div className="relative z-10 flex min-h-screen items-center justify-center">
-        <div className="w-full max-w-md rounded-[24px] border border-white/10 bg-[#10131c]/78 p-8 shadow-glass-glow backdrop-blur-2xl">
+        {/* The card is always dark, so it sets its own text colour instead of inheriting the light theme's. */}
+        <div className="w-full max-w-md rounded-[24px] border border-white/10 bg-[#10131c]/78 p-8 text-white shadow-glass-glow backdrop-blur-2xl">
           <div className="mb-8 flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-white/12 bg-white shadow-lg shadow-black/20">
               <AtomMark size={22} />
@@ -68,6 +69,46 @@ const OIDC_ENABLED = import.meta.env.VITE_OIDC_ENABLED === 'true';
 const PASSWORD_AUTH_ENABLED = import.meta.env.VITE_PASSWORD_LOGIN_ENABLED === 'true';
 const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true';
 
+// API errors arrive as "<status> <json body>"; show the server's message when there is one.
+function apiErrorMessage(ex: any): string {
+  const raw: string = ex?.message ?? 'Failed';
+  const spaceIdx = raw.indexOf(' ');
+  try { const p = JSON.parse(spaceIdx >= 0 ? raw.slice(spaceIdx + 1) : ''); if (p?.error) return p.error; } catch { /* not JSON */ }
+  return raw;
+}
+
+function ForgotPasswordForm({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
+  const [email, setEmail] = useState(initialEmail);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setErr(null);
+    try { await api.forgotPassword(email); setSent(true); } catch (ex) { setErr(apiErrorMessage(ex)); }
+    setBusy(false);
+  };
+
+  if (sent) {
+    return (
+      <div role="status" className="mt-5 space-y-2 border-t border-white/[0.07] pt-5 text-sm">
+        <p className="font-medium">Check your inbox</p>
+        <p className="text-xs text-white/60">If {email} has an account, we sent it a link to choose a new password. The link expires in 1 hour.</p>
+        <button type="button" className="text-xs text-white/40 hover:text-white/70" onClick={onBack}>Back to sign in</button>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={submit} className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
+      <p className="text-xs text-white/40">Enter your email and we'll send you a reset link.</p>
+      <input className="glass-input w-full text-sm" type="email" placeholder="you@example.com" aria-label="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+      {err && <div role="alert" className="text-xs text-rose-300">{err}</div>}
+      <button type="submit" className="glass-btn-primary w-full" disabled={busy}>{busy ? '…' : 'Send reset link'}</button>
+      <button type="button" className="text-xs text-white/40 hover:text-white/70 w-full text-center" onClick={onBack}>Back to sign in</button>
+    </form>
+  );
+}
+
 function PasswordForm({ initialEmail = '', inviteToken }: { initialEmail?: string; inviteToken?: string }) {
   const [mode, setMode] = useState<'login' | 'register'>(inviteToken ? 'register' : 'login');
   const [email, setEmail] = useState(initialEmail);
@@ -76,6 +117,7 @@ function PasswordForm({ initialEmail = '', inviteToken }: { initialEmail?: strin
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [checkInbox, setCheckInbox] = useState(false);
+  const [forgot, setForgot] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
@@ -87,12 +129,8 @@ function PasswordForm({ initialEmail = '', inviteToken }: { initialEmail?: strin
         await api.loginWithPassword({ email, password });
       }
       window.location.href = '/';
-    } catch (ex: any) {
-      const raw: string = ex.message ?? 'Failed';
-      const spaceIdx = raw.indexOf(' ');
-      const body = spaceIdx >= 0 ? raw.slice(spaceIdx + 1) : '';
-      try { const p = JSON.parse(body); if (p?.error) { setErr(p.error); setBusy(false); return; } } catch { /* not JSON */ }
-      setErr(raw);
+    } catch (ex) {
+      setErr(apiErrorMessage(ex));
       setBusy(false);
     }
   };
@@ -106,6 +144,8 @@ function PasswordForm({ initialEmail = '', inviteToken }: { initialEmail?: strin
     );
   }
 
+  if (forgot) return <ForgotPasswordForm initialEmail={email} onBack={() => setForgot(false)} />;
+
   return (
     <form onSubmit={submit} className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
       <p className="text-xs text-white/40">{inviteToken ? 'Create your account' : 'Or sign in with email'}</p>
@@ -118,6 +158,11 @@ function PasswordForm({ initialEmail = '', inviteToken }: { initialEmail?: strin
       <button type="submit" className="glass-btn-primary w-full" disabled={busy}>
         {busy ? '…' : mode === 'login' ? 'Sign in' : 'Create account'}
       </button>
+      {mode === 'login' && (
+        <button type="button" className="text-xs text-white/40 hover:text-white/70 w-full text-center" onClick={() => { setForgot(true); setErr(null); }}>
+          Forgot password?
+        </button>
+      )}
       {!inviteToken && (
         <button type="button" className="text-xs text-white/40 hover:text-white/70 w-full text-center" onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setErr(null); }}>
           {mode === 'login' ? 'Need an account? Register' : 'Already have an account? Sign in'}
@@ -149,6 +194,9 @@ export function LoginPage() {
       {params.get('verified') === '1' && (
         <p role="status" className="mt-4 text-xs text-emerald-300">Email confirmed. Sign in to continue.</p>
       )}
+      {params.get('reset') === '1' && (
+        <p role="status" className="mt-4 text-xs text-emerald-300">Password changed. Sign in with your new password.</p>
+      )}
       {PASSWORD_AUTH_ENABLED && <PasswordForm />}
       <ErrorLine msg={errorCode ? (OAUTH_ERRORS[errorCode] ?? 'Sign-in failed.') : null} />
       {!PASSWORD_AUTH_ENABLED && (
@@ -156,6 +204,43 @@ export function LoginPage() {
           Need access? Contact your workspace administrator.
         </p>
       )}
+    </AuthShell>
+  );
+}
+
+// ─── ResetPasswordPage ────────────────────────────────────────────────────────
+
+export function ResetPasswordPage() {
+  const [params] = useSearchParams();
+  const token = params.get('token') ?? '';
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setErr(null);
+    if (password !== confirm) { setErr('The passwords do not match.'); return; }
+    setBusy(true);
+    try {
+      await api.resetPassword({ token, password });
+      window.location.href = '/login?reset=1';
+    } catch (ex) {
+      setErr(apiErrorMessage(ex));
+      setBusy(false);
+    }
+  };
+
+  if (!token) return <AuthShell title="Reset link problem"><p className="mt-4 text-sm text-rose-300">This reset link is incomplete. Ask for a new one from the sign-in page.</p></AuthShell>;
+  return (
+    <AuthShell title="Choose a new password" subtitle="This signs you out on every device.">
+      <form onSubmit={submit} className="mt-5 space-y-3">
+        <input className="glass-input w-full text-sm" type="password" placeholder="New password (8+ chars)" aria-label="New password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
+        <input className="glass-input w-full text-sm" type="password" placeholder="Repeat new password" aria-label="Repeat new password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={8} />
+        {err && <div role="alert" className="text-xs text-rose-300">{err}</div>}
+        <button type="submit" className="glass-btn-primary w-full" disabled={busy}>{busy ? '…' : 'Set new password'}</button>
+        <a href="/login" className="block text-center text-xs text-white/40 hover:text-white/70">Back to sign in</a>
+      </form>
     </AuthShell>
   );
 }

@@ -14,6 +14,14 @@ OIDC login sends a `nonce` and verifies the returned ID token's signature
 against the issuer's `jwks_uri` (RS/PS/ES algorithms only), plus `iss`, `aud`,
 `azp`, `sub`, `exp`, `iat` and the nonce; the discovery document must name the
 configured `OIDC_ISSUER`. Failures redirect to `/login?error=oidc_token`.
+Refresh tokens rotate atomically: only one request can redeem a token. A token
+redeemed less than 10 seconds ago (two tabs refreshing at once) gets 401
+without side effects; an older one is treated as stolen and revokes every
+session of that user. `POST /api/auth/forgot-password` always answers
+`{"ok":true}` and emails a single-use, one-hour link to `/reset-password`
+(at most one a minute per account). `POST /api/auth/reset-password`
+(`{"token","password"}`) sets the password, marks the email verified and
+revokes all refresh tokens.
 The Razorpay webhook consumes the unmodified request bytes and validates
 `X-Razorpay-Signature` before decoding JSON.
 
@@ -42,7 +50,7 @@ version's sharing forward.
 Public/operational routes:
 
 - `GET /health`, `GET /metrics`
-- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`
 - `GET /api/auth/google`, `GET /api/auth/google/callback`, `GET /api/auth/oidc`, `GET /api/auth/oidc/callback`, `GET /api/auth/accept-invite`
 - `POST /api/billing/webhook`, `POST /api/hooks/{path}`, `POST /api/openlineage`
 - `GET /api/analytics/shared/{token}`
