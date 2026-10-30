@@ -55,8 +55,8 @@ export function ExecutionMonitor({ executionId, onNodeStatus, onPhase }: {
   };
   const phaseColor = status?.phase === 'failed' ? 'text-rose-500' : status?.phase === 'completed' ? 'text-emerald-500' : 'text-amber-500';
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-white/[0.09] bg-white/95 dark:bg-[#0d1018]/92 px-4 py-2.5 shadow-lg dark:shadow-glass backdrop-blur-xl">
-      <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-white/[0.055] ${phaseColor}`}>
+    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-white/9 bg-white/95 dark:bg-[#0d1018]/92 px-4 py-2.5 shadow-lg dark:shadow-glass backdrop-blur-xl">
+      <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-white/5.5 ${phaseColor}`}>
         {status?.phase === 'completed' ? <Check size={15} /> : status?.phase === 'failed' ? <AlertCircle size={15} /> : <CircleDot size={15} className="animate-pulse" />}
       </span>
       <div className="min-w-[150px]">

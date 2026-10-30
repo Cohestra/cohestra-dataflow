@@ -47,21 +47,21 @@ export function PipelineHeaderBar({
 }) {
   return (
     <div className="absolute top-4 z-10 flex items-center gap-2 pointer-events-none transition-[left] duration-200
-        left-3 sm:left-[var(--header-left)]"
+        left-3 sm:left-(--header-left)"
       style={{ '--header-left': `${leftOffset}px` } as React.CSSProperties}>
-      <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-white/[0.09]
-        bg-white/95 dark:bg-[#0d1018]/90 px-3 py-2 shadow-sm dark:shadow-glass backdrop-blur-xl">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-gray-200 dark:border-white/9
+        bg-white/95 dark:bg-[#0d1018]/90 px-3 py-2 shadow-xs dark:shadow-glass backdrop-blur-xl">
         <input
-          className="bg-transparent text-sm font-semibold text-gray-900 dark:text-white/90 outline-none w-40 placeholder-gray-400 dark:placeholder-white/30"
+          className="bg-transparent text-sm font-semibold text-gray-900 dark:text-white/90 outline-hidden w-40 placeholder-gray-400 dark:placeholder-white/30"
           value={name} onChange={e => setName(e.target.value)} aria-label="Pipeline name" />
-        <div className="h-4 w-px bg-gray-200 dark:bg-white/[0.1]" />
+        <div className="h-4 w-px bg-gray-200 dark:bg-white/10" />
         <div className="relative">
           <button onClick={() => setShowLifecycle(v => !v)}
             className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all ${STAGE_STYLES[pipelineStage]}`}>
             {pipelineStage} <ChevronDown size={10} />
           </button>
           {showLifecycle && (
-            <div className="absolute top-7 left-0 z-50 w-52 rounded-2xl border border-gray-200 dark:border-white/[0.1]
+            <div className="absolute top-7 left-0 z-50 w-52 rounded-2xl border border-gray-200 dark:border-white/10
               bg-white dark:bg-[#11141d]/95 p-2 shadow-xl dark:shadow-glass backdrop-blur-xl">
               <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-white/30">Lifecycle</p>
               {pipelineStage === 'draft' && (
@@ -82,10 +82,10 @@ export function PipelineHeaderBar({
             </div>
           )}
         </div>
-        <div className="h-4 w-px bg-gray-200 dark:bg-white/[0.1]" />
+        <div className="h-4 w-px bg-gray-200 dark:bg-white/10" />
         <div className="flex items-center gap-1.5">
           <Clock size={12} className="text-gray-400 dark:text-white/30" />
-          <select className="bg-transparent text-xs text-gray-600 dark:text-white/60 outline-none cursor-pointer"
+          <select className="bg-transparent text-xs text-gray-600 dark:text-white/60 outline-hidden cursor-pointer"
             value={trigger.type}
             onChange={e => setTrigger({ type: e.target.value,
               ...(e.target.value === 'cron' ? { schedule: '*/5 * * * *' } : {}),
@@ -100,22 +100,22 @@ export function PipelineHeaderBar({
             <option value="asset">Asset materialized</option>
           </select>
           {trigger.type === 'cron' && (
-            <input className="bg-transparent text-xs outline-none w-28 text-gray-600 dark:text-white/60 font-mono"
+            <input className="bg-transparent text-xs outline-hidden w-28 text-gray-600 dark:text-white/60 font-mono"
               value={trigger.schedule} onChange={e => setTrigger({ ...trigger, schedule: e.target.value })} />
           )}
           {trigger.type === 'webhook' && (
             <>
-              <input className="bg-transparent text-xs outline-none w-32 text-gray-600 dark:text-white/60 font-mono"
+              <input className="bg-transparent text-xs outline-hidden w-32 text-gray-600 dark:text-white/60 font-mono"
                 aria-label="Webhook path" title="Webhook path: POST /api/hooks/<path>"
                 value={trigger.path ?? ''} onChange={e => setTrigger({ ...trigger, path: e.target.value })} />
-              <input className="bg-transparent text-xs outline-none w-40 text-gray-600 dark:text-white/60 font-mono"
+              <input className="bg-transparent text-xs outline-hidden w-40 text-gray-600 dark:text-white/60 font-mono"
                 aria-label="Webhook signing secret" title="HMAC-SHA256 signing secret. Copy it now: it is not shown again after saving."
                 placeholder={trigger.secretSet ? 'secret set · type to replace' : 'signing secret (16+ chars)'}
                 value={trigger.secret ?? ''} onChange={e => setTrigger({ ...trigger, secret: e.target.value })} />
             </>
           )}
           {trigger.type === 'event' && (
-            <select className="max-w-48 bg-transparent text-xs text-gray-600 outline-none dark:text-white/60"
+            <select className="max-w-48 bg-transparent text-xs text-gray-600 outline-hidden dark:text-white/60"
               value={trigger.topic} onChange={e => setTrigger({ ...trigger, topic: e.target.value })} aria-label="Upstream pipeline event">
               {!upstreamPipelines.some(p => p.pipeline_key !== pipelineKey) && <option value={trigger.topic}>{trigger.topic}</option>}
               {upstreamPipelines.filter(p => p.pipeline_key !== pipelineKey).flatMap(p => [
@@ -126,7 +126,7 @@ export function PipelineHeaderBar({
             </select>
           )}
           {trigger.type === 'asset' && (
-            <select className="max-w-56 bg-transparent text-xs text-gray-600 outline-none dark:text-white/60"
+            <select className="max-w-56 bg-transparent text-xs text-gray-600 outline-hidden dark:text-white/60"
               value={trigger.assetUrn} onChange={e => setTrigger({ ...trigger, assetUrn: e.target.value })} aria-label="Materialized asset">
               {!workspaceAssets.length && <option value="">No Integration output assets</option>}
               {workspaceAssets.map(asset => <option key={asset.urn} value={asset.urn}>{asset.name}{asset.layer ? ` · ${asset.layer}` : ''}</option>)}

@@ -57,7 +57,7 @@ const AssetNode = memo(function AssetNode({ data }: NodeProps) {
   const layer = normalizeLayer(data.layer);
   const metrics: RuntimeNodeMetrics | undefined = data.metrics;
   return (
-    <div className="h-full w-full overflow-hidden rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-white/10 dark:bg-[#12151f]/95">
+    <div className="h-full w-full overflow-hidden rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-xs dark:border-white/10 dark:bg-[#12151f]/95">
       <Handle type="target" position={Position.Left} />
       <div className="flex items-center gap-2">
         <Database size={14} style={{ color: LAYER_COLOR[layer] }} />

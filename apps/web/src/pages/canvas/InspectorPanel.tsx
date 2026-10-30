@@ -41,7 +41,7 @@ export function InspectorPanel({
       if (event.target instanceof HTMLTextAreaElement) return;
       onClose();
     }}
-      className={`flex flex-col flex-none overflow-hidden border-l border-gray-200 dark:border-white/[0.08] bg-white/97 dark:bg-[#0d1018]/94 backdrop-blur-xl transition-[width] duration-200 ease-in-out ${
+      className={`flex flex-col flex-none overflow-hidden border-l border-gray-200 dark:border-white/8 bg-white/97 dark:bg-[#0d1018]/94 backdrop-blur-xl transition-[width] duration-200 ease-in-out ${
         open ? 'w-[360px]' : 'w-0'
       }`}
     >
@@ -68,7 +68,7 @@ export function InspectorPanel({
                 <button className="glass-btn-primary mt-3 w-full disabled:cursor-not-allowed disabled:opacity-50" disabled={!mermaidValid} onClick={applyMermaid}>
                   <Code2 size={15} /> Apply to canvas
                 </button>
-                <div className="mt-4 overflow-hidden rounded-[14px] border border-gray-100 dark:border-white/[0.08] bg-gray-50 dark:bg-black/15 p-2">
+                <div className="mt-4 overflow-hidden rounded-[14px] border border-gray-100 dark:border-white/8 bg-gray-50 dark:bg-black/15 p-2">
                   <MermaidPreview source={mermaidDraft} onValidChange={setMermaidValid} />
                 </div>
                 <p className="mt-2 text-[10px] text-gray-400 dark:text-white/30">Structure only. Node config preserved by matching ID.</p>

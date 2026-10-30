@@ -43,7 +43,7 @@ export function AiBuilderPanel({
   };
   return (
     <aside
-      className={`flex flex-col flex-none overflow-hidden border-l border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[#0d1018] transition-[width] duration-200 ease-in-out ${
+      className={`flex flex-col flex-none overflow-hidden border-l border-gray-200 dark:border-white/8 bg-white dark:bg-[#0d1018] transition-[width] duration-200 ease-in-out ${
         showAI ? 'w-[390px]' : 'w-0'
       }`}
     >
@@ -55,8 +55,8 @@ export function AiBuilderPanel({
             <button className="icon-button ml-auto h-7 w-7" onClick={() => setShowAI(false)} aria-label="Close AI panel"><X size={14} /></button>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
-            {aiMessages.map((m, i) => <div key={i} className={`rounded-xl p-3 text-xs ${m.role === 'user' ? 'ml-8 bg-brand-500/10 text-gray-800 dark:text-white/80' : 'mr-8 bg-gray-100 text-gray-600 dark:bg-white/[0.06] dark:text-white/60'}`}>{m.content}</div>)}
-            {aiProposal && <div className="space-y-3 rounded-xl border border-brand-300/30 bg-brand-500/[0.05] p-3">
+            {aiMessages.map((m, i) => <div key={i} className={`rounded-xl p-3 text-xs ${m.role === 'user' ? 'ml-8 bg-brand-500/10 text-gray-800 dark:text-white/80' : 'mr-8 bg-gray-100 text-gray-600 dark:bg-white/6 dark:text-white/60'}`}>{m.content}</div>)}
+            {aiProposal && <div className="space-y-3 rounded-xl border border-brand-300/30 bg-brand-500/5 p-3">
               <div role="status" aria-live="polite" className="text-xs font-semibold text-gray-900 dark:text-white/90">
                 {aiProposal.status === 'ready'
                   ? `Proposed graph · ${aiProposal.definition?.nodes?.length ?? 0} nodes`
@@ -102,7 +102,7 @@ export function AiBuilderPanel({
                 {aiLoading ? '…' : hasNodes ? 'Refine' : 'Generate'}
               </button>
             </div>
-            {aiError && <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-[10px] text-red-600 dark:border-red-500/15 dark:bg-red-500/[0.06] dark:text-red-300">{aiError}</p>}
+            {aiError && <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-[10px] text-red-600 dark:border-red-500/15 dark:bg-red-500/6 dark:text-red-300">{aiError}</p>}
             {aiLoading && <div className="h-0.5 animate-pulse bg-brand-500" />}
             {(aiUndo || canRedoAI) && <div className="mt-2 flex gap-3">
               {aiUndo && <button className="text-xs text-brand-500" onClick={() => finishReview(undoAI)}>Undo last apply</button>}

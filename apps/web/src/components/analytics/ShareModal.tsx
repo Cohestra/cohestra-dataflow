@@ -55,7 +55,7 @@ export function ShareModal({ dashboardId, onClose }: { dashboardId: string; onCl
         {newUrl && (
           <div className="mt-3 flex items-center gap-2 text-xs bg-brand-500/10 text-brand-600 dark:text-brand-300 rounded-lg px-3 py-2">
             <span className="truncate flex-1">{newUrl}</span>
-            <button className="glass-btn-ghost px-2 py-1 flex-shrink-0" title="Copy"
+            <button className="glass-btn-ghost px-2 py-1 shrink-0" title="Copy"
               onClick={() => navigator.clipboard.writeText(newUrl).catch(() => {})}><Copy size={12} /></button>
           </div>
         )}
@@ -68,7 +68,7 @@ export function ShareModal({ dashboardId, onClose }: { dashboardId: string; onCl
           ) : (
             <ul className="space-y-1">
               {shares.map(s => (
-                <li key={s.share_token_hash} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-white/[0.04]">
+                <li key={s.share_token_hash} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-white/4">
                   <span className="text-gray-600 dark:text-white/60">
                     …{s.share_token_hash.slice(-8)} · expires {new Date(s.expires_at).toLocaleString()}
                   </span>

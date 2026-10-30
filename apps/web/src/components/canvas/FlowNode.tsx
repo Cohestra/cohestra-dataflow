@@ -44,14 +44,14 @@ export function FlowNode({ data }: { data: any }) {
     : '';
   return (
     <div className={`relative min-w-[180px] overflow-hidden rounded-[14px] px-3.5 py-3 text-[13px]
-      border bg-white border-gray-200 text-gray-900 shadow-sm
-      dark:bg-[#11141d]/90 dark:border-white/[0.10] dark:text-white/90 dark:shadow-[0_16px_35px_rgba(0,0,0,.28)]
+      border bg-white border-gray-200 text-gray-900 shadow-xs
+      dark:bg-[#11141d]/90 dark:border-white/10 dark:text-white/90 dark:shadow-[0_16px_35px_rgba(0,0,0,.28)]
       transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-gray-300
-      dark:hover:border-white/[0.18] backdrop-blur-xl ${statusRing}`}>
+      dark:hover:border-white/18 backdrop-blur-xl ${statusRing}`}>
       <div className="absolute inset-y-0 left-0 w-[3px] rounded-l-[14px]" style={{ background: entry?.color ?? '#6965db' }} />
       <Handle type="target" position={Position.Left} />
       <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-gray-100 bg-gray-50 dark:border-white/[0.08] dark:bg-white/[0.045]" style={{ color: entry?.color }}>
+        <span className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-gray-100 bg-gray-50 dark:border-white/8 dark:bg-white/4.5" style={{ color: entry?.color }}>
           <ActivityIcon activityType={data.activityType} nodeType={data.nodeType} />
         </span>
         <div className="min-w-0 flex-1">
