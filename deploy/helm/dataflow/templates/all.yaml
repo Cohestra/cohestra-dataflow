@@ -161,6 +161,7 @@ spec:
             - {name: CLICKHOUSE_USER, value: dataflow}
             - {name: CLICKHOUSE_PASSWORD, value: dataflow}
             - {name: CLICKHOUSE_DB, value: dataflow}
+            - {name: CLICKHOUSE_ANALYTICS_PASSWORD, value: {{ .Values.clickhouse.analyticsPassword | quote }}}
           ports: [{containerPort: 8123}]
           readinessProbe:
             exec: {command: [clickhouse-client, --user, dataflow, --password, dataflow, --query, SELECT 1]}
@@ -170,6 +171,7 @@ spec:
             - {name: data, mountPath: /var/lib/clickhouse}
             - {name: init, mountPath: /docker-entrypoint-initdb.d/init.sql, subPath: init.sql}
             - {name: users-d, mountPath: /etc/clickhouse-server/users.d}
+            - {name: init, mountPath: /etc/clickhouse-server/users.d/analytics.xml, subPath: users-analytics.xml}
             - {name: logs, mountPath: /var/log/clickhouse-server}
             - {name: tmp, mountPath: /tmp}
       volumes:

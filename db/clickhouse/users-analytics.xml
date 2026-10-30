@@ -1,0 +1,38 @@
+<!--
+  Read-only ClickHouse user for the API's analytics queries. Its row filters
+  only return the tenant named by the SQL_dataflow_tenant setting, which the
+  API sends with every query, so a query that loses its tenant_id filter
+  returns that tenant's rows or nothing. A query without the setting fails.
+  Grants allow SELECT on the two analytics tables only: no table functions
+  (url, file, remote), no other databases, no writes.
+
+  Mounted into /etc/clickhouse-server/users.d/, so it also applies to an
+  existing server after a restart. The password comes from
+  CLICKHOUSE_ANALYTICS_PASSWORD in the ClickHouse container's environment.
+-->
+<clickhouse>
+  <profiles>
+    <dataflow_analytics>
+      <!-- 2: read-only, but per-query settings (the tenant) may be set. -->
+      <readonly>2</readonly>
+    </dataflow_analytics>
+  </profiles>
+  <users>
+    <dataflow_analytics>
+      <password from_env="CLICKHOUSE_ANALYTICS_PASSWORD"/>
+      <profile>dataflow_analytics</profile>
+      <quota>default</quota>
+      <networks><ip>::/0</ip></networks>
+      <grants>
+        <query>GRANT SELECT ON dataflow.sink_records</query>
+        <query>GRANT SELECT ON dataflow.execution_metrics</query>
+      </grants>
+      <databases>
+        <dataflow>
+          <sink_records><filter>tenant_id = toUUID(getSetting('SQL_dataflow_tenant'))</filter></sink_records>
+          <execution_metrics><filter>tenant_id = toUUID(getSetting('SQL_dataflow_tenant'))</filter></execution_metrics>
+        </dataflow>
+      </databases>
+    </dataflow_analytics>
+  </users>
+</clickhouse>

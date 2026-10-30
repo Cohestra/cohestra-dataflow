@@ -78,3 +78,24 @@ jobs:
           for name in TestPostgresFetchNeverDropsRowsSharingTheBoundaryCursor TestPostgresSinkWritesAllBatchesOrNone; do
             grep -q -- "--- PASS: $name " /tmp/connectors.log || { echo "::error::$name did not pass"; exit 1; }
           done
+      - name: Verify ClickHouse tenant row filters
+        working-directory: apps/workflow-go
+        env:
+          CLICKHOUSE_TEST_URL: http://127.0.0.1:18123
+          CLICKHOUSE_TEST_ANALYTICS_PASSWORD: ci-analytics
+        run: |
+          set -o pipefail
+          # Same image and files as docker-compose.yml, so a broken
+          # users-analytics.xml fails here rather than at deploy time.
+          docker run -d --name clickhouse -p 18123:8123 \
+            -e CLICKHOUSE_USER=dataflow -e CLICKHOUSE_PASSWORD=dataflow -e CLICKHOUSE_DB=dataflow \
+            -e CLICKHOUSE_ANALYTICS_PASSWORD="$CLICKHOUSE_TEST_ANALYTICS_PASSWORD" \
+            -v "$GITHUB_WORKSPACE/db/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro" \
+            -v "$GITHUB_WORKSPACE/db/clickhouse/users-analytics.xml:/etc/clickhouse-server/users.d/analytics.xml:ro" \
+            "$(grep -m1 -o 'clickhouse/clickhouse-server:[^ ]*' "$GITHUB_WORKSPACE/docker-compose.yml")"
+          for i in $(seq 1 60); do
+            curl -sf -u dataflow:dataflow "$CLICKHOUSE_TEST_URL/?query=EXISTS%20dataflow.execution_metrics" | grep -q 1 && break
+            sleep 2
+          done
+          go test ./internal/api -run '^TestClickhouse' -count=1 -v | tee /tmp/clickhouse.log
+          grep -q -- "--- PASS: TestClickhouseAnalyticsUserIsolatesTenants " /tmp/clickhouse.log || { docker logs clickhouse | tail -50; echo "::error::TestClickhouseAnalyticsUserIsolatesTenants did not pass"; exit 1; }
