@@ -129,11 +129,17 @@ func (s *Server) monitoringOverview(w http.ResponseWriter, r *http.Request) erro
 		days = 90
 	}
 	tenant := tenantFrom(r)
+	// Like the run list, the overview only covers pipelines the user may view:
+	// it carries definitions, failure errors and quality samples.
+	visible, args := "true", []interface{}{days}
+	if tenant.Role != "owner" {
+		visible, args = pipelineVisibleSQL("p", 2), append(args, tenant.UserID)
+	}
 	var result = map[string]interface{}{}
 	err := s.DB.TenantTx(r.Context(), tenant.TenantID, func(tx pgx.Tx) error {
 		queries := []struct{ name, sql string }{
-			{"summary", `SELECT count(*)::int AS runs,count(*) FILTER(WHERE phase='completed')::int AS succeeded,count(*) FILTER(WHERE phase='failed')::int AS failed,count(*) FILTER(WHERE phase='running')::int AS running,coalesce(round(avg(extract(epoch FROM(completed_at-started_at))*1000) FILTER(WHERE completed_at IS NOT NULL)),0)::bigint AS avg_duration_ms FROM executions WHERE started_at>=now()-make_interval(days=>$1)`},
-			{"trend", `WITH dates AS(SELECT generate_series(current_date-($1::int-1),current_date,interval '1 day')::date AS day) SELECT dates.day,count(e.id)::int runs,count(e.id) FILTER(WHERE e.phase='completed')::int succeeded,count(e.id) FILTER(WHERE e.phase='failed')::int failed FROM dates LEFT JOIN executions e ON e.started_at::date=dates.day GROUP BY dates.day ORDER BY dates.day`},
+			{"summary", `SELECT count(*)::int AS runs,count(*) FILTER(WHERE e.phase='completed')::int AS succeeded,count(*) FILTER(WHERE e.phase='failed')::int AS failed,count(*) FILTER(WHERE e.phase='running')::int AS running,coalesce(round(avg(extract(epoch FROM(e.completed_at-e.started_at))*1000) FILTER(WHERE e.completed_at IS NOT NULL)),0)::bigint AS avg_duration_ms FROM executions e JOIN pipelines p ON p.id=e.pipeline_id WHERE e.started_at>=now()-make_interval(days=>$1) AND ` + visible},
+			{"trend", `WITH dates AS(SELECT generate_series(current_date-($1::int-1),current_date,interval '1 day')::date AS day) SELECT dates.day,count(e.id)::int runs,count(e.id) FILTER(WHERE e.phase='completed')::int succeeded,count(e.id) FILTER(WHERE e.phase='failed')::int failed FROM dates LEFT JOIN executions e ON e.started_at::date=dates.day AND EXISTS(SELECT 1 FROM pipelines p WHERE p.id=e.pipeline_id AND ` + visible + `) GROUP BY dates.day ORDER BY dates.day`},
 			{"pipelines", `SELECT p.id,p.pipeline_key,p.name,p.version,p.status,p.environment,p.definition,p.definition->'metadata' AS metadata,
                 count(e.id)::int runs,count(e.id) FILTER(WHERE e.phase='failed')::int failed,
                 coalesce(round(avg(extract(epoch FROM(e.completed_at-e.started_at))*1000) FILTER(WHERE e.completed_at IS NOT NULL)),0)::bigint AS avg_duration_ms,
@@ -141,12 +147,13 @@ func (s *Server) monitoringOverview(w http.ResponseWriter, r *http.Request) erro
                 FROM pipelines p
                 LEFT JOIN executions e ON e.pipeline_id=p.id AND e.started_at>=now()-make_interval(days=>$1)
                 LEFT JOIN LATERAL(SELECT id,phase,started_at FROM executions WHERE pipeline_id=p.id ORDER BY started_at DESC,id DESC LIMIT 1) latest ON true
+                WHERE ` + visible + `
                 GROUP BY p.id,latest.id,latest.phase,latest.started_at ORDER BY p.environment,p.name`},
-			{"recentFailures", `SELECT e.id,e.pipeline_id,p.name,e.environment,e.started_at,e.completed_at,nr.node_id,nr.error FROM executions e JOIN pipelines p ON p.id=e.pipeline_id LEFT JOIN LATERAL(SELECT node_id,error FROM node_runs WHERE execution_id=e.id AND status='failed' ORDER BY finished_at DESC LIMIT 1)nr ON true WHERE e.phase='failed' AND e.started_at>=now()-make_interval(days=>$1) ORDER BY e.started_at DESC LIMIT 10`},
-			{"quality", `SELECT count(*)::int checks,coalesce(sum(passed_count),0)::bigint passed_rows,coalesce(sum(failed_count),0)::bigint failed_rows,count(*) FILTER(WHERE status IN('warning','failed'))::int issues FROM data_quality_results WHERE evaluated_at>=now()-make_interval(days=>$1)`},
-			{"recentQualityIssues", `SELECT q.execution_id,q.node_id,q.status,q.passed_count,q.failed_count,q.error_samples,q.evaluated_at,p.name,p.environment FROM data_quality_results q JOIN pipelines p ON p.id=q.pipeline_id WHERE q.status IN('warning','failed') AND q.evaluated_at>=now()-make_interval(days=>$1) ORDER BY q.evaluated_at DESC LIMIT 10`}}
+			{"recentFailures", `SELECT e.id,e.pipeline_id,p.name,e.environment,e.started_at,e.completed_at,nr.node_id,nr.error FROM executions e JOIN pipelines p ON p.id=e.pipeline_id LEFT JOIN LATERAL(SELECT node_id,error FROM node_runs WHERE execution_id=e.id AND status='failed' ORDER BY finished_at DESC LIMIT 1)nr ON true WHERE e.phase='failed' AND e.started_at>=now()-make_interval(days=>$1) AND ` + visible + ` ORDER BY e.started_at DESC LIMIT 10`},
+			{"quality", `SELECT count(*)::int checks,coalesce(sum(q.passed_count),0)::bigint passed_rows,coalesce(sum(q.failed_count),0)::bigint failed_rows,count(*) FILTER(WHERE q.status IN('warning','failed'))::int issues FROM data_quality_results q JOIN pipelines p ON p.id=q.pipeline_id WHERE q.evaluated_at>=now()-make_interval(days=>$1) AND ` + visible},
+			{"recentQualityIssues", `SELECT q.execution_id,q.node_id,q.status,q.passed_count,q.failed_count,q.error_samples,q.evaluated_at,p.name,p.environment FROM data_quality_results q JOIN pipelines p ON p.id=q.pipeline_id WHERE q.status IN('warning','failed') AND q.evaluated_at>=now()-make_interval(days=>$1) AND ` + visible + ` ORDER BY q.evaluated_at DESC LIMIT 10`}}
 		for _, item := range queries {
-			rows, err := tx.Query(r.Context(), item.sql, days)
+			rows, err := tx.Query(r.Context(), item.sql, args...)
 			if err != nil {
 				return err
 			}
