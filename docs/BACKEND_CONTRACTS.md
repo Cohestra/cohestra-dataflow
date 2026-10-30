@@ -10,6 +10,10 @@ never returned. Routes accept `Authorization: Bearer <JWT-or-API-token>`; browse
 uses the existing HttpOnly refresh cookie. CORS permits the configured
 `APP_URL`, credentials, `Authorization`, and `Content-Type`. OAuth callbacks
 validate signed state and redirect to the existing frontend connector routes.
+OIDC login sends a `nonce` and verifies the returned ID token's signature
+against the issuer's `jwks_uri` (RS/PS/ES algorithms only), plus `iss`, `aud`,
+`azp`, `sub`, `exp`, `iat` and the nonce; the discovery document must name the
+configured `OIDC_ISSUER`. Failures redirect to `/login?error=oidc_token`.
 Refresh tokens rotate atomically: only one request can redeem a token. A token
 redeemed less than 10 seconds ago (two tabs refreshing at once) gets 401
 without side effects; an older one is treated as stolen and revokes every
