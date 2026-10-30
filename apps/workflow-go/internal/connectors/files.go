@@ -265,6 +265,14 @@ func (r *Runtime) icebergFetch(ctx context.Context, p SourceParams) (SourceResul
 	if err != nil {
 		return SourceResult{}, err
 	}
+	return icebergFetchTable(ctx, loaded, p)
+}
+
+// legacyIcebergPage pages through the table by row offset from the start of a
+// full scan. Only a run that was mid-snapshot under the old cursor format
+// (rowOffset without fileIndex) still uses it, so it finishes without
+// re-reading or skipping rows.
+func legacyIcebergPage(ctx context.Context, loaded *icetable.Table, p SourceParams) (SourceResult, error) {
 	snapshot := loaded.CurrentSnapshot()
 	if snapshot == nil {
 		return SourceResult{Records: []interface{}{}, NextCursor: p.Cursor}, nil
