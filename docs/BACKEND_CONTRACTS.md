@@ -43,7 +43,8 @@ Public lookups that run before a tenant is known (webhook triggers, payment
 webhooks, OAuth invitations, OpenLineage keys) go through `SECURITY DEFINER`
 resolvers so they work under row-level security as `dataflow_app`. Runs and
 logs (`/api/executions...`) need the same pipeline role as the pipeline: viewer
-to read, editor to retry or control. Saving a new version of an existing
+to read, editor to retry or control. The monitoring overview only counts and
+lists pipelines the caller can view (workspace owners see all). Saving a new version of an existing
 pipeline key needs editor access to its latest version, and carries that
 version's sharing forward.
 
