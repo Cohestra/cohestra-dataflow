@@ -141,7 +141,7 @@ export default function MonitoringPage() {
           </form>
         </div>
         {!logs.length ? <p className="px-5 py-6 text-sm text-gray-400">No matching activity.</p> : <div className="max-h-80 divide-y divide-gray-100 overflow-y-auto dark:divide-white/5">
-          {logs.map(item => <Link key={`${item.execution_id}:${item.node_id}`} to={`/runs/${item.execution_id}`} className="grid gap-2 px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03] sm:grid-cols-[7rem_1fr_10rem]">
+          {logs.map(item => <Link key={`${item.execution_id}:${item.node_id}`} to={`/runs/${item.execution_id}`} className="grid gap-2 px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/3 sm:grid-cols-[7rem_1fr_10rem]">
             <span className={`text-[10px] font-semibold uppercase ${item.level === 'error' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{item.level} · {item.node_id}</span>
             <span className="min-w-0"><span className="block truncate text-xs font-medium text-gray-900 dark:text-white/85">{item.name}</span><span className={`block truncate text-[10px] ${item.level === 'error' ? 'text-red-500' : 'text-gray-500 dark:text-white/45'}`}>{item.message}</span></span>
             <span className="text-right text-[10px] text-gray-400">{displayEnvironment(item.environment)} · {new Date(item.finished_at).toLocaleString()}</span>
@@ -155,7 +155,7 @@ export default function MonitoringPage() {
           <span className={`glass-badge ${(data?.quality.issues ?? 0) ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{data?.quality.issues ?? 0} issues</span>
         </div>
         {!data?.recentQualityIssues.length ? <p className="px-5 py-6 text-sm text-gray-400">No quality violations in this period.</p> : <div className="divide-y divide-gray-100 dark:divide-white/5">
-          {data.recentQualityIssues.map(issue => <Link key={`${issue.execution_id}:${issue.node_id}`} to={`/runs/${issue.execution_id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+          {data.recentQualityIssues.map(issue => <Link key={`${issue.execution_id}:${issue.node_id}`} to={`/runs/${issue.execution_id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-white/3">
             <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${issue.status === 'failed' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>{issue.status}</span>
             <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium text-gray-900 dark:text-white/85">{issue.name} · {issue.node_id}</p><p className="mt-0.5 truncate text-[10px] text-gray-500 dark:text-white/45">{Number(issue.failed_count).toLocaleString()} rejected · {issue.error_samples?.[0]?.errors?.join('; ') ?? 'Contract violation'}</p></div>
             <span className="text-[10px] text-gray-400">{displayEnvironment(issue.environment)}</span>
@@ -188,7 +188,7 @@ export default function MonitoringPage() {
             {data?.trend.map(point => {
               const runs = Number(point.runs), failed = Number(point.failed);
               return <div key={point.day} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={`${point.day}: ${runs} runs, ${failed} failed`}>
-                <div className="relative flex h-36 w-full items-end overflow-hidden rounded-t bg-gray-100 dark:bg-white/[0.04]">
+                <div className="relative flex h-36 w-full items-end overflow-hidden rounded-t bg-gray-100 dark:bg-white/4">
                   <div className="w-full bg-brand-400/70" style={{ height: `${Math.max(runs ? 6 : 0, (runs / maxRuns) * 100)}%` }} />
                   {failed > 0 && <div className="absolute bottom-0 left-0 w-full bg-red-500/80" style={{ height: `${Math.max(5, (failed / maxRuns) * 100)}%` }} />}
                 </div>
@@ -212,7 +212,7 @@ export default function MonitoringPage() {
       <section className="glass-card overflow-hidden">
         <div className="border-b border-gray-100 px-5 py-4 dark:border-white/5"><h3 className="text-sm font-semibold text-gray-900 dark:text-white/90">Pipeline health</h3></div>
         <div className="overflow-x-auto"><table className="w-full text-left text-xs">
-          <thead className="bg-gray-50 text-[10px] uppercase tracking-wide text-gray-400 dark:bg-white/[0.025]"><tr>
+          <thead className="bg-gray-50 text-[10px] uppercase tracking-wide text-gray-400 dark:bg-white/2.5"><tr>
             <th className="px-5 py-3">Pipeline</th><th className="px-4 py-3">Health</th><th className="px-4 py-3">Last run</th><th className="px-4 py-3">Runs</th><th className="px-4 py-3">Failures</th><th className="px-4 py-3">Avg duration</th>
           </tr></thead>
           <tbody className="divide-y divide-gray-100 dark:divide-white/5">

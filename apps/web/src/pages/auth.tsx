@@ -12,9 +12,9 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
       <div className="absolute left-[12%] top-[-12%] h-[420px] w-[420px] rounded-full bg-brand-500/15 blur-[110px]" />
       <div className="absolute bottom-[-15%] right-[8%] h-[360px] w-[360px] rounded-full bg-cyan/10 blur-[120px]" />
       <div className="relative z-10 flex min-h-screen items-center justify-center">
-        <div className="w-full max-w-md rounded-[24px] border border-white/[0.1] bg-[#10131c]/78 p-8 shadow-glass-glow backdrop-blur-2xl">
+        <div className="w-full max-w-md rounded-[24px] border border-white/10 bg-[#10131c]/78 p-8 shadow-glass-glow backdrop-blur-2xl">
           <div className="mb-8 flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-white/[0.12] bg-white shadow-lg shadow-black/20">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-white/12 bg-white shadow-lg shadow-black/20">
               <AtomMark size={22} />
             </span>
             <div><p className="text-sm font-semibold">Cohestra DataFlow</p><p className="text-[10px] uppercase tracking-[.16em] text-white/30">Durable data pipelines</p></div>

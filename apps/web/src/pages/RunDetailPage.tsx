@@ -23,7 +23,7 @@ function RunFlowNode({ data }: NodeProps) {
   const entry = byType[data.activityType];
   const ring = STATUS_RING[data.status] ?? 'border-gray-200 dark:border-white/10';
   return (
-    <div className={`rounded-xl border bg-white dark:bg-[#12151f]/95 px-3 py-2 text-xs shadow-sm dark:shadow-lg ${ring}`}
+    <div className={`rounded-xl border bg-white dark:bg-[#12151f]/95 px-3 py-2 text-xs shadow-xs dark:shadow-lg ${ring}`}
       style={{ minWidth: 150 }}>
       <Handle type="target" position={Position.Left} />
       <div className="flex items-center gap-2">
@@ -35,7 +35,7 @@ function RunFlowNode({ data }: NodeProps) {
         {data.recordCount != null && ` · ${data.recordCount.toLocaleString()} rec`}
         {data.durationMs != null && ` · ${data.durationMs}ms`}
       </div>
-      {data.error && <div className="mt-1 text-[10px] text-red-500 dark:text-danger/90 break-words">{String(data.error).slice(0, 120)}</div>}
+      {data.error && <div className="mt-1 text-[10px] text-red-500 dark:text-danger/90 wrap-break-word">{String(data.error).slice(0, 120)}</div>}
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -123,7 +123,7 @@ export default function RunDetailPage() {
       </div>}
       {trace && <div className="max-h-56 overflow-auto border-b border-gray-100 px-6 py-3 text-xs dark:border-white/[0.07]">
         <div className="mb-2 flex items-center justify-between"><strong>Temporal history</strong><button className="glass-btn-ghost" onClick={() => setTrace(null)}>Close</button></div>
-        {trace.map(event => <details key={event.eventId} className="border-t border-gray-100 py-2 dark:border-white/[0.06]"><summary>#{event.eventId} · event {event.eventType}</summary><pre className="mt-2 overflow-auto whitespace-pre-wrap text-[10px] opacity-70">{JSON.stringify(event.attributes, null, 2)}</pre></details>)}
+        {trace.map(event => <details key={event.eventId} className="border-t border-gray-100 py-2 dark:border-white/6"><summary>#{event.eventId} · event {event.eventType}</summary><pre className="mt-2 overflow-auto whitespace-pre-wrap text-[10px] opacity-70">{JSON.stringify(event.attributes, null, 2)}</pre></details>)}
         {!trace.length && <p className="opacity-60">No history events.</p>}
       </div>}
       <div className="flex-1">

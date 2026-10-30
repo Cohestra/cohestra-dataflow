@@ -38,8 +38,8 @@ const localDateTime = (date: Date) => new Date(date.getTime() - date.getTimezone
 const PILL_CLS = (active: boolean) =>
   `flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition-all ${
     active
-      ? 'bg-gray-900 border-gray-900 text-white dark:bg-white/[0.12] dark:border-white/[0.2] dark:text-white'
-      : 'bg-transparent border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:border-white/[0.07] dark:text-white/45 dark:hover:bg-white/[0.065] dark:hover:text-white/75'
+      ? 'bg-gray-900 border-gray-900 text-white dark:bg-white/12 dark:border-white/20 dark:text-white'
+      : 'bg-transparent border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:border-white/[0.07] dark:text-white/45 dark:hover:bg-white/6.5 dark:hover:text-white/75'
   }`;
 
 function fmtDt(iso: string | undefined): string {
@@ -62,7 +62,7 @@ function RunDrawer({ run, onClose }: { run: Execution; onClose: () => void }) {
   const cfg = PHASE_STYLE[run.phase ?? ''];
   return (
     <div className="fixed inset-y-0 right-0 z-40 flex w-[85vw] max-w-[360px] flex-none flex-col border-l border-gray-200 bg-white
-      dark:border-white/[0.08] dark:bg-white/[0.04] dark:backdrop-blur-xl overflow-hidden
+      dark:border-white/8 dark:bg-white/4 dark:backdrop-blur-xl overflow-hidden
       shadow-[-18px_0_50px_rgba(0,0,0,.08)] dark:shadow-[-18px_0_50px_rgba(0,0,0,.28)]
       sm:static sm:z-auto sm:w-[360px] sm:max-w-none">
 
@@ -74,9 +74,9 @@ function RunDrawer({ run, onClose }: { run: Execution; onClose: () => void }) {
           <button onClick={onClose} aria-label="Close run details"
             className="relative ml-auto flex h-[22px] w-[22px] items-center justify-center rounded-[6px]
               bg-gray-100 border border-gray-200 text-gray-400 hover:bg-gray-200 hover:text-gray-700
-              dark:bg-white/[0.04] dark:border-white/[0.07] dark:text-white/40
-              dark:hover:bg-white/[0.08] dark:hover:text-white transition-all
-              before:absolute before:-inset-[11px] before:content-['']">
+              dark:bg-white/4 dark:border-white/[0.07] dark:text-white/40
+              dark:hover:bg-white/8 dark:hover:text-white transition-all
+              before:absolute before:inset-[-11px] before:content-['']">
             <X size={13} />
           </button>
         </div>
@@ -94,7 +94,7 @@ function RunDrawer({ run, onClose }: { run: Execution; onClose: () => void }) {
           { label: 'Finished', value: fmtDt(run.completed_at) },
           { label: 'Duration', value: durMs(run.started_at, run.completed_at) },
         ].map(({ label, value }) => (
-          <div key={label} className="flex items-center justify-between border-b border-gray-100 dark:border-white/[0.06] py-3 text-[12px]">
+          <div key={label} className="flex items-center justify-between border-b border-gray-100 dark:border-white/6 py-3 text-[12px]">
             <span className="text-gray-400 dark:text-white/40">{label}</span>
             <span className="text-gray-800 dark:text-white/80 font-medium tabular-nums">{value}</span>
           </div>
@@ -102,7 +102,7 @@ function RunDrawer({ run, onClose }: { run: Execution; onClose: () => void }) {
         {run.error && (
           <div className="mt-4 rounded-lg border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 p-3">
             <p className="text-[11px] font-medium text-red-600 dark:text-red-400 mb-1">Error</p>
-            <p className="text-[11px] text-red-500 dark:text-red-400/80 break-words leading-relaxed">{run.error}</p>
+            <p className="text-[11px] text-red-500 dark:text-red-400/80 wrap-break-word leading-relaxed">{run.error}</p>
           </div>
         )}
       </div>
@@ -173,7 +173,7 @@ export default function RunsPage() {
       <div className="flex flex-1 flex-col min-w-0 min-h-0">
 
         {/* toolbar */}
-        <div className="grid gap-2 px-4 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0 lg:grid-cols-[auto_1fr] lg:px-6">
+        <div className="grid gap-2 px-4 py-2.5 border-b border-gray-100 dark:border-white/6 shrink-0 lg:grid-cols-[auto_1fr] lg:px-6">
           <div className="flex items-center gap-2 overflow-x-auto"><span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Status</span>
           {/* status pills */}
           {STATUS_PILLS.map(({ key, label, dot }) => (
@@ -235,8 +235,8 @@ export default function RunsPage() {
             const sel = selected?.id === r.id;
             return (
               <button type="button" key={r.id} onClick={() => setSelected(sel ? null : r)}
-                className={`group flex w-full items-stretch border-b border-gray-100 text-left dark:border-white/[0.05] cursor-pointer transition-colors ${
-                  sel ? 'bg-brand-50 dark:bg-brand-500/[0.06]' : 'hover:bg-gray-50 dark:hover:bg-white/[0.025]'
+                className={`group flex w-full items-stretch border-b border-gray-100 text-left dark:border-white/5 cursor-pointer transition-colors ${
+                  sel ? 'bg-brand-50 dark:bg-brand-500/6' : 'hover:bg-gray-50 dark:hover:bg-white/2.5'
                 }`}>
                 <div className={`w-[3px] shrink-0 ${cfg?.bar ?? 'bg-gray-300/60'}`} />
                 <div className="flex flex-1 flex-wrap items-center gap-3.5 px-5 py-3 min-w-0">
@@ -268,7 +268,7 @@ export default function RunsPage() {
         </div>
 
         {/* footer */}
-        <div className="flex items-center px-6 py-2 border-t border-gray-100 dark:border-white/[0.06] shrink-0">
+        <div className="flex items-center px-6 py-2 border-t border-gray-100 dark:border-white/6 shrink-0">
           <span className="list-footer">{visible.length} run{visible.length !== 1 ? 's' : ''}</span>
         </div>
       </div>

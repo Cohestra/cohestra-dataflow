@@ -1,6 +1,91 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-glass-white: rgba(255, 255, 255, 0.055);
+  --color-glass-border: rgba(255, 255, 255, 0.09);
+  --color-glass-hover: rgba(255, 255, 255, 0.09);
+  --color-glass-active: rgba(255, 255, 255, 0.13);
+
+  --color-brand-300: #a89df8;
+  --color-brand-400: #8c7cf4;
+  --color-brand-500: #7c6cf2;
+  --color-brand-600: #6757df;
+
+  --color-cyan: #52d6e8;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --backdrop-blur-glass: 16px;
+  --backdrop-blur-glass-heavy: 28px;
+
+  --background-image-canvas-gradient:
+    radial-gradient(
+      ellipse at 18% 0%,
+      rgba(124, 108, 242, 0.15) 0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      ellipse at 90% 82%,
+      rgba(82, 214, 232, 0.08) 0%,
+      transparent 34%
+    ),
+    linear-gradient(145deg, #080a10 0%, #0b0e17 48%, #080a10 100%);
+
+  --shadow-glass:
+    0 18px 50px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --shadow-glass-glow:
+    0 12px 40px rgba(124, 108, 242, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 28px rgba(99, 102, 241, 0.8);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+
+/*
+  Tailwind CSS v4 changed two more Preflight defaults: buttons use the default
+  cursor, and placeholders use the text colour at 50% opacity. Keep the v3 look.
+*/
+@layer base {
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 @layer base {
   html, body, #root {
@@ -71,16 +156,18 @@
   }
 
   /* ── Cards ── */
-  .glass-card {
+  .glass-card,
+  .glass-card-interactive {
     @apply bg-white border border-gray-200 rounded-[14px]
            dark:bg-white/[0.045] dark:backdrop-blur-glass dark:border-white/[0.08];
     box-shadow: 0 1px 4px rgba(0,0,0,.06);
   }
-  .dark .glass-card {
+  .dark .glass-card,
+  .dark .glass-card-interactive {
     box-shadow: 0 12px 32px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.035);
   }
   .glass-card-interactive {
-    @apply glass-card transition-all duration-200
+    @apply transition-all duration-200
            hover:border-gray-300 hover:shadow-md
            dark:hover:bg-white/[0.075] dark:hover:border-white/[0.13];
     transform: translateZ(0);
@@ -90,46 +177,53 @@
   }
 
   /* ── Inputs ── */
-  .glass-input {
+  .glass-input,
+  .glass-select {
     @apply w-full bg-gray-50 border border-gray-200 rounded-[10px] px-3 py-2
-           text-sm text-gray-900 placeholder-gray-400 outline-none
+           text-sm text-gray-900 placeholder-gray-400 outline-hidden
            transition-all duration-200
            dark:bg-black/20 dark:border-white/[0.09] dark:text-white dark:placeholder-white/30;
   }
-  .glass-input:focus {
+  .glass-input:focus,
+  .glass-select:focus {
     border-color: rgba(140,124,244,0.7);
     box-shadow: 0 0 0 2px rgba(140,124,244,0.15);
   }
-  .dark .glass-input {
+  .dark .glass-input,
+  .dark .glass-select {
     box-shadow: inset 0 1px 2px rgba(0,0,0,.22);
   }
   .glass-select {
-    @apply glass-input appearance-none cursor-pointer;
+    @apply appearance-none cursor-pointer;
   }
 
   /* ── Buttons ── */
-  .glass-btn {
+  .glass-btn,
+  .glass-btn-primary,
+  .glass-btn-ghost,
+  .glass-btn-danger,
+  .glass-btn-success {
     @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-[10px]
            text-sm font-medium transition-all duration-200 cursor-pointer
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .glass-btn-primary {
-    @apply glass-btn bg-gradient-to-b from-brand-400 to-brand-600
+    @apply bg-gradient-to-b from-brand-400 to-brand-600
            border border-brand-300/30 text-white
            hover:brightness-110 active:scale-[.98] shadow-lg shadow-brand-500/20;
   }
   .glass-btn-ghost {
-    @apply glass-btn bg-gray-100 border border-gray-200 text-gray-700
+    @apply bg-gray-100 border border-gray-200 text-gray-700
            hover:bg-gray-200 hover:border-gray-300 active:scale-[.98]
            dark:bg-white/[0.045] dark:border-white/[0.08] dark:text-white/70
            dark:hover:bg-white/[0.085] dark:hover:border-white/[0.14] dark:hover:text-white;
   }
   .glass-btn-danger {
-    @apply glass-btn bg-red-50 border border-red-200 text-red-600 hover:bg-red-100
+    @apply bg-red-50 border border-red-200 text-red-600 hover:bg-red-100
            dark:bg-danger/10 dark:border-danger/25 dark:text-danger/90 dark:hover:bg-danger/20;
   }
   .glass-btn-success {
-    @apply glass-btn bg-gradient-to-b from-emerald-400 to-emerald-600
+    @apply bg-gradient-to-b from-emerald-400 to-emerald-600
            border border-emerald-300/30 text-white
            shadow-lg shadow-emerald-500/15 hover:brightness-110 active:scale-[.98];
   }
@@ -150,21 +244,24 @@
   }
 
   /* ── Badges ── */
-  .glass-badge {
+  .glass-badge,
+  .glass-badge-success,
+  .glass-badge-warning,
+  .glass-badge-danger {
     @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium
            bg-gray-100 border border-gray-200 text-gray-600
            dark:bg-white/[0.055] dark:border-white/[0.09] dark:text-white/65;
   }
   .glass-badge-success {
-    @apply glass-badge bg-emerald-50 border-emerald-200 text-emerald-700
+    @apply bg-emerald-50 border-emerald-200 text-emerald-700
            dark:bg-success/15 dark:border-success/40 dark:text-success;
   }
   .glass-badge-warning {
-    @apply glass-badge bg-amber-50 border-amber-200 text-amber-700
+    @apply bg-amber-50 border-amber-200 text-amber-700
            dark:bg-warning/15 dark:border-warning/40 dark:text-warning;
   }
   .glass-badge-danger {
-    @apply glass-badge bg-red-50 border-red-200 text-red-600
+    @apply bg-red-50 border-red-200 text-red-600
            dark:bg-danger/15 dark:border-danger/40 dark:text-danger;
   }
 
@@ -239,7 +336,6 @@
   background-image: radial-gradient(circle, rgba(255,255,255,0.065) 1px, transparent 1px);
 }
 /* canvas-light is an alias kept for backwards compat */
-.canvas-light { @apply canvas-root; }
 
 .canvas-root .cv-panel {
   background: white;
@@ -264,7 +360,7 @@
   box-shadow: 0 8px 32px rgba(0,0,0,.3);
 }
 .canvas-root .cv-input {
-  @apply w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all;
+  @apply w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-hidden transition-all;
 }
 .canvas-root .cv-input:focus {
   border-color: #8c7cf4;

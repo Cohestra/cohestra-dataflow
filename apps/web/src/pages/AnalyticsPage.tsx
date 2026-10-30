@@ -205,7 +205,7 @@ export function AnalyticsPage() {
     return (
       <div className="max-w-2xl mx-auto mt-16 px-6">
         <div className="glass-panel p-8 text-center space-y-4">
-          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-300/20 bg-brand-500/10 text-brand-300"><BarChart3 size={24} /></div>
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-300/20 bg-brand-500/10 text-brand-300"><BarChart3 size={24} /></div>
           <h1 className="text-xl font-semibold">No datasets yet</h1>
           <p className="text-sm text-gray-500 dark:text-white/60 leading-relaxed">
             To use analytics, your pipelines need to push data into ClickHouse collections.
@@ -219,7 +219,7 @@ export function AnalyticsPage() {
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden">
       {/* Left sidebar */}
-      <aside className="w-60 flex-shrink-0 border-r border-gray-200 dark:border-white/[0.07] bg-gray-50/80 dark:bg-white/[0.018] flex flex-col">
+      <aside className="w-60 shrink-0 border-r border-gray-200 dark:border-white/[0.07] bg-gray-50/80 dark:bg-white/[0.018] flex flex-col">
         <div className="p-4 border-b border-gray-200 dark:border-white/10">
           <h2 className="text-sm font-semibold text-gray-800 dark:text-white/80">Datasets</h2>
         </div>
@@ -260,7 +260,7 @@ export function AnalyticsPage() {
 
       {/* Main canvas */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-white/10 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-white/10 shrink-0">
           <div className="flex items-center gap-3">
             <h1 className="text-base font-semibold">
               {activeDashboard ? activeDashboard.name : 'Untitled Dashboard'}
@@ -294,7 +294,7 @@ export function AnalyticsPage() {
         <div ref={containerRef} className="flex-1 overflow-auto p-4">
           {widgets.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-gray-100 dark:bg-white/[0.04] text-gray-400 dark:text-white/30"><BarChart3 size={24} /></div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 dark:border-white/8 bg-gray-100 dark:bg-white/4 text-gray-400 dark:text-white/30"><BarChart3 size={24} /></div>
               <p className="text-gray-400 dark:text-white/40 text-sm">No widgets yet.</p>
               <button className="glass-btn-primary text-sm" onClick={() => { setInitialDataset(undefined); setShowAddModal(true); }}>
                 <Plus size={15} /> Add first widget
@@ -312,14 +312,14 @@ export function AnalyticsPage() {
               margin={[12, 12]}>
               {widgets.map(widget => (
                 <div key={widget.id} className="glass-card flex flex-col overflow-hidden">
-                  <div className="drag-handle flex items-center justify-between px-3 pt-3 pb-2 cursor-move flex-shrink-0 select-none">
+                  <div className="drag-handle flex items-center justify-between px-3 pt-3 pb-2 cursor-move shrink-0 select-none">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{widget.title}</p>
                       <p className="text-xs text-gray-400 dark:text-white/40 truncate">
                         {widget.dataset}{loadingData[widget.id] ? ' · loading…' : ''}
                       </p>
                     </div>
-                    <div className="flex flex-shrink-0 ml-2">
+                    <div className="flex shrink-0 ml-2">
                       <button
                         className="glass-btn-ghost w-6 h-6 flex items-center justify-center text-xs text-gray-400 dark:text-white/50 hover:text-brand-400 cursor-pointer"
                         onMouseDown={e => e.stopPropagation()}

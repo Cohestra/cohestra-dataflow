@@ -13,7 +13,7 @@ export function DateTimePicker({ value, onChange, placeholder = 'Select date & t
       value={value}
       onChange={event => onChange(event.target.value)}
       aria-label={placeholder}
-      className={`glass-input min-w-[188px] py-1.5 text-[12px] [color-scheme:light] dark:[color-scheme:dark] ${className}`}
+      className={`glass-input min-w-[188px] py-1.5 text-[12px] scheme-light dark:scheme-dark ${className}`}
     />
   );
 }
