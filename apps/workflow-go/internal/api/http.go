@@ -12,6 +12,8 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dataflow-poc/workflow-go/internal/model"
@@ -172,15 +174,48 @@ func oneMap(rows pgx.Rows) (map[string]interface{}, error) {
 	return values[0], nil
 }
 
+// trustedProxies are the peers whose X-Real-IP header names the client.
+// TRUSTED_PROXY_CIDRS narrows them (for example to the web tier's pod range);
+// by default any loopback or private peer is trusted, which suits compose and
+// the Helm chart where only the web nginx can reach the API.
+var trustedProxies = sync.OnceValue(func() []*net.IPNet {
+	return parseTrustedProxies(os.Getenv("TRUSTED_PROXY_CIDRS"))
+})
+
+const defaultTrustedProxies = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
+
+func parseTrustedProxies(value string) []*net.IPNet {
+	if strings.TrimSpace(value) == "" {
+		value = defaultTrustedProxies
+	}
+	var networks []*net.IPNet
+	for _, cidr := range strings.Split(value, ",") {
+		if _, network, err := net.ParseCIDR(strings.TrimSpace(cidr)); err == nil {
+			networks = append(networks, network)
+		} else if cidr = strings.TrimSpace(cidr); cidr != "" && cidr != "none" {
+			slog.Warn("ignoring invalid TRUSTED_PROXY_CIDRS entry", "cidr", cidr)
+		}
+	}
+	return networks
+}
+
 func requestIP(r *http.Request) string {
+	return clientIP(r, trustedProxies())
+}
+
+func clientIP(r *http.Request, trusted []*net.IPNet) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	proxyIP := net.ParseIP(host)
-	if proxyIP != nil && (proxyIP.IsPrivate() || proxyIP.IsLoopback()) {
-		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); net.ParseIP(realIP) != nil {
-			return realIP
+	if peer := net.ParseIP(host); peer != nil {
+		for _, network := range trusted {
+			if network.Contains(peer) {
+				if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); net.ParseIP(realIP) != nil {
+					return realIP
+				}
+				break
+			}
 		}
 	}
 	return host
@@ -233,18 +268,61 @@ func (s *Server) rateLimit(scope string, limit int64, window time.Duration, next
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bucket := time.Now().Unix() / int64(window/time.Second)
 		key := fmt.Sprintf("dataflow:rate:%s:%s:%d", scope, requestIP(r), bucket)
-		count, err := s.Redis.Incr(r.Context(), key).Result()
-		if err == nil {
-			if count == 1 {
-				_ = s.Redis.Expire(r.Context(), key, window).Err()
-			}
-			if count > limit {
-				jsonError(w, http.StatusTooManyRequests, ErrRateLimit, "rate limit exceeded", nil)
-				return
-			}
+		// INCR and EXPIRE in one round trip, so a key never outlives its window.
+		pipe := s.Redis.TxPipeline()
+		incr := pipe.Incr(r.Context(), key)
+		pipe.Expire(r.Context(), key, window)
+		_, err := pipe.Exec(r.Context())
+		count := incr.Val()
+		if err != nil {
+			// Without Redis each replica still enforces the limit on its own,
+			// rather than letting unlimited login attempts through.
+			warnRateLimitFallback(err)
+			count = localRateLimiter.incr(key, window)
+		}
+		if count > limit {
+			jsonError(w, http.StatusTooManyRequests, ErrRateLimit, "rate limit exceeded", nil)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// fallbackLimiter counts requests in process while Redis is unavailable.
+type fallbackLimiter struct {
+	mu     sync.Mutex
+	counts map[string]int64
+	expiry map[string]time.Time
+}
+
+var localRateLimiter = &fallbackLimiter{counts: map[string]int64{}, expiry: map[string]time.Time{}}
+
+func (l *fallbackLimiter) incr(key string, window time.Duration) int64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	if len(l.counts) > 10000 {
+		for k, expires := range l.expiry {
+			if now.After(expires) {
+				delete(l.counts, k)
+				delete(l.expiry, k)
+			}
+		}
+	}
+	if expires, ok := l.expiry[key]; !ok || now.After(expires) {
+		l.counts[key], l.expiry[key] = 0, now.Add(window)
+	}
+	l.counts[key]++
+	return l.counts[key]
+}
+
+var lastRateLimitWarning atomic.Int64
+
+func warnRateLimitFallback(err error) {
+	now := time.Now().Unix()
+	if last := lastRateLimitWarning.Load(); now-last >= 60 && lastRateLimitWarning.CompareAndSwap(last, now) {
+		slog.Warn("rate limiter cannot reach Redis; limiting per replica", "error", err)
+	}
 }
 
 func handle(fn func(http.ResponseWriter, *http.Request) error) http.HandlerFunc {
