@@ -22,6 +22,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Review follow-ups: webhook replays are rejected even with a changed `Idempotency-Key`, and a retry of an accepted delivery returns its run; pipeline lists and runtime lineage follow pipeline roles; promoted prod versions keep their author and sharing and check webhook paths; a Google/OIDC login with a verified email claims an unconfirmed password account of the same address, and a new password sign-up replaces one whose link expired; run errors in Temporal history are redacted.
 
 ### Fixed
+- Kafka: connections now authenticate. The connection form saved a SASL mechanism, username and password, but the worker ignored them (and the client ID), so clusters that require SASL (Confluent Cloud, MSK, Redpanda Cloud) refused every fetch and sink. PLAIN, SCRAM-SHA-256 and SCRAM-SHA-512 are supported; PLAIN is refused without TLS because it sends the password as is.
+- Connectors: saving a credential with a required field missing (for example a Postgres connection without a host) used to pass validation, because a missing value was checked as the text "<nil>".
 - AI builder no longer returns "ready" for graphs the canvas cannot save (dead ends, orphans, under-connected fork/merge): it repairs, splices an unambiguously dangling step (noted as an assumption), or returns a warned draft.
 - AI grounding accepts comma-list fields sent as JSON arrays and the `old:new` rename shorthand; the planner prompt lists each select field's allowed values.
 - Plain `docker compose up` no longer silently switches the AI builder to `qwen2.5vl:7b` (the tracked override is now an opt-in example).
