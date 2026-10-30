@@ -34,6 +34,9 @@ x-app-env: &app-env
   CLICKHOUSE_USER: dataflow
   CLICKHOUSE_PASSWORD: dataflow
   CLICKHOUSE_DB: dataflow
+  # Tenant-filtered read-only user for analytics (db/clickhouse/users-analytics.xml).
+  CLICKHOUSE_ANALYTICS_USER: dataflow_analytics
+  CLICKHOUSE_ANALYTICS_PASSWORD: ${CLICKHOUSE_ANALYTICS_PASSWORD:-dataflow-analytics}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3002/api/auth/google/callback}
@@ -249,9 +252,11 @@ services:
       CLICKHOUSE_USER: dataflow
       CLICKHOUSE_PASSWORD: dataflow
       CLICKHOUSE_DB: dataflow
+      CLICKHOUSE_ANALYTICS_PASSWORD: ${CLICKHOUSE_ANALYTICS_PASSWORD:-dataflow-analytics}
     volumes:
       - ./db/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./db/clickhouse/config.xml:/etc/clickhouse-server/config.d/storage.xml
+      - ./db/clickhouse/users-analytics.xml:/etc/clickhouse-server/users.d/analytics.xml:ro
       - chdata:/var/lib/clickhouse
     healthcheck:
       test: ["CMD-SHELL", "clickhouse-client --user dataflow --password dataflow --query 'SELECT 1'"]

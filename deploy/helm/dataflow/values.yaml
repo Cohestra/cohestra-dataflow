@@ -38,6 +38,16 @@ billingEnabled: false
 
 web:
   nodePort: 30002
+  # Local keeps the client's address on the way into the web nginx. With
+  # Cluster, kube-proxy rewrites it to a node IP; nginx trusts X-Forwarded-For
+  # from private addresses, so clients could then pick the address that rate
+  # limits are keyed on. Use Cluster only behind a proxy that sets that header.
+  externalTrafficPolicy: Local
+api:
+  # Peers allowed to name the client in X-Real-IP (comma-separated CIDRs).
+  # Empty trusts any loopback or private peer; narrow it to the web pods'
+  # range so other workloads in the cluster cannot choose their own address.
+  trustedProxyCIDRs: ""
 temporalUI:
   nodePort: 30082
 
@@ -46,6 +56,12 @@ backup:
   # on the node's data disk only). Uses the GCE metadata-server token; the VM
   # service account needs roles/storage.objectCreator on the bucket.
   gcsBucket: ""
+
+clickhouse:
+  # Password of the tenant-filtered read-only user the API runs analytics
+  # queries as (db/clickhouse/users-analytics.xml). Like the main ClickHouse
+  # credentials it only matters inside the cluster's network policy.
+  analyticsPassword: dataflow-analytics
 
 storage:
   postgres: 2Gi

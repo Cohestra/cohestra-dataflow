@@ -22,6 +22,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   value: dataflow
 - name: CLICKHOUSE_DB
   value: dataflow
+- name: CLICKHOUSE_ANALYTICS_USER
+  value: dataflow_analytics
+- name: CLICKHOUSE_ANALYTICS_PASSWORD
+  value: {{ .Values.clickhouse.analyticsPassword | quote }}
 - name: SMTP_HOST
   value: {{ .Values.smtp.host | quote }}
 - name: SMTP_PORT

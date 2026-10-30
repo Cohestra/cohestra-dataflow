@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -80,13 +81,33 @@ func analyticsTimeRangeClauses(from, to string) ([]chsql.Expr, error) {
 		chsql.Raw("created_at < ") + chsql.Literal("date", end.UTC().Format(time.RFC3339)),
 	}, nil
 }
+
+// clickhouseTenantSetting carries the caller's tenant to ClickHouse, where
+// the analytics user's row filters (db/clickhouse/users-analytics.xml) only
+// return that tenant's rows. It backs up the tenant_id clause in each query.
+const clickhouseTenantSetting = "SQL_dataflow_tenant"
+
 func (s *Server) clickhouseQuery(r *http.Request, query string) ([]map[string]interface{}, error) {
-	endpoint := strings.TrimSuffix(s.Config.ClickHouseURL, "/") + "/?database=" + url.QueryEscape(s.Config.ClickHouseDB) + "&default_format=JSONEachRow"
+	tenantID := tenantFrom(r).TenantID
+	if tenantID == "" {
+		return nil, errors.New("clickhouse query without a tenant")
+	}
+	// A SETTINGS clause in the query would override the tenant below. Values
+	// from requests are always quoted literals, so this only trips on injection.
+	if strings.Contains(query, clickhouseTenantSetting) {
+		return nil, errors.New("clickhouse query names the tenant setting")
+	}
+	endpoint := strings.TrimSuffix(s.Config.ClickHouseURL, "/") + "/?database=" + url.QueryEscape(s.Config.ClickHouseDB) +
+		"&default_format=JSONEachRow&" + clickhouseTenantSetting + "=" + url.QueryEscape(tenantID)
 	request, err := http.NewRequestWithContext(r.Context(), http.MethodPost, endpoint, strings.NewReader(query))
 	if err != nil {
 		return nil, err
 	}
-	request.SetBasicAuth(s.Config.ClickHouseUser, s.Config.ClickHousePassword)
+	user, password := s.Config.ClickHouseUser, s.Config.ClickHousePassword
+	if s.Config.ClickHouseAnalyticsUser != "" {
+		user, password = s.Config.ClickHouseAnalyticsUser, s.Config.ClickHouseAnalyticsPassword
+	}
+	request.SetBasicAuth(user, password)
 	response, err := s.HTTP.Do(request)
 	if err != nil {
 		return nil, err
