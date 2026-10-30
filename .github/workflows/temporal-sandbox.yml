@@ -16,7 +16,8 @@ concurrency:
 jobs:
   temporal-sandbox:
     name: Temporal sandbox
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest (26.04) no longer packages PostgreSQL 16; 24.04 ships it preinstalled.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
