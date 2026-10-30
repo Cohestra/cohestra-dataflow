@@ -413,6 +413,9 @@ spec:
             - {name: TEMPORAL_NAMESPACE, value: default}
             - {name: TASK_QUEUE, value: dynamic-dag}
             - {name: INTERNAL_DEMO_FEATURES, value: {{ .Values.internalDemoFeatures | quote }}}
+            {{- with .Values.api.trustedProxyCIDRs }}
+            - {name: TRUSTED_PROXY_CIDRS, value: {{ . | quote }}}
+            {{- end }}
           ports: [{containerPort: 4000}]
           readinessProbe: {tcpSocket: {port: 4000}, periodSeconds: 5}
           volumeMounts: [{name: connectors, mountPath: /app/connectors/manifests, readOnly: true}]
@@ -537,6 +540,7 @@ kind: Service
 metadata: {name: web}
 spec:
   type: NodePort
+  externalTrafficPolicy: {{ .Values.web.externalTrafficPolicy }}
   selector: {app: web}
   ports: [{port: 80, targetPort: 80, nodePort: {{ .Values.web.nodePort }}}]
 ---

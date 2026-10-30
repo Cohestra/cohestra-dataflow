@@ -8,6 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Security
+- Rate limits: when Redis is unreachable each API replica now enforces the limits itself; they used to switch off, allowing unlimited login attempts. The Helm web Service uses `externalTrafficPolicy: Local`, because with `Cluster` the node address made nginx trust a client-supplied `X-Forwarded-For`, so clients could choose the address limits are keyed on. `TRUSTED_PROXY_CIDRS` (Helm `api.trustedProxyCIDRs`) narrows which peers may set `X-Real-IP`.
 - Analytics: ClickHouse string literals now escape backslashes; a crafted dataset name could previously drop the tenant filter and read other workspaces' records.
 - Webhook triggers, the Razorpay webhook and OAuth sign-up with an invitation resolve their tenant through `SECURITY DEFINER` functions (`db/028_public_entry_resolvers.sql`); under row-level security they previously found nothing (webhooks errored, payments were never credited, invited OAuth users got a new workspace).
 - Saving a new version of an existing pipeline needs editor access to it (sharing carries over to the new version); run details, retry, status and trace follow the pipeline's roles, and run/log lists only include pipelines the member can view.
