@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/dataflow-poc/workflow-go/internal/model"
-	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -360,13 +359,31 @@ func (s *Server) googleCallback(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s *Server) oidcDiscovery(r *http.Request) (map[string]string, error) {
+// oidcDiscoveryDoc holds the fields we use; real documents also carry
+// arrays (scopes_supported, ...), so they cannot decode into a string map.
+type oidcDiscoveryDoc struct {
+	Issuer                string `json:"issuer"`
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
+	TokenEndpoint         string `json:"token_endpoint"`
+	UserinfoEndpoint      string `json:"userinfo_endpoint"`
+	JWKSURI               string `json:"jwks_uri"`
+}
+
+func (s *Server) oidcDiscovery(r *http.Request) (oidcDiscoveryDoc, error) {
+	var doc oidcDiscoveryDoc
 	issuer := strings.TrimSuffix(os.Getenv("OIDC_ISSUER"), "/")
 	if issuer == "" {
-		return nil, &HTTPError{Status: http.StatusServiceUnavailable, Message: "OIDC_ISSUER not configured"}
+		return doc, &HTTPError{Status: http.StatusServiceUnavailable, Message: "OIDC_ISSUER not configured"}
 	}
-	doc := map[string]string{}
-	return doc, s.getJSON(r, issuer+"/.well-known/openid-configuration", &doc)
+	if err := s.getJSON(r, issuer+"/.well-known/openid-configuration", &doc); err != nil {
+		return doc, err
+	}
+	// OpenID Connect Discovery 1.0 section 4.3: the document must name the
+	// issuer it was fetched from.
+	if strings.TrimSuffix(doc.Issuer, "/") != issuer || doc.AuthorizationEndpoint == "" || doc.TokenEndpoint == "" || doc.UserinfoEndpoint == "" || doc.JWKSURI == "" {
+		return doc, fmt.Errorf("OIDC discovery document is incomplete or names another issuer")
+	}
+	return doc, nil
 }
 
 func (s *Server) oidcStart(w http.ResponseWriter, r *http.Request) error {
@@ -374,17 +391,21 @@ func (s *Server) oidcStart(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	state := randomToken()
-	http.SetCookie(w, &http.Cookie{Name: "oauth_state", Value: state, Path: "/api/auth", HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: os.Getenv("NODE_ENV") == "production", MaxAge: 600})
-	query := url.Values{"response_type": {"code"}, "client_id": {os.Getenv("OIDC_CLIENT_ID")}, "redirect_uri": {os.Getenv("OIDC_REDIRECT_URI")}, "scope": {"openid email profile"}, "state": {state}}
-	http.Redirect(w, r, doc["authorization_endpoint"]+"?"+query.Encode(), http.StatusFound)
+	state, nonce := randomToken(), randomToken()
+	for name, value := range map[string]string{"oauth_state": state, "oidc_nonce": nonce} {
+		http.SetCookie(w, &http.Cookie{Name: name, Value: value, Path: "/api/auth", HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: os.Getenv("NODE_ENV") == "production", MaxAge: 600})
+	}
+	query := url.Values{"response_type": {"code"}, "client_id": {os.Getenv("OIDC_CLIENT_ID")}, "redirect_uri": {os.Getenv("OIDC_REDIRECT_URI")}, "scope": {"openid email profile"}, "state": {state}, "nonce": {nonce}}
+	http.Redirect(w, r, doc.AuthorizationEndpoint+"?"+query.Encode(), http.StatusFound)
 	return nil
 }
 
 func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 	stateCookie, _ := r.Cookie("oauth_state")
+	nonceCookie, _ := r.Cookie("oidc_nonce")
 	clearCookie(w, "oauth_state")
-	if r.URL.Query().Get("code") == "" || stateCookie == nil || stateCookie.Value != r.URL.Query().Get("state") {
+	clearCookie(w, "oidc_nonce")
+	if r.URL.Query().Get("code") == "" || stateCookie == nil || stateCookie.Value != r.URL.Query().Get("state") || nonceCookie == nil {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oauth_state", http.StatusFound)
 		return nil
 	}
@@ -395,11 +416,11 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 	}
 	values := url.Values{"grant_type": {"authorization_code"}, "code": {r.URL.Query().Get("code")}, "redirect_uri": {os.Getenv("OIDC_REDIRECT_URI")}, "client_id": {os.Getenv("OIDC_CLIENT_ID")}, "client_secret": {os.Getenv("OIDC_CLIENT_SECRET")}}
 	var token map[string]interface{}
-	if s.postFormJSON(r, doc["token_endpoint"], values, &token) != nil {
+	if s.postFormJSON(r, doc.TokenEndpoint, values, &token) != nil {
 		http.Redirect(w, r, s.Config.AppURL+"/login?error=oidc_token", http.StatusFound)
 		return nil
 	}
-	request, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, doc["userinfo_endpoint"], nil)
+	request, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, doc.UserinfoEndpoint, nil)
 	request.Header.Set("Authorization", "Bearer "+stringValue(token["access_token"]))
 	var info struct {
 		Sub, Email    string
@@ -410,8 +431,9 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	idToken, _ := token["id_token"].(string)
-	if idToken == "" || verifyOIDCIDToken(idToken, strings.TrimSuffix(os.Getenv("OIDC_ISSUER"), "/"), os.Getenv("OIDC_CLIENT_ID"), info.Sub) != nil {
-		return &HTTPError{Status: http.StatusUnauthorized, Message: "OIDC id_token verification failed"}
+	if idToken == "" || verifyOIDCIDToken(r.Context(), s.HTTP, doc.JWKSURI, idToken, strings.TrimSuffix(os.Getenv("OIDC_ISSUER"), "/"), os.Getenv("OIDC_CLIENT_ID"), info.Sub, nonceCookie.Value) != nil {
+		http.Redirect(w, r, s.Config.AppURL+"/login?error=oidc_token", http.StatusFound)
+		return nil
 	}
 	userID, err := s.resolveIdentity(r, "oidc_sub", info.Sub, strings.ToLower(info.Email), "oidc")
 	if err != nil {
@@ -425,23 +447,6 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) error {
 	setRefreshCookie(w, refresh)
 	http.Redirect(w, r, s.Config.AppURL+"/pipelines", http.StatusFound)
 	return nil
-}
-
-// verifyOIDCIDToken parses the ID token payload and checks iss, aud, sub, and exp.
-// We cannot JWKS-verify the signature without a new dependency; integrity is
-// anchored by cross-checking sub against the userinfo response, which is
-// fetched over TLS from the issuer using the access token.
-func verifyOIDCIDToken(idToken, issuer, clientID, userinfoSub string) error {
-	claims := &jwt.RegisteredClaims{}
-	if _, _, err := jwt.NewParser().ParseUnverified(idToken, claims); err != nil {
-		return fmt.Errorf("id_token claims: %w", err)
-	}
-	if issuer == "" || strings.TrimSuffix(claims.Issuer, "/") != issuer {
-		return fmt.Errorf("id_token issuer mismatch")
-	}
-	return jwt.NewValidator(
-		jwt.WithAudience(clientID), jwt.WithSubject(userinfoSub), jwt.WithExpirationRequired(),
-	).Validate(claims)
 }
 
 // emailClaimVerified accepts only an explicit true (Google's tokeninfo sends the
