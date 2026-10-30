@@ -17,3 +17,5 @@ ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_s
 ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_secret_test.go:generic-api-key:46
 ab00d56473a67ea8c58696f47532e53a52f7e2ea:apps/workflow-go/internal/api/trigger_secret_test.go:generic-api-key:47
 c3a37a6360a568233c330adf4f4bb22f2bfb9194:apps/workflow-go/internal/connectors/http_test.go:generic-api-key:142
+# controls-regression.yml (#74): disposable CI ClickHouse login (dataflow/dataflow), same as docker-compose.yml.
+73b83e5ff5b68818947306af211db636f82d3ff7:.github/workflows/controls-regression.yml:curl-auth-user:97
