@@ -8,6 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Security
+- Auth: refresh-token rotation is atomic. Two requests redeeming the same token could both get new sessions, and two tabs refreshing at once were treated as token theft and signed the user out everywhere.
 - Analytics: ClickHouse string literals now escape backslashes; a crafted dataset name could previously drop the tenant filter and read other workspaces' records.
 - Webhook triggers, the Razorpay webhook and OAuth sign-up with an invitation resolve their tenant through `SECURITY DEFINER` functions (`db/028_public_entry_resolvers.sql`); under row-level security they previously found nothing (webhooks errored, payments were never credited, invited OAuth users got a new workspace).
 - Saving a new version of an existing pipeline needs editor access to it (sharing carries over to the new version); run details, retry, status and trace follow the pipeline's roles, and run/log lists only include pipelines the member can view.
@@ -50,6 +51,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Connector manifests with a kind other than `source` are skipped at startup (logged as `skipping unsupported connector manifest`). Saved pipelines that reference such a manifest sink fail at dispatch until a coded handler exists.
 
 ### Added
+- Password reset: "Forgot password?" on the login page emails a single-use, one-hour link (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`); resetting signs out every session. Apply `db/029_password_resets.sql`.
 - AI builder model picker (`qwen3:8b` best quality, `qwen3:4b-instruct-2507` faster) backed by `GET /api/ai/models` and an operator allow-list (`OLLAMA_MODELS` / `ollamaModels`).
 - AI builder "Redo last apply".
 - `tests/ai-evals/cases/v2-datalake.json` lakehouse/chat corpus with a golden-output preflight, and mocked plus live browser tests for AI generate/refine/Apply/Undo/Redo.

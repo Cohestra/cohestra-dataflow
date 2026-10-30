@@ -19,6 +19,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const LoginPage = lazy(() => import('./pages/auth').then(module => ({ default: module.LoginPage })));
 const AcceptInvitePage = lazy(() => import('./pages/auth').then(module => ({ default: module.AcceptInvitePage })));
+const ResetPasswordPage = lazy(() => import('./pages/auth').then(module => ({ default: module.ResetPasswordPage })));
 const TeamPage = lazy(() => import('./pages/TeamPage').then(module => ({ default: module.TeamPage })));
 const ConnectorsPage = lazy(() => import('./pages/ConnectorsPage').then(module => ({ default: module.ConnectorsPage })));
 const BillingPage = lazy(() => import('./pages/BillingPage').then(module => ({ default: module.BillingPage })));
@@ -34,6 +35,7 @@ const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<AuthProvider><RouteErrorBoundary><Suspense fallback={<RouteFallback />}><Outlet /></Suspense></RouteErrorBoundary></AuthProvider>}>
     <Route path="/login" element={<LoginPage />} />
     <Route path="/accept-invite" element={<AcceptInvitePage />} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
 
     {/* Canvas page: full-viewport, no AppShell chrome */}
     <Route element={<ProtectedRoute><FeatureProvider><CatalogProvider><Outlet /></CatalogProvider></FeatureProvider></ProtectedRoute>}>

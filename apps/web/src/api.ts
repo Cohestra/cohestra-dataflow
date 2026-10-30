@@ -217,6 +217,10 @@ export const api = {
     request('/api/auth/register', { method: 'POST', body: JSON.stringify(body) }).then(j),
   loginWithPassword: (body: { email: string; password: string }) =>
     request('/api/auth/login', { method: 'POST', body: JSON.stringify(body) }).then(j),
+  forgotPassword: (email: string) =>
+    request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }).then(j),
+  resetPassword: (body: { token: string; password: string }) =>
+    request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify(body) }).then(j),
 
   // Billing (Phase 3)
   getUsage: () => request('/api/billing/usage').then(j),

@@ -10,6 +10,14 @@ never returned. Routes accept `Authorization: Bearer <JWT-or-API-token>`; browse
 uses the existing HttpOnly refresh cookie. CORS permits the configured
 `APP_URL`, credentials, `Authorization`, and `Content-Type`. OAuth callbacks
 validate signed state and redirect to the existing frontend connector routes.
+Refresh tokens rotate atomically: only one request can redeem a token. A token
+redeemed less than 10 seconds ago (two tabs refreshing at once) gets 401
+without side effects; an older one is treated as stolen and revokes every
+session of that user. `POST /api/auth/forgot-password` always answers
+`{"ok":true}` and emails a single-use, one-hour link to `/reset-password`
+(at most one a minute per account). `POST /api/auth/reset-password`
+(`{"token","password"}`) sets the password, marks the email verified and
+revokes all refresh tokens.
 The Razorpay webhook consumes the unmodified request bytes and validates
 `X-Razorpay-Signature` before decoding JSON.
 
@@ -38,7 +46,7 @@ version's sharing forward.
 Public/operational routes:
 
 - `GET /health`, `GET /metrics`
-- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`
 - `GET /api/auth/google`, `GET /api/auth/google/callback`, `GET /api/auth/oidc`, `GET /api/auth/oidc/callback`, `GET /api/auth/accept-invite`
 - `POST /api/billing/webhook`, `POST /api/hooks/{path}`, `POST /api/openlineage`
 - `GET /api/analytics/shared/{token}`
