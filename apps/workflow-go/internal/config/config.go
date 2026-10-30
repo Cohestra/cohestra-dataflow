@@ -27,6 +27,8 @@ type Config struct {
 	ClickHouseUser               string
 	ClickHousePassword           string
 	ClickHouseDB                 string
+	ClickHouseAnalyticsUser      string // tenant-filtered read-only user for analytics
+	ClickHouseAnalyticsPassword  string
 	ConnectorsDir                string
 	PayloadBucket                string
 	PayloadRegion                string
@@ -87,6 +89,8 @@ func Load() Config {
 		ClickHouseUser:               env("CLICKHOUSE_USER", "dataflow"),
 		ClickHousePassword:           env("CLICKHOUSE_PASSWORD", "dataflow"),
 		ClickHouseDB:                 env("CLICKHOUSE_DB", "dataflow"),
+		ClickHouseAnalyticsUser:      os.Getenv("CLICKHOUSE_ANALYTICS_USER"),
+		ClickHouseAnalyticsPassword:  os.Getenv("CLICKHOUSE_ANALYTICS_PASSWORD"),
 		ConnectorsDir:                env("CONNECTORS_DIR", "/app/connectors/manifests"),
 		PayloadBucket:                os.Getenv("PAYLOAD_S3_BUCKET"),
 		PayloadRegion:                env("PAYLOAD_S3_REGION", "us-east-1"),

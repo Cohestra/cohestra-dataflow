@@ -57,6 +57,12 @@ backup:
   # service account needs roles/storage.objectCreator on the bucket.
   gcsBucket: ""
 
+clickhouse:
+  # Password of the tenant-filtered read-only user the API runs analytics
+  # queries as (db/clickhouse/users-analytics.xml). Like the main ClickHouse
+  # credentials it only matters inside the cluster's network policy.
+  analyticsPassword: dataflow-analytics
+
 storage:
   postgres: 2Gi
   redis: 2Gi
