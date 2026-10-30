@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/sasl"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"github.com/twmb/franz-go/pkg/sasl/scram"
 )
 
 var kafkaTopic = regexp.MustCompile(`^[A-Za-z0-9._-]{1,249}$`)
@@ -25,10 +28,21 @@ func (r *Runtime) kafkaOptions(ctx context.Context, id string) ([]kgo.Opt, error
 		return nil, err
 	}
 	cfg, _ := row["extra"].(map[string]interface{})
+	secret, _ := row["secret_value"].(map[string]interface{})
+	return kafkaClientOptions(cfg, secret)
+}
+
+// kafkaClientOptions builds the client options for a saved Kafka connection:
+// brokers, client ID, TLS and SASL (PLAIN or SCRAM with the stored login).
+func kafkaClientOptions(cfg, secret map[string]interface{}) ([]kgo.Opt, error) {
 	brokers := []string{}
 	switch value := cfg["brokers"].(type) {
 	case string:
-		brokers = strings.Split(value, ",")
+		for _, broker := range strings.Split(value, ",") {
+			if broker = strings.TrimSpace(broker); broker != "" {
+				brokers = append(brokers, broker)
+			}
+		}
 	case []interface{}:
 		for _, broker := range value {
 			brokers = append(brokers, stringValue(broker))
@@ -37,12 +51,46 @@ func (r *Runtime) kafkaOptions(ctx context.Context, id string) ([]kgo.Opt, error
 	if len(brokers) == 0 {
 		return nil, fmt.Errorf("kafka connector requires brokers")
 	}
-	options := []kgo.Opt{kgo.SeedBrokers(brokers...), kgo.DialTimeout(10 * time.Second)}
-	if truthy(cfg["tls"]) {
+	options := []kgo.Opt{kgo.SeedBrokers(brokers...), kgo.DialTimeout(10 * time.Second), kgo.ClientID(firstString(cfg["clientId"], "dataflow"))}
+	useTLS := truthy(cfg["tls"])
+	if useTLS {
 		options = append(options, kgo.DialTLSConfig(&tls.Config{MinVersion: tls.VersionTLS12}))
+	}
+	mechanism, err := KafkaSASLMechanism(stringValue(cfg["saslMechanism"]), useTLS, stringValue(secret["username"]), stringValue(secret["password"]))
+	if err != nil {
+		return nil, err
+	}
+	if mechanism != nil {
+		options = append(options, kgo.SASL(mechanism))
 	}
 	return options, nil
 }
+
+// KafkaSASLMechanism returns the SASL mechanism a connection asks for, or nil
+// for none. PLAIN sends the password as is, so it needs TLS; SCRAM does not
+// send the password and also works without TLS.
+func KafkaSASLMechanism(name string, useTLS bool, username, password string) (sasl.Mechanism, error) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" || name == "none" {
+		return nil, nil
+	}
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("kafka SASL %s requires a username and password", name)
+	}
+	switch name {
+	case "plain":
+		if !useTLS {
+			return nil, fmt.Errorf("kafka SASL/PLAIN sends the password unencrypted; enable TLS or use SCRAM")
+		}
+		return plain.Auth{User: username, Pass: password}.AsMechanism(), nil
+	case "scram-sha-256":
+		return scram.Auth{User: username, Pass: password}.AsSha256Mechanism(), nil
+	case "scram-sha-512":
+		return scram.Auth{User: username, Pass: password}.AsSha512Mechanism(), nil
+	}
+	return nil, fmt.Errorf("unsupported kafka SASL mechanism %q (use none, plain, scram-sha-256 or scram-sha-512)", name)
+}
+
 func (r *Runtime) kafkaFetch(ctx context.Context, p SourceParams) (SourceResult, error) {
 	topic := stringValue(p.Config["topic"])
 	if !kafkaTopic.MatchString(topic) {
