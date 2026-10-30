@@ -83,6 +83,7 @@ jobs:
         env:
           CLICKHOUSE_TEST_URL: http://127.0.0.1:18123
           CLICKHOUSE_TEST_ANALYTICS_PASSWORD: ci-analytics
+          CLICKHOUSE_ADMIN: dataflow
         run: |
           set -o pipefail
           # Same image and files as docker-compose.yml, so a broken
@@ -94,7 +95,7 @@ jobs:
             -v "$GITHUB_WORKSPACE/db/clickhouse/users-analytics.xml:/etc/clickhouse-server/users.d/analytics.xml:ro" \
             "$(grep -m1 -o 'clickhouse/clickhouse-server:[^ ]*' "$GITHUB_WORKSPACE/docker-compose.yml")"
           for i in $(seq 1 60); do
-            curl -sf -u dataflow:dataflow "$CLICKHOUSE_TEST_URL/?query=EXISTS%20dataflow.execution_metrics" | grep -q 1 && break
+            curl -sf --user "$CLICKHOUSE_ADMIN:$CLICKHOUSE_ADMIN" "$CLICKHOUSE_TEST_URL/?query=EXISTS%20dataflow.execution_metrics" | grep -q 1 && break
             sleep 2
           done
           go test ./internal/api -run '^TestClickhouse' -count=1 -v | tee /tmp/clickhouse.log
