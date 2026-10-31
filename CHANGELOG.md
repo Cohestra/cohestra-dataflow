@@ -53,6 +53,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Connector manifests with a kind other than `source` are skipped at startup (logged as `skipping unsupported connector manifest`). Saved pipelines that reference such a manifest sink fail at dispatch until a coded handler exists.
 
 ### Added
+- Snowflake sink: set `conflictKey` (one or more columns) to upsert with `MERGE` instead of appending, like the Postgres sink. Matching rows are updated and the rest inserted, so a re-run or overlapping incremental window no longer duplicates rows. Rows sharing a key are reduced to the last one (Snowflake rejects a MERGE where two source rows match one target row), and a null or missing key value fails the write instead of inserting a duplicate every run.
 - Password reset: "Forgot password?" on the login page emails a single-use, one-hour link (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`); resetting signs out every session. Apply `db/029_password_resets.sql`.
 - AI builder model picker (`qwen3:8b` best quality, `qwen3:4b-instruct-2507` faster) backed by `GET /api/ai/models` and an operator allow-list (`OLLAMA_MODELS` / `ollamaModels`).
 - AI builder "Redo last apply".

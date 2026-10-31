@@ -63,7 +63,7 @@ var codedAIFields = map[string][]model.CatalogField{
 	"sink.s3":         {field("connectionId", "text"), field("bucket", "text"), field("key", "text"), field("format", "select", "jsonl", "json"), field("layer", "select", "bronze", "silver", "gold")},
 	"sink.kafka":      {field("connectionId", "text"), field("topic", "text"), field("cluster", "text"), field("keyField", "text"), field("layer", "select", "bronze", "silver", "gold")},
 	"sink.sftp":       {field("connectionId", "text"), field("path", "text"), field("format", "select", "jsonl", "json")},
-	"sink.snowflake":  {field("connectionId", "text"), field("table", "text")},
+	"sink.snowflake":  {field("connectionId", "text"), field("table", "text"), field("conflictKey", "text")},
 	"sink.iceberg":    {field("connectionId", "text"), field("namespace", "text"), field("table", "text")},
 	"sink.gsheets":    {field("connectionId", "text"), field("spreadsheetId", "text"), field("sheetName", "text"), field("writeMode", "select", "replace", "append"), field("includeHeader", "boolean")},
 	"sink.webhook":    {field("connectionId", "text"), field("url", "text")},
