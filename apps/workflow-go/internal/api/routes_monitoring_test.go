@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/dataflow-poc/workflow-go/internal/model"
+	"github.com/google/uuid"
 )
 
 func TestMonitoringPipelineRunFields(t *testing.T) {
@@ -130,5 +132,85 @@ func TestPipelineCurrentViewTargetsActiveVersionAndEffectivePhase(t *testing.T) 
 	items := get(s.executionList, "/api/executions?paged=1&pipelineKey="+f.pipeline+"&env=test")["items"].([]interface{})
 	if len(items) != 1 || items[0].(map[string]interface{})["effective_phase"] != "paused" {
 		t.Fatalf("execution list must report the same effective phase: %v", items)
+	}
+}
+
+func TestMonitoringOverviewHidesPipelinesTheUserCannotView(t *testing.T) {
+	f := newControlFixture(t)
+	ctx := context.Background()
+	exec := func(sql string, args ...interface{}) {
+		t.Helper()
+		if _, err := f.db.Pool.Exec(ctx, sql, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The fixture's pipeline (created by f.user) fails with a quality issue; a
+	// second pipeline belongs to someone else and is shared with one viewer.
+	other, viewer, stranger := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	for _, user := range []string{other, viewer, stranger} {
+		exec(`INSERT INTO users(id,tenant_id,email,role) VALUES($1,$2,$3,'member')`, user, f.tenant, user+"@fixture.invalid")
+	}
+	shared, sharedRun := uuid.NewString(), "control-test-"+uuid.NewString()
+	exec(`INSERT INTO pipelines(id,pipeline_key,tenant_id,name,definition,created_by) VALUES($1,$1,$2,'shared pipeline','{}',$3)`, shared, f.tenant, other)
+	exec(`INSERT INTO executions(id,pipeline_id,tenant_id,trigger_type,environment,workflow_id,run_id,phase,started_at,completed_at) VALUES($1,$2,$3,'manual','test',$1,'fixture-run','completed',now()-interval '1 hour',now())`, sharedRun, shared, f.tenant)
+	exec(`INSERT INTO pipeline_access(pipeline_id,user_id,role,granted_by) VALUES($1,$2,'viewer',$3)`, shared, viewer, other)
+	exec(`UPDATE executions SET phase='failed',started_at=now()-interval '1 hour',completed_at=now() WHERE id=$1`, f.execution)
+	exec(`INSERT INTO data_quality_results(tenant_id,pipeline_id,execution_id,node_id,status,failed_count,error_samples) VALUES($1,$2,$3,'check','failed',3,'["secret row"]')`, f.tenant, f.pipeline, f.execution)
+
+	s := &Server{DB: f.app}
+	overview := func(actor model.TenantContext) map[string]interface{} {
+		t.Helper()
+		response := httptest.NewRecorder()
+		handle(s.monitoringOverview)(response, withTenant(httptest.NewRequest(http.MethodGet, "/api/executions/monitoring/overview?days=7", nil), actor))
+		if response.Code != http.StatusOK {
+			t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+		}
+		var body map[string]interface{}
+		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		return body
+	}
+	trendRuns := func(body map[string]interface{}) (total float64) {
+		for _, day := range body["trend"].([]interface{}) {
+			total += day.(map[string]interface{})["runs"].(float64)
+		}
+		return total
+	}
+	pipelineIDs := func(body map[string]interface{}) (ids []string) {
+		for _, row := range body["pipelines"].([]interface{}) {
+			ids = append(ids, row.(map[string]interface{})["id"].(string))
+		}
+		return ids
+	}
+	cases := []struct {
+		name                        string
+		actor                       model.TenantContext
+		runs, failures, qualityRows int
+		pipelines                   []string
+	}{
+		{"owner sees everything", model.TenantContext{TenantID: f.tenant, UserID: stranger, Role: "owner"}, 2, 1, 1, []string{f.pipeline, shared}},
+		{"creator sees own pipeline", model.TenantContext{TenantID: f.tenant, UserID: f.user, Role: "member"}, 1, 1, 1, []string{f.pipeline}},
+		{"viewer sees shared pipeline", model.TenantContext{TenantID: f.tenant, UserID: viewer, Role: "member"}, 1, 0, 0, []string{shared}},
+		{"member without access sees nothing", model.TenantContext{TenantID: f.tenant, UserID: stranger, Role: "member"}, 0, 0, 0, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := overview(tc.actor)
+			summary := body["summary"].(map[string]interface{})
+			quality := body["quality"].(map[string]interface{})
+			ids := pipelineIDs(body)
+			if summary["runs"] != float64(tc.runs) || trendRuns(body) != float64(tc.runs) ||
+				len(body["recentFailures"].([]interface{})) != tc.failures ||
+				quality["checks"] != float64(tc.qualityRows) || len(body["recentQualityIssues"].([]interface{})) != tc.qualityRows ||
+				len(ids) != len(tc.pipelines) {
+				t.Fatalf("summary=%v trend=%v failures=%v quality=%v issues=%v pipelines=%v", summary, trendRuns(body), body["recentFailures"], quality, body["recentQualityIssues"], ids)
+			}
+			for _, want := range tc.pipelines {
+				if !slices.Contains(ids, want) {
+					t.Fatalf("pipelines=%v, want %v", ids, tc.pipelines)
+				}
+			}
+		})
 	}
 }
