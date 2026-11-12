@@ -169,10 +169,9 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric
 # github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0
 ## explicit; go 1.24.0
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping
-# github.com/andybalholm/brotli v1.2.1
+# github.com/andybalholm/brotli v1.2.7
 ## explicit; go 1.22
 github.com/andybalholm/brotli
-github.com/andybalholm/brotli/flate
 github.com/andybalholm/brotli/matchfinder
 # github.com/antlr4-go/antlr/v4 v4.13.1
 ## explicit; go 1.22
@@ -652,8 +651,8 @@ github.com/jackc/puddle/v2/internal/genstack
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
-# github.com/klauspost/compress v1.18.7
-## explicit; go 1.24
+# github.com/klauspost/compress v1.20.2
+## explicit; go 1.25
 github.com/klauspost/compress
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
@@ -662,6 +661,7 @@ github.com/klauspost/compress/huff0
 github.com/klauspost/compress/internal/cpuinfo
 github.com/klauspost/compress/internal/le
 github.com/klauspost/compress/internal/race
+github.com/klauspost/compress/internal/regmask
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/s2
 github.com/klauspost/compress/snappy
