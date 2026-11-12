@@ -939,25 +939,91 @@ func (r *Runtime) snowflakeSink(ctx context.Context, input interface{}, cfg map[
 			return nil, nil, fmt.Errorf("sink.snowflake: invalid column")
 		}
 	}
+	keys := keyFields(cfg["conflictKey"])
+	if len(keys) > 0 {
+		if rows, err = snowflakeMergeRows(rows, columns, keys); err != nil {
+			return nil, nil, err
+		}
+	}
 	db, err := r.snowflakeDB(ctx, stringValue(cfg["connectionId"]))
 	if err != nil {
 		return nil, nil, err
 	}
-	rowPlaceholder := "(" + strings.TrimRight(strings.Repeat("?,", len(columns)), ",") + ")"
-	// Batch rows into multi-row INSERTs (dbBatchSize per statement) in one
+	// Batch rows into multi-row statements (dbBatchSize per statement) in one
 	// transaction, so a retried attempt does not duplicate committed batches.
 	return nil, nil, insertBatchesInTx(ctx, db, len(rows), func(start, end int) (string, []interface{}) {
-		batch := rows[start:end]
-		groups := make([]string, len(batch))
-		args := make([]interface{}, 0, len(batch)*len(columns))
-		for i, row := range batch {
-			groups[i] = rowPlaceholder
-			for _, column := range columns {
-				args = append(args, row[column])
-			}
-		}
-		return fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", table, strings.Join(columns, ","), strings.Join(groups, ",")), args
+		return snowflakeWriteStatement(table, columns, keys, rows[start:end])
 	})
+}
+
+// snowflakeMergeRows checks conflict keys and keeps the last row for each key:
+// Snowflake rejects a MERGE in which two source rows match one target row, and
+// a null key never matches, so it would insert a duplicate on every run.
+func snowflakeMergeRows(rows []map[string]interface{}, columns, keys []string) ([]map[string]interface{}, error) {
+	for _, key := range keys {
+		if !identifier.MatchString(key) {
+			return nil, fmt.Errorf("sink.snowflake: invalid conflictKey column %q", key)
+		}
+		if !contains(columns, key) {
+			return nil, fmt.Errorf("sink.snowflake: conflictKey column %q is not in the records", key)
+		}
+	}
+	position := map[string]int{}
+	out := make([]map[string]interface{}, 0, len(rows))
+	for i, row := range rows {
+		parts := make([]interface{}, len(keys))
+		for j, key := range keys {
+			if row[key] == nil {
+				return nil, fmt.Errorf("sink.snowflake: record %d has no value for conflictKey column %q", i, key)
+			}
+			parts[j] = row[key]
+		}
+		encoded, _ := json.Marshal(parts)
+		if at, seen := position[string(encoded)]; seen {
+			out[at] = row
+			continue
+		}
+		position[string(encoded)] = len(out)
+		out = append(out, row)
+	}
+	return out, nil
+}
+
+// snowflakeWriteStatement builds one batch: a plain multi-row INSERT, or with
+// conflict keys a MERGE that updates matching rows and inserts the rest.
+func snowflakeWriteStatement(table string, columns, keys []string, batch []map[string]interface{}) (string, []interface{}) {
+	rowPlaceholder := "(" + strings.TrimRight(strings.Repeat("?,", len(columns)), ",") + ")"
+	groups := make([]string, len(batch))
+	args := make([]interface{}, 0, len(batch)*len(columns))
+	for i, row := range batch {
+		groups[i] = rowPlaceholder
+		for _, column := range columns {
+			args = append(args, row[column])
+		}
+	}
+	values := strings.Join(groups, ",")
+	if len(keys) == 0 {
+		return fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", table, strings.Join(columns, ","), values), args
+	}
+	selected, on, updates, sourceColumns := []string{}, []string{}, []string{}, []string{}
+	for i, column := range columns {
+		selected = append(selected, fmt.Sprintf("column%d AS %s", i+1, column))
+		sourceColumns = append(sourceColumns, "s."+column)
+		if contains(keys, column) {
+			continue
+		}
+		updates = append(updates, fmt.Sprintf("t.%s = s.%s", column, column))
+	}
+	for _, key := range keys {
+		on = append(on, fmt.Sprintf("t.%s = s.%s", key, key))
+	}
+	query := fmt.Sprintf("MERGE INTO %s AS t USING (SELECT %s FROM VALUES %s) AS s ON %s",
+		table, strings.Join(selected, ", "), values, strings.Join(on, " AND "))
+	if len(updates) > 0 {
+		query += " WHEN MATCHED THEN UPDATE SET " + strings.Join(updates, ", ")
+	}
+	query += fmt.Sprintf(" WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)", strings.Join(columns, ","), strings.Join(sourceColumns, ","))
+	return query, args
 }
 
 func (r *Runtime) clickhouseSink(ctx context.Context, input interface{}, cfg map[string]interface{}, _ HandlerContext) (interface{}, map[string]interface{}, error) {
