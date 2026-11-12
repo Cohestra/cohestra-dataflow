@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dataflow-poc/workflow-go/internal/connectors"
 	"github.com/dataflow-poc/workflow-go/internal/model"
 	"github.com/dataflow-poc/workflow-go/internal/security"
 	"github.com/jackc/pgx/v5"
@@ -84,7 +85,8 @@ func validateCredential(provider string, config, secret map[string]interface{}) 
 	required := func(source map[string]interface{}, fields ...string) error {
 		missing := []string{}
 		for _, field := range fields {
-			if strings.TrimSpace(stringValue(source[field])) == "" {
+			// A missing field is nil, which stringValue renders as "<nil>".
+			if value := source[field]; value == nil || strings.TrimSpace(stringValue(value)) == "" {
 				missing = append(missing, field)
 			}
 		}
@@ -128,7 +130,16 @@ func validateCredential(provider string, config, secret map[string]interface{}) 
 	case "iceberg":
 		return required(config, "url", "warehouse")
 	case "kafka":
-		return required(config, "brokers")
+		if err := required(config, "brokers"); err != nil {
+			return err
+		}
+		// Same rules the worker applies when it connects, so a bad login fails here.
+		// (stringValue would turn a missing field into "<nil>".)
+		mechanism, _ := config["saslMechanism"].(string)
+		username, _ := secret["username"].(string)
+		password, _ := secret["password"].(string)
+		_, err := connectors.KafkaSASLMechanism(mechanism, boolValue(config["tls"]), username, password)
+		return err
 	case "http":
 		return required(config, "baseUrl")
 	}

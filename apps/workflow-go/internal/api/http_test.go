@@ -126,3 +126,35 @@ func TestRateLimitWithRedis(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateCredentialChecksKafkaSASL(t *testing.T) {
+	login := map[string]interface{}{"username": "svc", "password": "secret"}
+	for name, test := range map[string]struct {
+		config, secret map[string]interface{}
+		ok             bool
+	}{
+		"no SASL":              {map[string]interface{}{"brokers": "b:9092"}, nil, true},
+		"SCRAM over plaintext": {map[string]interface{}{"brokers": "b:9092", "saslMechanism": "scram-sha-512"}, login, true},
+		"PLAIN over TLS":       {map[string]interface{}{"brokers": "b:9093", "tls": true, "saslMechanism": "plain"}, login, true},
+		"PLAIN over plaintext": {map[string]interface{}{"brokers": "b:9092", "saslMechanism": "plain"}, login, false},
+		"SASL without login":   {map[string]interface{}{"brokers": "b:9092", "saslMechanism": "scram-sha-256"}, map[string]interface{}{}, false},
+		"unknown mechanism":    {map[string]interface{}{"brokers": "b:9092", "saslMechanism": "kerberos"}, login, false},
+		"no brokers":           {map[string]interface{}{}, nil, false},
+	} {
+		if err := validateCredential("kafka", test.config, test.secret); (err == nil) != test.ok {
+			t.Errorf("%s: err=%v, want ok=%v", name, err, test.ok)
+		}
+	}
+}
+
+func TestValidateCredentialRejectsMissingFields(t *testing.T) {
+	if err := validateCredential("postgres", map[string]interface{}{"database": "app", "user": "svc"}, map[string]interface{}{"password": "x"}); err == nil || !strings.Contains(err.Error(), "host") {
+		t.Fatalf("postgres without host: %v", err)
+	}
+	if err := validateCredential("snowflake", map[string]interface{}{"account": "a", "user": "u", "database": "d", "warehouse": "w"}, map[string]interface{}{}); err == nil {
+		t.Fatal("snowflake without password accepted")
+	}
+	if err := validateCredential("postgres", map[string]interface{}{"host": "db", "database": "app", "user": "svc", "port": 5432}, map[string]interface{}{"password": "x"}); err != nil {
+		t.Fatalf("complete postgres credential: %v", err)
+	}
+}
