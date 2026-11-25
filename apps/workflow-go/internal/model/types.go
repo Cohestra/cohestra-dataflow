@@ -127,6 +127,9 @@ type DataRef struct {
 	RecordCount int    `json:"recordCount,omitempty"`
 	Encrypted   bool   `json:"encrypted,omitempty"`
 	IV          string `json:"iv,omitempty"`
+	// Chunks lists the parts of a Type "chunked" ref, read in order as one
+	// record array. Only concat merges over MAX_PAYLOAD_BYTES produce them.
+	Chunks []*DataRef `json:"chunks,omitempty"`
 }
 
 type NodeResult struct {

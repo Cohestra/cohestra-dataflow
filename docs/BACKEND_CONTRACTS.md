@@ -86,6 +86,16 @@ Canonical JSON examples, including `PipelineDefinition`, activity inputs,
 `DataRef`, `NodeResult`, connector manifest, and AES-GCM bytes, live in
 `tests/contracts/backend-wire.json`.
 
+A `DataRef` of type `chunked` carries no data itself: `chunks` lists ordinary
+refs (`inline`, `pg`, `s3`) whose record arrays are read in order as one array,
+and `sizeBytes`/`recordCount` are their totals. `mergeRefs` returns one for a
+concat whose inputs total more than `MAX_PAYLOAD_BYTES`, which is how source
+pages reach the next step. Each part stays under the limit. `dispatchNode` runs
+per-record transforms and row sinks once per part and returns their outputs as
+a `chunked` ref; other steps read the whole input, which the limit still caps.
+Parts are never themselves chunked. Activity workers that predate this type fail on it,
+so upgrade them together.
+
 ## Node activity policies
 
 New workflow executions honor node `timeoutSec` as each activity attempt's
