@@ -431,6 +431,70 @@ func TestTemporalSandboxStoredGoldenOutput(t *testing.T) {
 	b.summary["sinkCalls"] = sinkCalls.Load()
 }
 
+// A source whose pages together exceed MAX_PAYLOAD_BYTES used to fail at the
+// first downstream step, which had to read the concatenated pages at once.
+// Now the pages travel as one chunked ref: the real map transform and the
+// sink each run once per page, and no step reads more than one page.
+func TestTemporalSandboxChunkedHandoffPastPayloadLimit(t *testing.T) {
+	b := newTemporalSandbox(t)
+	padding := strings.Repeat("p", 1500)
+	const pages, perPage = 3, 300 // ~460KB a page, ~1.4MB in all, over the 1MB cap
+	var fetched atomic.Int32
+	b.runtime.Sources["sandbox.bigpages"] = func(context.Context, connectors.SourceParams) (connectors.SourceResult, error) {
+		page := int(fetched.Add(1))
+		records := make([]interface{}, 0, perPage)
+		for i := 0; i < perPage; i++ {
+			records = append(records, map[string]interface{}{"id": float64(page*1000 + i), "padding": padding})
+		}
+		return connectors.SourceResult{Records: records, NextCursor: map[string]interface{}{"page": page}, HasMore: page < pages}, nil
+	}
+	var mu sync.Mutex
+	sinkBatches := []int{}
+	sinkIDs := map[float64]bool{}
+	b.runtime.Handlers["sink.records"] = func(_ context.Context, input interface{}, _ map[string]interface{}, _ connectors.HandlerContext) (interface{}, map[string]interface{}, error) {
+		rows := input.([]interface{})
+		mu.Lock()
+		defer mu.Unlock()
+		sinkBatches = append(sinkBatches, len(rows))
+		for _, row := range rows {
+			sinkIDs[row.(map[string]interface{})["id"].(float64)] = true
+		}
+		return nil, nil, nil
+	}
+	b.start([]model.Node{
+		{ID: "source", Type: "source", ActivityType: "sandbox.bigpages"},
+		{ID: "map", Type: "transform", ActivityType: "transform.map", Config: map[string]interface{}{"expression": "{id: r.id, padding: r.padding}"}},
+		{ID: "sink", Type: "sink", ActivityType: "sink.records"},
+	}, model.Edge{Source: "source", Target: "map"}, model.Edge{Source: "map", Target: "sink"})
+	result := b.result("completed")
+
+	source, mapped := result.NodeResults["source"].OutputRef, result.NodeResults["map"].OutputRef
+	if source == nil || source.Type != "chunked" || len(source.Chunks) != pages || source.RecordCount != pages*perPage || int64(source.SizeBytes) <= b.payloads.MaxPayloadBytes {
+		t.Fatalf("source output was not a chunked ref over the cap: %+v", source)
+	}
+	if mapped == nil || mapped.Type != "chunked" || len(mapped.Chunks) != pages || mapped.RecordCount != pages*perPage {
+		t.Fatalf("map output: %+v", mapped)
+	}
+	for i, part := range append(append([]*model.DataRef{}, source.Chunks...), mapped.Chunks...) {
+		if int64(part.SizeBytes) > b.payloads.MaxPayloadBytes {
+			t.Fatalf("part %d is %d bytes, over the cap", i, part.SizeBytes)
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !reflect.DeepEqual(sinkBatches, []int{perPage, perPage, perPage}) || len(sinkIDs) != pages*perPage {
+		t.Fatalf("sink batches=%v distinct ids=%d", sinkBatches, len(sinkIDs))
+	}
+	var mapCount int
+	if err := b.fixture.db.Pool.QueryRow(b.ctx, `SELECT record_count FROM node_runs WHERE tenant_id=$1 AND execution_id=$2 AND node_id='map' AND status='success'`, b.fixture.tenant, b.run.GetID()).Scan(&mapCount); err != nil || mapCount != pages*perPage {
+		t.Fatalf("map node run count=%d err=%v", mapCount, err)
+	}
+	b.summary["sourceBytes"] = source.SizeBytes
+	b.summary["maxPayloadBytes"] = b.payloads.MaxPayloadBytes
+	b.summary["parts"] = len(source.Chunks)
+	b.summary["sinkBatches"] = sinkBatches
+}
+
 func TestTemporalSandboxRetryAndTimeout(t *testing.T) {
 	t.Run("retry", func(t *testing.T) {
 		b := newTemporalSandbox(t)

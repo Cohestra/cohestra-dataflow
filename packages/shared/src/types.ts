@@ -128,7 +128,7 @@ export interface PipelineEdge {
 // ─── DataRef: pointers flow through Temporal history, never payloads ───────
 
 export interface DataRef {
-  type: 'pg' | 'inline' | 's3';
+  type: 'pg' | 'inline' | 's3' | 'chunked';
   key: string;                // pg row id, base64 inline (<4KB), or object key
   bucket?: string;            // persisted so old refs survive default-bucket changes
   tenantId: string;
@@ -136,6 +136,7 @@ export interface DataRef {
   recordCount?: number;
   encrypted?: boolean;
   iv?: string;
+  chunks?: DataRef[];         // parts of a 'chunked' ref, read in order as one record array
 }
 
 export interface NodeResult {

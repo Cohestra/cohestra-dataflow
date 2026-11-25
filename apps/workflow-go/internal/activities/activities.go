@@ -258,6 +258,24 @@ func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.
 	if err != nil {
 		return model.NodeResult{}, err
 	}
+	if p.InputRef != nil && p.InputRef.Type == "chunked" && streamsChunks(p.ActivityType) {
+		ref, meta, err := a.dispatchChunks(ctx, p, dek)
+		duration := time.Since(started)
+		if err != nil {
+			_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "failed", started, duration, 0, err.Error(), false)
+			return model.NodeResult{}, activityError(err)
+		}
+		count := p.InputRef.RecordCount
+		if ref != nil {
+			count = ref.RecordCount
+		}
+		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, duration, count, "", false)
+		meta["durationMs"] = duration.Milliseconds()
+		if count > 0 {
+			meta["recordCount"] = count
+		}
+		return model.NodeResult{NodeID: p.NodeID, Status: "success", OutputRef: ref, Meta: meta}, nil
+	}
 	var input interface{}
 	if p.InputRef != nil {
 		input, err = a.Payloads.Read(ctx, p.InputRef, dek)
@@ -303,6 +321,74 @@ func (a *Activities) DispatchNode(ctx context.Context, p DispatchParams) (model.
 		meta["recordCount"] = count
 	}
 	return model.NodeResult{NodeID: p.NodeID, Status: "success", OutputRef: ref, Meta: meta}, nil
+}
+
+// streamsChunks lists the steps that handle each record independently, so
+// running them once per part of a chunked input gives the same result as one
+// run over the whole input. Steps that look across records (dedupe, contract)
+// and sinks that write one file or sheet per run are not listed: they read the
+// whole input, which MAX_PAYLOAD_BYTES caps.
+func streamsChunks(activityType string) bool {
+	switch activityType {
+	case "transform.map", "transform.filter", "transform.formula", "transform.select",
+		"transform.rename", "transform.flatten", "transform.parse",
+		"sink.postgres", "sink.mysql", "sink.mongodb", "sink.snowflake", "sink.clickhouse",
+		"sink.records", "sink.kafka", "sink.webhook":
+		return true
+	}
+	return false
+}
+
+// dispatchChunks runs a record-at-a-time step once per part of a chunked
+// input. Only one part is in memory at a time; each part's output is written
+// before the next part is read, and the outputs are returned as a chunked ref
+// in the same order. Execution control is checked before every part, so a
+// pause or cancel takes effect between parts.
+func (a *Activities) dispatchChunks(ctx context.Context, p DispatchParams, dek []byte) (*model.DataRef, map[string]interface{}, error) {
+	outputs := make([]*model.DataRef, 0, len(p.InputRef.Chunks))
+	meta := map[string]interface{}{}
+	handlerCtx := connectors.HandlerContext{TenantID: p.TenantID, ExecutionID: p.ExecutionID, NodeID: p.NodeID, PipelineVersion: p.PipelineVersion}
+	err := a.Payloads.EachChunk(ctx, p.InputRef, dek, func(_ int, records []interface{}) error {
+		if activity.IsActivity(ctx) {
+			activity.RecordHeartbeat(ctx)
+		}
+		if err := a.admitControlledActivity(ctx, p.TenantID, p.ExecutionID, p.ControlRequired); err != nil {
+			return err
+		}
+		output, partMeta, err := a.Runtime.Handle(ctx, p.ActivityType, records, p.Config, handlerCtx)
+		if err != nil {
+			return err
+		}
+		for key, value := range partMeta {
+			if n, ok := value.(int); ok {
+				if total, ok := meta[key].(int); ok {
+					meta[key] = total + n
+					continue
+				}
+			}
+			meta[key] = value
+		}
+		if output == nil {
+			return nil
+		}
+		ref, err := a.Payloads.Write(ctx, output, p.TenantID, p.ExecutionID, p.NodeID, dek)
+		if err != nil {
+			return err
+		}
+		outputs = append(outputs, ref)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	meta["parts"] = len(p.InputRef.Chunks)
+	switch len(outputs) {
+	case 0:
+		return nil, meta, nil
+	case 1:
+		return outputs[0], meta, nil
+	}
+	return ChunkedRef(p.TenantID, outputs), meta, nil
 }
 
 func (a *Activities) requireEntitlement(ctx context.Context, tenantID, activityType string, config map[string]interface{}) error {
@@ -472,6 +558,14 @@ func (a *Activities) MergeRefs(ctx context.Context, p MergeParams) (model.NodeRe
 		if ref != nil {
 			totalBytes += int64(ref.SizeBytes)
 		}
+	}
+	if strategy == "concat" && a.Payloads.MaxPayloadBytes > 0 && totalBytes > a.Payloads.MaxPayloadBytes {
+		// Concatenated into one payload, the result could not be read back by
+		// the next step. List the parts instead: no data is copied, and
+		// record-at-a-time steps read it one part at a time.
+		ref := ChunkedRef(p.TenantID, p.InputRefs)
+		_ = a.recordNodeRun(ctx, p.ExecutionID, p.NodeID, p.TenantID, "success", started, time.Since(started), ref.RecordCount, "", false)
+		return model.NodeResult{NodeID: p.NodeID, Status: "success", OutputRef: ref, Meta: map[string]interface{}{"durationMs": time.Since(started).Milliseconds(), "recordCount": ref.RecordCount, "parts": len(ref.Chunks)}}, nil
 	}
 	oversized := a.MaxMergeInMemoryBytes > 0 && totalBytes > a.MaxMergeInMemoryBytes
 	if oversized && strategy != "concat" {

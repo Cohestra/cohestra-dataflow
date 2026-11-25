@@ -97,7 +97,21 @@ func (p *Payloads) Read(ctx context.Context, ref *model.DataRef, dek []byte) (in
 	}
 	if p.MaxPayloadBytes > 0 && int64(ref.SizeBytes) > p.MaxPayloadBytes {
 		// Retrying cannot shrink the payload, so fail once with the fix.
+		if ref.Type == "chunked" {
+			return nil, &connectors.PermanentError{Type: PayloadTooLargeError, Err: fmt.Errorf("input is %d bytes in %d parts, over the MAX_PAYLOAD_BYTES limit of %d, and this step needs its whole input at once (per-record transforms and row sinks read large inputs part by part); raise MAX_PAYLOAD_BYTES on the activity worker", ref.SizeBytes, len(ref.Chunks), p.MaxPayloadBytes)}
+		}
 		return nil, &connectors.PermanentError{Type: PayloadTooLargeError, Err: fmt.Errorf("upstream output is %d bytes, over the MAX_PAYLOAD_BYTES limit of %d; raise MAX_PAYLOAD_BYTES on the activity worker or lower the source pageSize", ref.SizeBytes, p.MaxPayloadBytes)}
+	}
+	if ref.Type == "chunked" {
+		all := make([]interface{}, 0, ref.RecordCount)
+		err := p.EachChunk(ctx, ref, dek, func(_ int, records []interface{}) error {
+			all = append(all, records...)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return all, nil
 	}
 	key := dek
 	if len(key) == 0 {
@@ -152,6 +166,56 @@ func (p *Payloads) Read(ctx context.Context, ref *model.DataRef, dek []byte) (in
 		return nil, err
 	}
 	return value, nil
+}
+
+// ChunkedRef joins refs into one logical record array without copying any
+// data: readers see the parts' records concatenated in order. Nested chunked
+// refs are flattened so a reader never recurses.
+func ChunkedRef(tenantID string, refs []*model.DataRef) *model.DataRef {
+	ref := &model.DataRef{Type: "chunked", TenantID: tenantID}
+	for _, part := range refs {
+		if part == nil {
+			continue
+		}
+		if part.Type == "chunked" {
+			ref.Chunks = append(ref.Chunks, part.Chunks...)
+		} else {
+			ref.Chunks = append(ref.Chunks, part)
+		}
+		ref.SizeBytes += part.SizeBytes
+		ref.RecordCount += part.RecordCount
+	}
+	return ref
+}
+
+// EachChunk reads a ref one part at a time and passes each part's records to
+// fn, so a large chunked input never has to fit in memory at once. Every part
+// is still capped by MaxPayloadBytes. A plain ref is a single part.
+func (p *Payloads) EachChunk(ctx context.Context, ref *model.DataRef, dek []byte, fn func(index int, records []interface{}) error) error {
+	parts := []*model.DataRef{ref}
+	if ref.Type == "chunked" {
+		parts = ref.Chunks
+	}
+	for i, part := range parts {
+		if part.Type == "chunked" {
+			return fmt.Errorf("chunked input part %d is itself chunked", i)
+		}
+		value, err := p.Read(ctx, part, dek)
+		if err != nil {
+			return err
+		}
+		records, ok := value.([]interface{})
+		if !ok {
+			if len(parts) > 1 {
+				return fmt.Errorf("chunked input part %d is not a record array", i)
+			}
+			records = []interface{}{value}
+		}
+		if err := fn(i, records); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ciphertextSizeCap converts a plaintext byte limit into the corresponding
